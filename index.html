@@ -139,17 +139,20 @@ tr.detail[hidden]{display:none}
 .fgrid{display:grid;grid-template-columns:minmax(0,2.2fr) minmax(220px,1fr);gap:16px;align-items:start}
 @media (max-width:760px){.fgrid{grid-template-columns:1fr}}
 .fmap{position:relative;border:1px solid var(--line);border-radius:8px;background:var(--panel);padding:6px}
-.fmap .fstage{position:relative}
-.fmap canvas{display:block;width:100%;height:auto}
-.fmap svg{position:absolute;inset:0;width:100%;height:100%}
-.flegend{display:flex;gap:6px 14px;flex-wrap:wrap;font-size:13px;color:var(--muted);margin:8px 0 0}
+.fmap svg{display:block;width:100%;height:auto}
+.fmap .dot{cursor:pointer;outline:none}
+.fmap .dot:focus-visible{stroke:var(--info);stroke-width:3}
+.flegend{display:flex;gap:14px;flex-wrap:wrap;font-size:13px;color:var(--muted);margin:8px 0 0}
 .flegend span{display:inline-flex;gap:6px;align-items:center}
-.flegend i{display:inline-block;width:14px;height:14px;border-radius:3px}
-.fnote{font-size:13px;color:var(--muted);margin:6px 0 0}
+.flegend i{display:inline-block;border-radius:50%}
 .flist{font-size:14px}
 .flist h3{font:600 16px/1.2 "Archivo Narrow",Arial,sans-serif;margin:0 0 6px}
-.flist h3 i{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:6px;vertical-align:-1px}
-.flist p{margin:0 0 12px;line-height:1.45}
+.flist ul{list-style:none;margin:0 0 12px;padding:0}
+.flist li{padding:3px 0;border-top:1px solid var(--line)}
+.flist li:first-child{border-top:0}
+.flist button{all:unset;cursor:pointer;color:var(--info);text-decoration:underline}
+.flist button:focus-visible{outline:2px solid var(--info);outline-offset:2px}
+.flist small{color:var(--muted)}
 .fallsec details{margin-top:12px;font-size:14px}
 .fallsec details summary{cursor:pointer;color:var(--info)}
 .fallsec details table{min-width:520px}
@@ -298,7 +301,7 @@ footer a{color:var(--info)}
 
   <section class="fallsec" id="fallmap" aria-labelledby="fh">
     <h2 id="fh">Fall color map</h2>
-    <p>The usual fall color across the United States on a date, from NASA satellite data (the average of the last 5 years with data). Move the slider to change the date. Put the pointer on the map to see the state and its usual peak.</p>
+    <p>The usual fall color of each park on a date, from NASA satellite data (the average of the last 5 years with data). Move the slider to change the date. Click a park to open it in the table.</p>
     <div class="fctl">
       <label for="fdate">Date</label>
       <input type="range" id="fdate" min="212" max="348" step="1" aria-describedby="fdate-out">
@@ -310,9 +313,8 @@ footer a{color:var(--info)}
       <div class="flist" id="flist" aria-live="polite"></div>
     </div>
     <div class="flegend" id="flegend"></div>
-    <p class="fnote" id="fnote"></p>
-    <details><summary>Show the usual dates for each state</summary><div class="tablewrap"><table>
-      <thead><tr><th>State</th><th>Color starts</th><th>Peak color</th><th>Leaves down</th></tr></thead>
+    <details><summary>Show the dates as a table</summary><div class="tablewrap"><table>
+      <thead><tr><th>Park</th><th>Greenness starts to drop</th><th>Leaf color usually best</th></tr></thead>
       <tbody id="frows"></tbody>
     </table></div></details>
   </section>
@@ -1552,198 +1554,146 @@ document.querySelectorAll("[data-h]").forEach(b => b.addEventListener("click", (
   document.querySelectorAll("[data-h]").forEach(x => x.setAttribute("aria-pressed", x===b));
   histFilter = b.dataset.h; renderHistory();
 }));
-// ---- Regional fall color map (R20) ----
-// Color layer: data/foliage-grid.js (NASA MODIS phenology on a grid of points, see scripts/fetch_foliage_grid.py).
-// Each pixel blends the 4 nearest grid points. Base map: us-atlas states, Albers USA projection (d3-geo).
+// ---- Fall color map (R17) ----
+// Base map: us-atlas (states, already projected with the Albers USA projection, 975 x 610).
+// Park points: the same projection from d3-geo. The libraries load from the jsDelivr CDN.
 const MAP_LIBS = ["https://cdn.jsdelivr.net/npm/d3-array@3.2.4/dist/d3-array.min.js",
                   "https://cdn.jsdelivr.net/npm/d3-geo@3.1.1/dist/d3-geo.min.js",
                   "https://cdn.jsdelivr.net/npm/topojson-client@3.1.0/dist/topojson-client.min.js"];
-const MAP_STATES = "https://cdn.jsdelivr.net/npm/us-atlas@3.0.1/states-10m.json";
-// Stages from the satellite dates: greenness starts to drop (sen), middle of the drop (mid), leaves down (dor).
-// The middle of the drop to 60% of the way to leaves down is "Peak color".
-const STAGES = [
-  {label: "No change yet", light: "#4e7d3a", dark: "#5d8f47"},
-  {label: "Starting",      light: "#9cae3a", dark: "#a6b845"},
-  {label: "Partial",       light: "#e2bd2f", dark: "#d9b52f"},
-  {label: "Near peak",     light: "#ec8a2a", dark: "#e48530"},
-  {label: "Peak color",    light: "#cf4326", dark: "#d6532f"},
-  {label: "Past peak",     light: "#8a4b2e", dark: "#a0613f"},
-  {label: "Leaves down",   light: "#b5ab9c", dark: "#6f675b"}];
-const NODATA = {label: "No clear fall color", light: "#dfe1db", dark: "#2c3531"};
-const PEAK_SHARE = 0.6;
-let fallDay = null, FM = null;
+const MAP_STATES = "https://cdn.jsdelivr.net/npm/us-atlas@3.0.1/states-albers-10m.json";
+const FALL_STATE = {
+  best:  {label: "Leaf color usually best", color: "var(--fall)", r: 7},
+  start: {label: "Greenness starts to drop", color: "var(--y3)", r: 5},
+  out:   {label: "Not in the fall color period", color: "var(--muted)", r: 3.5},
+  none:  {label: "No clear fall color", color: "none", r: 4}
+};
+let fallDay = null, mapReady = null;
 function loadScript(src){
   return new Promise((resolve, reject) => { const s = document.createElement("script"); s.src = src; s.onload = resolve; s.onerror = () => reject(new Error(src)); document.head.appendChild(s); });
 }
+function fallState(id, d){
+  const f = fallSummary(id);
+  if (!f || !f.clear) return "none";
+  if (d < f.sen || d > f.dor) return "out";
+  return d < f.mid ? "start" : "best";
+}
 function todayDoy(){ const t = new Date(); return Math.round((Date.UTC(2001, t.getMonth(), t.getDate()) - Date.UTC(2001, 0, 1)) / 86400000); }
-function isDark(){ const t = document.documentElement.dataset.theme; return t === "dark" || (t !== "light" && matchMedia("(prefers-color-scheme: dark)").matches); }
-function stageIndex(v, d){
-  const [sen, mid, dor] = v;
-  if (d < sen) return 0;
-  if (d < mid){ const p = (d - sen) / Math.max(1, mid - sen); return p < 1/3 ? 1 : p < 2/3 ? 2 : 3; }
-  if (d <= dor) return (d - mid) / Math.max(1, dor - mid) < PEAK_SHARE ? 4 : 5;
-  return 6;
-}
-const peakEnd = v => v[1] + PEAK_SHARE * (v[2] - v[1]);
-// Grid value at a grid point: [sen, mid, dor], 0 (no clear fall color) or undefined (no point there).
-function gridAt(cells, lat, lon){ return cells[`${+lat.toFixed(2)},${+lon.toFixed(2)}`]; }
-function sampleGrid(grids, cells, lon, lat){
-  const g = (lat > 52 || lon < -130) ? grids[1] : grids[0];
-  const fi = (lat - g.lat0) / g.dlat, fj = (lon - g.lon0) / g.dlon, i0 = Math.floor(fi), j0 = Math.floor(fj);
-  let w = 0, wn = 0; const sum = [0, 0, 0];
-  for (const [di, dj] of [[0,0],[1,0],[0,1],[1,1]]){
-    const i = i0 + di, j = j0 + dj, wt = (1 - Math.abs(fi - i)) * (1 - Math.abs(fj - j));
-    if (wt <= 0) continue;
-    const v = gridAt(cells, g.lat0 + i*g.dlat, g.lon0 + j*g.dlon);
-    if (v === undefined) continue;
-    if (v === 0){ wn += wt; continue; }
-    w += wt; sum[0] += v[0]*wt; sum[1] += v[1]*wt; sum[2] += v[2]*wt;
-  }
-  if (!w && !wn) return undefined;
-  if (wn > w) return 0;
-  return sum.map(x => x / w);
-}
-const hexRgb = h => [1,3,5].map(i => parseInt(h.slice(i, i+2), 16));
-function paintFallMap(){
-  if (!FM) return;
-  const dark = isDark(), pal = STAGES.map(st => hexRgb(dark ? st.dark : st.light)), nod = hexRgb(dark ? NODATA.dark : NODATA.light);
-  const px = FM.img.data, n = FM.mask.length;
-  for (let k = 0; k < n; k++){
-    const m = FM.mask[k], o = k * 4;
-    if (m === 0){ px[o+3] = 0; continue; }
-    const c = m === 1 ? nod : pal[stageIndex([FM.sen[k], FM.mid[k], FM.dor[k]], fallDay)];
-    px[o] = c[0]; px[o+1] = c[1]; px[o+2] = c[2]; px[o+3] = 255;
-  }
-  const ctx = FM.ctx;
-  ctx.globalCompositeOperation = "copy";
-  ctx.putImageData(FM.img, 0, 0);
-  ctx.globalCompositeOperation = "destination-in"; // keep only the pixels inside the US
-  ctx.fill(FM.nation);
-  ctx.globalCompositeOperation = "source-over";
+function goToPark(id){
+  const p = PARK_BY[id];
+  state.q = ""; $("search").value = "";
+  state.filter = "all"; document.querySelectorAll("[data-f]").forEach(x => x.setAttribute("aria-pressed", x.dataset.f === "all"));
+  state.sort = "visits"; $("sort").value = "visits";
+  state.page = Math.ceil(p.r / PAGE_SIZE);
+  state.open.add(id);
+  render();
+  const row = document.querySelector(`tr.park[data-code="${id}"]`);
+  if (row){ row.scrollIntoView({block: "start", behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth"}); row.focus({preventScroll: true}); }
 }
 function renderFallList(){
-  if (!FM) return;
-  const groups = [4, 3, 5].map(i => ({i, names: FM.states.filter(st => st.v && stageIndex(st.v, fallDay) === i).map(st => st.name)}));
-  const dark = isDark();
-  $("flist").innerHTML = groups.map(({i, names}) =>
-    `<h3><i style="background:${dark ? STAGES[i].dark : STAGES[i].light}"></i>${STAGES[i].label} (${names.length})</h3>` +
-    `<p>${names.length ? esc(names.join(", ")) : `<span class="none">No state on this date.</span>`}</p>`).join("");
+  const d = fallDay, groups = {best: [], start: []};
+  PARKS.forEach(p => { const st = fallState(p.id, d); if (groups[st]) groups[st].push(p); });
+  const item = p => { const f = fallSummary(p.id); return `<li><button type="button" data-park="${p.id}">${esc(p.name)}</button> <small>${doyText(f.mid)} – ${doyText(f.dor)}</small></li>`; };
+  $("flist").innerHTML = `<h3>${FALL_STATE.best.label} (${groups.best.length})</h3>` +
+    (groups.best.length ? `<ul>${groups.best.map(item).join("")}</ul>` : `<p class="none">No park on this date.</p>`) +
+    `<h3>${FALL_STATE.start.label} (${groups.start.length})</h3>` +
+    (groups.start.length ? `<ul>${groups.start.map(item).join("")}</ul>` : `<p class="none">No park on this date.</p>`);
+}
+function renderFallTable(){
+  const rows = PARKS.map(p => ({p, f: fallSummary(p.id)})).filter(x => x.f && x.f.clear).sort((a,b) => a.f.mid - b.f.mid);
+  $("frows").innerHTML = rows.map(({p, f}) => `<tr><td>${esc(p.name)}</td><td>${doyText(f.sen)}</td><td>${doyText(f.mid)} – ${doyText(f.dor)}</td></tr>`).join("") +
+    `<tr><td colspan="3" class="none">${PARKS.length - rows.length} parks have no clear fall color at their forecast point.</td></tr>`;
 }
 function renderFallMap(){
   if (fallDay === null) return;
   $("fdate").value = fallDay;
   $("fdate-out").textContent = doyText(fallDay);
-  paintFallMap();
   renderFallList();
-}
-function renderFallLegend(){
-  const dark = isDark();
-  $("flegend").innerHTML = STAGES.concat([NODATA]).map(st => `<span><i style="background:${dark ? st.dark : st.light}"></i>${st.label}</span>`).join("");
+  const box = $("fmapbox"), svg = box.querySelector("svg");
+  if (!svg) return;
+  // On a small map, make the dots larger so they stay easy to see and to tap.
+  const k = Math.min(2.2, Math.max(1, 975 / Math.max(1, svg.getBoundingClientRect().width) * 0.6));
+  svg.querySelectorAll(".dot").forEach(c => {
+    const st = FALL_STATE[fallState(c.dataset.park, fallDay)];
+    c.setAttribute("r", (st.r * k).toFixed(1));
+    c.setAttribute("fill", st.color);
+    c.setAttribute("stroke", st.color === "none" ? "var(--muted)" : "var(--panel)");
+    c.setAttribute("stroke-width", st.color === "none" ? 1.5 : 1.5);
+    c.setAttribute("aria-label", `${PARK_BY[c.dataset.park].name}: ${st.label}`);
+  });
+  // Draw the larger dots last, so they stay on top
+  [...svg.querySelectorAll(".dot")].sort((a,b) => a.getAttribute("r") - b.getAttribute("r")).forEach(c => c.parentNode.appendChild(c));
 }
 function buildFallMap(){
+  if (mapReady) return mapReady;
   const box = $("fmapbox");
-  return (async () => {
-    const [, us, cellsDef] = await Promise.all([
-      (async () => { for (const src of MAP_LIBS) await loadScript(src); })(),
-      fetch(MAP_STATES).then(r => r.json()),
-      fetch("data/foliage-grid-cells.json").then(r => r.json()),
-      loadData("data/foliage-grid.js", "FOLIAGE_GRID")]);
-    const G = window.FOLIAGE_GRID, cells = G.cells, grids = cellsDef.grids;
-    const states = topojson.feature(us, us.objects.states).features, nation = topojson.feature(us, us.objects.nation);
+  mapReady = (async () => {
+    for (const src of MAP_LIBS) await loadScript(src);
+    const us = await (await fetch(MAP_STATES)).json();
+    const path = d3.geoPath();
     const proj = d3.geoAlbersUsa().scale(1300).translate([487.5, 305]);
-    // Color layer at half the size of the 975 x 610 map
-    const S = 0.5, W = Math.round(975*S), H = Math.round(610*S), n = W*H;
-    const canvas = document.createElement("canvas"); canvas.width = W; canvas.height = H;
-    const sen = new Float32Array(n), mid = new Float32Array(n), dor = new Float32Array(n), mask = new Uint8Array(n);
-    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++){
-      const k = y*W + x, ll = proj.invert([(x + 0.5) / S, (y + 0.5) / S]);
-      if (!ll) continue;
-      const v = sampleGrid(grids, cells, ll[0], ll[1]);
-      if (v === undefined) continue;
-      if (v === 0){ mask[k] = 1; continue; }
-      mask[k] = 2; sen[k] = v[0]; mid[k] = v[1]; dor[k] = v[2];
-    }
-    const small = d3.geoAlbersUsa().scale(1300*S).translate([487.5*S, 305*S]);
-    // Usual dates for each state: the average of its grid points, or the nearest points for a small state
-    const byState = {};
-    cellsDef.cells.forEach(c => { (byState[c.st] = byState[c.st] || []).push(c); });
-    const avg = list => [0,1,2].map(i => list.reduce((a, v) => a + v[i], 0) / list.length);
-    const stateStats = states.filter(f => f.properties.name !== "Hawaii" && proj(d3.geoCentroid(f))).map(f => {
-      const name = f.properties.name, own = (byState[name] || []).map(c => gridAt(cells, c.lat, c.lon)).filter(v => v !== undefined);
-      let v = null;
-      if (own.length){ const ok = own.filter(x => x !== 0); v = ok.length >= 0.4 * own.length ? avg(ok) : null; }
-      else {
-        const [clon, clat] = d3.geoCentroid(f);
-        const near = cellsDef.cells.map(c => ({c, d: Math.hypot(c.lat - clat, (c.lon - clon) * Math.cos(clat * Math.PI / 180))}))
-          .filter(o => o.d < 2.5).sort((a, b) => a.d - b.d).slice(0, 3).map(o => gridAt(cells, o.c.lat, o.c.lon)).filter(x => x && x !== 0);
-        v = near.length ? avg(near) : null;
-      }
-      return {name, f, v};
-    }).sort((a, b) => a.name.localeCompare(b.name));
-    const statePaths = d3.geoPath(proj);
-    box.innerHTML = `<div class="fstage"></div><div class="mtip" hidden></div>`;
-    const stage = box.querySelector(".fstage");
-    stage.appendChild(canvas);
-    stage.insertAdjacentHTML("beforeend", `<svg viewBox="0 0 975 610" role="img" aria-label="Map of the usual fall color in the United States on the chosen date. The list next to the map and the table below give the same information by state.">
-      <g fill="none" stroke="var(--panel)" stroke-width="0.8" stroke-opacity=".9">${states.map(f => statePaths(f)).filter(Boolean).map(d => `<path d="${d}"/>`).join("")}</g>
-      <path d="${statePaths(nation)}" fill="none" stroke="var(--muted)" stroke-width="1"/></svg>`);
-    FM = {ctx: canvas.getContext("2d"), img: new ImageData(W, H), sen, mid, dor, mask, nation: new Path2D(d3.geoPath(small)(nation)), states: stateStats};
-    // Table: usual dates for each state, earliest peak first
-    $("frows").innerHTML = stateStats.filter(st => st.v).sort((a, b) => a.v[1] - b.v[1]).map(st =>
-      `<tr><td>${esc(st.name)}</td><td>${doyText(st.v[0])}</td><td>${doyText(st.v[1])} – ${doyText(peakEnd(st.v))}</td><td>${doyText(st.v[2])}</td></tr>`).join("") +
-      (stateStats.some(st => !st.v) ? `<tr><td colspan="4" class="none">No clear fall color: ${esc(stateStats.filter(st => !st.v).map(st => st.name).join(", "))}.</td></tr>` : "");
-    const pct = Math.round(100 * (G.done || 0) / Math.max(1, G.total || 1));
-    $("fnote").textContent = `Data: NASA MODIS land surface phenology (MCD12Q2), ${G.years[0]}–${G.years[G.years.length-1]}, at ${G.total} grid points about 100 miles apart. ` +
-      (pct < 100 ? `The data collection is ${pct}% complete. Areas without data show as "No clear fall color". ` : "") +
-      `Hawaii, American Samoa and the Virgin Islands have no clear fall color.`;
-    // Tooltip: state, stage on the date and its usual peak
-    const svg = stage.querySelector("svg"), tip = box.querySelector(".mtip");
-    svg.addEventListener("pointermove", e => {
-      const r = svg.getBoundingClientRect(), ll = proj.invert([(e.clientX - r.left) * 975 / r.width, (e.clientY - r.top) * 610 / r.height]);
-      const st = ll && stateStats.find(x => d3.geoContains(x.f, ll));
-      if (!st){ tip.hidden = true; return; }
-      const v = sampleGrid(grids, cells, ll[0], ll[1]);
+    const states = topojson.feature(us, us.objects.states).features.map(f => `<path d="${path(f)}"/>`).join("");
+    let dots = "";
+    PARKS.forEach(p => {
+      const xy = proj([p.lon, p.lat]);
+      if (!xy) return; // American Samoa and the Virgin Islands are not on this map
+      dots += `<circle class="dot" data-park="${p.id}" cx="${xy[0].toFixed(1)}" cy="${xy[1].toFixed(1)}" r="4" tabindex="0" role="button"/>`;
+    });
+    box.innerHTML = `<svg viewBox="0 0 975 610" role="group" aria-label="Map of the parks and their usual fall color on the chosen date">
+      <g fill="var(--paper)" stroke="var(--line)" stroke-width="1">${states}</g>${dots}</svg><div class="mtip" hidden></div>`;
+    const tip = box.querySelector(".mtip");
+    const show = (c, e) => {
+      const id = c.dataset.park, p = PARK_BY[id], f = fallSummary(id), st = FALL_STATE[fallState(id, fallDay)];
       tip.replaceChildren();
-      const h = document.createElement("div"); h.className = "mth"; h.textContent = st.name; tip.append(h);
+      const h = document.createElement("div"); h.className = "mth"; h.textContent = p.name; tip.append(h);
       const line = t => { const d = document.createElement("div"); d.textContent = t; tip.append(d); };
-      line(`${doyText(fallDay)} here: ${v ? STAGES[stageIndex(v, fallDay)].label.toLowerCase() : "no clear fall color"}`);
-      if (v) line(`Usual peak here: ${doyText(v[1])} – ${doyText(peakEnd(v))}`);
-      if (st.v) line(`State average peak: ${doyText(st.v[1])} – ${doyText(peakEnd(st.v))}`);
+      line(`${doyText(fallDay)}: ${st.label.toLowerCase()}`);
+      if (f && f.clear) line(`Best: about ${doyText(f.mid)} – ${doyText(f.dor)}`);
       tip.hidden = false;
-      const bx = box.getBoundingClientRect();
-      let x = e.clientX - bx.left + 14, y = e.clientY - bx.top + 14;
-      if (x + tip.offsetWidth > bx.width) x = Math.max(0, x - tip.offsetWidth - 28);
+      const bx = box.getBoundingClientRect(), r = c.getBoundingClientRect();
+      let x = (e && e.clientX != null ? e.clientX : r.right) - bx.left + 12, y = (e && e.clientY != null ? e.clientY : r.top) - bx.top + 12;
+      if (x + tip.offsetWidth > bx.width) x = Math.max(0, x - tip.offsetWidth - 24);
       if (y + tip.offsetHeight > bx.height) y = Math.max(0, bx.height - tip.offsetHeight);
       tip.style.left = x + "px"; tip.style.top = y + "px";
+    };
+    box.querySelectorAll(".dot").forEach(c => {
+      c.addEventListener("pointermove", e => show(c, e));
+      c.addEventListener("pointerleave", () => tip.hidden = true);
+      c.addEventListener("focus", () => show(c));
+      c.addEventListener("blur", () => tip.hidden = true);
+      c.addEventListener("click", () => goToPark(c.dataset.park));
+      c.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " "){ e.preventDefault(); goToPark(c.dataset.park); } });
     });
-    svg.addEventListener("pointerleave", () => tip.hidden = true);
     renderFallMap();
-  })().catch(err => {
-    console.error(err);
-    box.innerHTML = `<p class="none" style="padding:12px">The map did not load.</p>`;
+  })().catch(() => {
+    box.innerHTML = `<p class="none" style="padding:12px">The map did not load. The list and the table show the same information.</p>`;
   });
+  return mapReady;
 }
 function initFallMap(){
-  fallDay = Math.min(348, Math.max(212, todayDoy())); // outside the fall period, start at Aug 1 or Dec 15
-  renderFallLegend();
-  $("fdate").value = fallDay;
-  $("fdate-out").textContent = doyText(fallDay);
+  const t = todayDoy();
+  fallDay = Math.min(348, Math.max(212, t)); // outside the fall period, start at Aug 1 or Dec 15
+  $("flegend").innerHTML = Object.values(FALL_STATE).map(st =>
+    `<span><i style="width:${st.r*2}px;height:${st.r*2}px;background:${st.color === "none" ? "transparent" : st.color};${st.color === "none" ? "border:1.5px solid var(--muted);" : ""}"></i>${st.label}</span>`).join("") +
+    `<span>American Samoa and the Virgin Islands are not on the map.</span>`;
+  renderFallTable();
+  renderFallMap();
   buildFallMap();
 }
 $("fdate").addEventListener("input", e => { fallDay = +e.target.value; renderFallMap(); });
+window.addEventListener("resize", () => { clearTimeout(window.fallTimer); window.fallTimer = setTimeout(renderFallMap, 150); });
 $("ftoday").addEventListener("click", () => { fallDay = Math.min(348, Math.max(212, todayDoy())); renderFallMap(); });
-matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => { renderFallLegend(); renderFallMap(); });
+$("flist").addEventListener("click", e => { const b = e.target.closest("[data-park]"); if (b) goToPark(b.dataset.park); });
 
 initBestFilter();
 renderRoads();
 renderHistory();
 render();
 refresh();
-initFallMap();
 // The "Best time" column uses the stored monthly and fall color data. Load it once. It does not refresh.
 Promise.all([loadHistory(), loadFoliage()]).then(() => {
   if (!("PARK_FOLIAGE" in window)) window.PARK_FOLIAGE = null;
   render();
+  if (window.PARK_FOLIAGE) initFallMap(); else $("fmapbox").innerHTML = `<p class="none" style="padding:12px">The fall color data did not load.</p>`;
 }).catch(() => {});
 </script>
 </body>

@@ -283,7 +283,7 @@ Requirements:
 - Point to a dot to see its dates. Click a dot or a list item to open the park in the table.
 - The base map is `us-atlas` (Albers USA, with Alaska and Hawaii). The libraries `d3-geo` and `topojson-client` load from the jsDelivr CDN. If they do not load, the list and the table still work.
 - American Samoa and the Virgin Islands are not on the map. They have no clear fall color.
-- Status: replaced by R20 (regional map).
+- Status: done.
 
 ### R18. Fix the this-season leaf reports
 
@@ -336,7 +336,7 @@ Requirements:
   - no clear fall color
 - A list shows the states at peak color, near peak and past peak on the date. A table shows the usual dates for each state.
 - The fall color text in each park's details does not change.
-- Status: done.
+- Status: reverted by R22. The grid collection took too long.
 
 ### R21. Best time to visit: banner and filter, no score
 
