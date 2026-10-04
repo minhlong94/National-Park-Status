@@ -62,3 +62,9 @@ The product is one web page, `index.html`. The page shows the current conditions
 - The table, the chart and the list of short closures must show the dates in descending order (newest first).
 - The statistics (for example, average opening) use only the 10 years that the page shows.
 - Status: done.
+
+### R7. Show the GitHub link on the page
+
+- The page must show a link to the GitHub repository: https://github.com/minhlong94/National-Park-Status
+- The link is in the footer of the page.
+- Status: done.
