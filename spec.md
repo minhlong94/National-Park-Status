@@ -68,3 +68,9 @@ The product is one web page, `index.html`. The page shows the current conditions
 - The page must show a link to the GitHub repository: https://github.com/minhlong94/National-Park-Status
 - The link is in the footer of the page.
 - Status: done.
+
+### R8. Merge the work into `main`
+
+- Open a pull request from the work branch to `main`.
+- Merge the pull request.
+- Status: done.
