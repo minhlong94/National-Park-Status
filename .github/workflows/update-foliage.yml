@@ -1,15 +1,12 @@
 name: Update fall foliage data
 
-# Typical fall color timing (NASA MODIS, one new year at a time), this-season reports
-# (USA-NPN, only from Aug 15 to Dec 15) and the regional fall color grid (NASA MODIS, resumes
-# where the last run stopped). See scripts/fetch_foliage.py and scripts/fetch_foliage_grid.py.
+# Typical fall color timing (NASA MODIS, one new year at a time) and this-season reports
+# (USA-NPN, only from Aug 15 to Dec 15). See scripts/fetch_foliage.py.
 on:
   workflow_dispatch:
   push:
     paths:
       - scripts/fetch_foliage.py
-      - scripts/fetch_foliage_grid.py
-      - data/foliage-grid-cells.json
       - .github/workflows/update-foliage.yml
   schedule:
     - cron: "41 7 * * 1"  # 07:41 UTC each Monday
@@ -25,7 +22,7 @@ concurrency:
 jobs:
   update:
     runs-on: ubuntu-latest
-    timeout-minutes: 80
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
         timeout-minutes: 2
@@ -47,18 +44,13 @@ jobs:
       - name: Get the data
         timeout-minutes: 22  # the script has its own 20-minute limit
         run: python3 -u scripts/fetch_foliage.py
-      - name: Get the regional grid
-        # Runs even if the step above failed. The script has its own 45-minute limit and saves its progress.
-        if: ${{ !cancelled() }}
-        timeout-minutes: 50
-        run: python3 -u scripts/fetch_foliage_grid.py
       - name: Commit the data if it changed
         if: ${{ !cancelled() }}
         timeout-minutes: 2
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898333+github-actions[bot]@users.noreply.github.com"
-          git add data/foliage.js data/foliage-now.js data/foliage-grid.js 2>/dev/null || true
+          git add data/foliage.js data/foliage-now.js 2>/dev/null || true
           if git diff --cached --quiet; then
             echo "No change in the data."
           else
