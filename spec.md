@@ -490,3 +490,16 @@ Requirements:
 - If one source fails during a refresh, the page keeps the saved data of that source and shows its time.
 - If the browser blocks the storage, the page still works without saved data.
 - Status: done.
+
+### R30. Highlight the current month in the charts
+
+Original text from the owner:
+
+> For the charts I want a light highlight of the current month
+
+Requirements:
+
+- In the monthly charts of each park (visits, fall color strip, temperature, rain and snow), the current month has a light green band behind the marks.
+- The label of the current month is bold, so the highlight does not use color only.
+- The band is lighter than the gray band that shows the month under the pointer. Both can show at the same time.
+- Status: done.
