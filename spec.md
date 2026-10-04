@@ -178,6 +178,7 @@ Requirements:
 - If no park has this-season reports (the reports are not entered yet), the page does not show the this-season line.
 - **This season.** Show the reports of "Colored leaves" and "Falling leaves" within 50 km of each park in the last 14 days.
 - Source: USA National Phenology Network (USA-NPN). One request gets the reports for all parks. The file is `data/foliage-now.js`.
+- The request must not send the bounding box parameters. With them, the service returns no reports. The script finds the reports near each park by distance.
 - The script gets the reports for this season only from Aug 15 to Dec 15.
 - The page shows a fall color strip with the same months as the other charts, and a short text.
 - The workflow `.github/workflows/update-foliage.yml` runs each Monday. All data workflows use one queue, so two runs never push at the same time.
@@ -282,4 +283,16 @@ Requirements:
 - Point to a dot to see its dates. Click a dot or a list item to open the park in the table.
 - The base map is `us-atlas` (Albers USA, with Alaska and Hawaii). The libraries `d3-geo` and `topojson-client` load from the jsDelivr CDN. If they do not load, the list and the table still work.
 - American Samoa and the Virgin Islands are not on the map. They have no clear fall color.
+- Status: done.
+
+### R18. Fix the this-season leaf reports
+
+Original text from the owner:
+
+> Yes fix it
+
+Requirements:
+
+- The USA-NPN request returned 0 reports, also for 2025. A test of 9 request formats showed the cause: the bounding box parameters. Without them, one week in October 2025 has 9,634 reports of colored and falling leaves.
+- Remove the bounding box from the request.
 - Status: done.
