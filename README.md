@@ -11,7 +11,7 @@ This page shows the current conditions of all 63 U.S. national parks. The list s
 - **Current weather and the forecast for today.** The page also shows the active warnings from the National Weather Service.
 - **Seasonal road history**: the opening and closing dates for Tioga Road, Glacier Point Road, Going-to-the-Sun Road and Trail Ridge Road. The page shows only the last 10 years, with the newest year first.
 - **Visits and climate by month**: click a park to see four charts with the same months:
-  - recreation visits in each month of the last 3 complete years, with one color for each year
+  - recreation visits in each month of the last 3 calendar years, with one color for each year
   - the average daily low and high temperature
   - the average monthly rain
   - the average monthly snow
@@ -46,11 +46,20 @@ The page finds the type of each alert from keywords in the alert text. Read the 
 
 ## Monthly data
 
-The monthly visits and climate data is in `data/park-history.js`. The script `scripts/fetch_history.py` makes this file. It uses the last 3 complete calendar years.
+The monthly visits and weather data is in a separate file, `data/park-history.js`. The file keeps one value for each month from January 2023 to the last month with data. Old months do not change.
+
+The script `scripts/fetch_history.py` adds only new months:
+
+1. The script requests a month only after the month ends. For example, it requests October from November 1.
+2. The script requests the new month for the first park only.
+3. If the first park has no data for that month, the script stops. It does not request data for the other parks, and the file does not change.
+4. If the first park has data, the script gets the month for all parks and adds it to the file.
+
+The page shows the visits for the last 3 calendar years in the file. The weather values are the averages of each calendar month over the last 36 months.
 
 The workflow `.github/workflows/update-data.yml` runs the script and commits the file. The workflow runs:
 
-- on day 3 of each month
+- each Monday
 - when the script or the workflow changes
 - when you start it from the **Actions** tab
 

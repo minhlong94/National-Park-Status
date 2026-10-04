@@ -1074,10 +1074,31 @@ function washLayer(L, band, T, H){
   return `<rect class="wash" x="0" y="${T}" width="${band}" height="${H-T}" fill="var(--wash)" visibility="hidden"/>`;
 }
 
+// The data file has one value per month from D.first to D.last. Visits: the last 3 calendar years.
+// Weather: the average of each calendar month over the last 36 months.
+function deriveHistory(D, id){
+  const R = D && D.parks[id];
+  if (!R) return null;
+  const [fy, fm] = D.first.split("-").map(Number), [ly, lm] = D.last.split("-").map(Number);
+  const idx = (y, m) => (y - fy) * 12 + (m - fm); // m is 1–12
+  const at = (arr, y, m) => { const k = idx(y, m); return k >= 0 && k < arr.length ? arr[k] : null; };
+  const years = [ly-2, ly-1, ly].filter(y => y >= fy);
+  const visits = {};
+  years.forEach(y => visits[y] = MONTHS.map((_, i) => at(R.v, y, i+1)));
+  // The last 3 values of each calendar month, from the newest month back
+  const avg = (arr, m) => { const vals = []; for (let y = ly; y >= fy && vals.length < 3; y--){ const v = at(arr, y, m); if (v != null) vals.push(v); } return vals.length ? vals.reduce((a,b)=>a+b,0)/vals.length : null; };
+  const wx = {};
+  ["hi","lo","rain","snow"].forEach(key => wx[key] = MONTHS.map((_, i) => { const v = avg(R[key], i+1); return v == null ? null : +v.toFixed(key === "rain" ? 2 : 1); }));
+  const label = k => { const t = (fy * 12 + fm - 1) + k; return `${MONTHS[t % 12]} ${Math.floor(t / 12)}`; };
+  const lastK = idx(ly, lm);
+  return {years, visits, wx, lastLabel: label(lastK), lastMonth: lm, wxSpan: `${label(Math.max(0, lastK - 35))} to ${label(lastK)}`};
+}
+
 function drawMonthly(box, id){
-  const D = window.PARK_HISTORY, P = D && D.parks[id];
-  if (!P){ box.innerHTML = `<h2>Visits and climate by month</h2><p class="none">There is no monthly data for this park.</p>`; return; }
-  const years = D.years, yr0 = years[0], yr1 = years[years.length-1];
+  const D = window.PARK_HISTORY, H = deriveHistory(D, id);
+  if (!H){ box.innerHTML = `<h2>Visits and climate by month</h2><p class="none">There is no monthly data for this park.</p>`; return; }
+  const P = {visits: H.visits, wx: H.wx};
+  const years = H.years, yr0 = years[0], yr1 = years[years.length-1];
   const shown = years.filter(y => !hiddenYears.has(y));
   // The park table scrolls sideways on small screens. Fit the charts to the visible width.
   const wrap = box.closest(".tablewrap"), dbox = box.closest(".dbox");
@@ -1128,26 +1149,26 @@ function drawMonthly(box, id){
     return `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}">${g}</svg>`;
   }
   const snowTotal = P.wx.snow.reduce((s,v) => s + (v||0), 0);
-  const span = yr0 === yr1 ? yr0 : `${yr0}–${yr1}`;
+  const span = (yr0 === yr1 ? `${yr0}` : `${yr0}–${yr1}`) + (H.lastMonth < 12 ? ` (${yr1} to ${MONTHS[H.lastMonth-1]})` : "");
 
   box.innerHTML = `
     <h2>Visits and climate by month</h2>
-    <p class="msub">The four charts use the same months. Put the pointer on a month, or use Tab on the visits chart, to see all the values for that month. The weather values are the averages for ${span}.</p>
+    <p class="msub">The four charts use the same months. Put the pointer on a month, or use Tab on the visits chart, to see all the values for that month. The weather values are the averages of each month from ${H.wxSpan}.</p>
     <div class="mtitle">Recreation visits <span>by month, ${span}</span></div>
     <div class="mlegend" role="group" aria-label="Show or hide years">${years.map(y => `<button type="button" data-year="${y}" aria-pressed="${!hiddenYears.has(y)}"><i style="background:${colorOf(y)}"></i>${y}</button>`).join("")}</div>
     <svg viewBox="0 0 ${W} ${H1}" width="${W}" height="${H1}" role="group" aria-label="Recreation visits by month">${g1}</svg>
-    <div class="mtitle">Temperature <span>average daily low to high, °F</span></div>
+    <div class="mtitle">Temperature <span>average daily low to high, °F, last 3 years</span></div>
     <svg viewBox="0 0 ${W} ${H2}" width="${W}" height="${H2}" aria-hidden="true">${g2}</svg>
-    <div class="mtitle">Rain <span>average monthly total, inches</span></div>
+    <div class="mtitle">Rain <span>average monthly total, inches, last 3 years</span></div>
     ${amountChart(P.wx.rain, "--rain")}
-    <div class="mtitle">Snow <span>average monthly total, inches of snow</span></div>
+    <div class="mtitle">Snow <span>average monthly total, inches of snow, last 3 years</span></div>
     ${snowTotal >= 0.1 ? amountChart(P.wx.snow, "--snow") : `<p class="none">Almost no snow falls here in an average year.</p>`}
     <div class="mtip" hidden></div>
     <details><summary>Show the values as a table</summary><div class="tablewrap"><table>
       <thead><tr><th>Month</th>${years.map(y => `<th class="num">Visits ${y}</th>`).join("")}<th class="num">Low °F</th><th class="num">High °F</th><th class="num">Rain in</th><th class="num">Snow in</th></tr></thead>
       <tbody>${MONTHS.map((m,i) => `<tr><td>${m}</td>${years.map(y => `<td class="num">${vis(y)[i] == null ? "–" : fmtInt(vis(y)[i])}</td>`).join("")}<td class="num">${lo[i] ?? "–"}</td><td class="num">${hi[i] ?? "–"}</td><td class="num">${P.wx.rain[i] ?? "–"}</td><td class="num">${P.wx.snow[i] ?? "–"}</td></tr>`).join("")}</tbody>
     </table></div></details>
-    <p class="msrc">Sources: NPS Visitor Use Statistics (recreation visits). Open-Meteo historical weather (ERA5 model) at the forecast point of the park. Data updated ${esc(D.generated)}.</p>`;
+    <p class="msrc">Sources: NPS Visitor Use Statistics (recreation visits). Open-Meteo historical weather (ERA5 model) at the forecast point of the park. Data to ${esc(H.lastLabel)}.</p>`;
 
   // Shared hover: one month, all four charts, one tooltip
   const tip = box.querySelector(".mtip");
@@ -1162,7 +1183,7 @@ function drawMonthly(box, id){
     box.querySelectorAll(".wash").forEach(w => { w.setAttribute("x", L + band*i); w.setAttribute("visibility", "visible"); });
     tip.replaceChildren();
     const h = document.createElement("div"); h.className = "mth"; h.textContent = MONTHS_LONG[i]; tip.append(h);
-    years.slice().reverse().forEach(y => { if (!hiddenYears.has(y)) tip.append(row(colorOf(y), `Visits ${y}`, vis(y)[i] == null ? "No data" : fmtInt(vis(y)[i]))); });
+    years.slice().reverse().forEach(y => { if (!hiddenYears.has(y)) tip.append(row(colorOf(y), `Visits ${y}`, vis(y)[i] == null ? "No data yet" : fmtInt(vis(y)[i]))); });
     tip.append(document.createElement("hr"));
     tip.append(row("var(--temp)", "Low to high", lo[i] == null ? "–" : `${Math.round(lo[i])}° to ${Math.round(hi[i])}°F`));
     tip.append(row("var(--rain)", "Rain", P.wx.rain[i] == null ? "–" : `${P.wx.rain[i].toFixed(2)} in`));

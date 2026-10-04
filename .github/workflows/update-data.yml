@@ -1,7 +1,9 @@
 name: Update park history data
 
-# Gets monthly visits (NPS) and monthly climate (Open-Meteo) for each park,
-# then commits data/park-history.js to the branch that started the run.
+# Adds new months of visits (NPS) and weather (Open-Meteo) to data/park-history.js.
+# Old months do not change. The script only requests a month after it ends, and it
+# first checks the first park. If the first park has no data for that month, it stops.
+# Most weekly runs make no request or two requests.
 on:
   workflow_dispatch:
   push:
@@ -9,7 +11,7 @@ on:
       - scripts/fetch_history.py
       - .github/workflows/update-data.yml
   schedule:
-    - cron: "17 6 3 * *"  # 06:17 UTC on day 3 of each month
+    - cron: "23 7 * * 1"  # 07:23 UTC each Monday. NPS publishes a month some weeks after it ends.
 
 permissions:
   contents: write
@@ -41,7 +43,7 @@ jobs:
               || echo "FAILED: $url"
           done
       - name: Get the data
-        timeout-minutes: 15
+        timeout-minutes: 15  # the script has its own 12-minute limit
         run: python3 -u scripts/fetch_history.py
       - name: Commit the data if it changed
         # Also runs when a source failed, so the good data from the other source is kept.

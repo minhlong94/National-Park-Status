@@ -1,14 +1,23 @@
 #!/usr/bin/env python3
-"""Build data/park-history.js: monthly visits and monthly climate for each park.
+"""Keep data/park-history.js: monthly visits and monthly weather for each park.
 
 Visits:  NPS Visitor Use Statistics (irmaservices.nps.gov), recreation visits per month.
-Weather: Open-Meteo historical archive (archive-api.open-meteo.com), daily values
-         aggregated per month and averaged over the same years.
+Weather: Open-Meteo historical archive (archive-api.open-meteo.com). For each month:
+         the mean of the daily high, the mean of the daily low, the total rain and the total snow.
 
-The script reads the park list (id, code, lat, lon) from index.html, so the page
-stays the single source for the park list. It uses the last 3 complete calendar years.
-Standard library only. Run: python3 scripts/fetch_history.py
+The file stores every month from FIRST_MONTH to the last month with data. Old months do not
+change, so the script only adds new months:
+
+1. A month is a candidate only after it ends (October is a candidate from November 1).
+2. The script gets the candidate month for the first park only.
+   If the visits or the weather of the first park are not available yet, the script stops.
+   It does not request data for the other parks, and the file does not change.
+3. If the first park has data, the script gets that month for all parks and adds it.
+
+The park list (id, code, lat, lon) comes from index.html. Standard library only.
+Run: python3 scripts/fetch_history.py
 """
+import calendar
 import datetime as dt
 import json
 import re
@@ -21,11 +30,14 @@ import urllib.request
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-YEARS_BACK = 3
-SOCKET_TIMEOUT = 30       # seconds for each network step: connect, TLS handshake, each read
-TRIES = 3                 # tries for each request
-SCRIPT_DEADLINE = 10 * 60 # seconds for the whole script
-MAX_FAILS_IN_A_ROW = 3    # stop using a host after this many parks fail one after the other
+OUT = ROOT / "data" / "park-history.js"
+FIRST_MONTH = "2023-01"     # the first month in the file
+SOCKET_TIMEOUT = 20         # seconds for each network step: connect, TLS handshake, each read
+TRIES = 3                   # tries for each request
+SCRIPT_DEADLINE = 12 * 60   # seconds for the whole script
+MAX_FAILS_IN_A_ROW = 3      # stop using a host after this many parks fail one after the other
+# NPS Visitor Use Statistics reports Sequoia and Kings Canyon as separate units.
+STATS_CODE = {"seki": "SEQU", "kica": "KICA"}
 START = time.monotonic()
 
 
@@ -38,20 +50,18 @@ def time_left():
     if left <= 0:
         raise DeadlineExceeded(f"script deadline of {SCRIPT_DEADLINE} s reached")
     return left
-# NPS Visitor Use Statistics reports Sequoia and Kings Canyon as separate units.
-STATS_CODE = {"seki": "SEQU", "kica": "KICA"}
 
 
 def get_json(url):
-    """GET a JSON document with a connect timeout, a read timeout and a limited number of tries."""
+    """GET a JSON document with a socket timeout and a limited number of tries."""
+    print("GET", url, flush=True)
     last = None
     for i in range(TRIES):
-        timeout = min(SOCKET_TIMEOUT, time_left())
         t0 = time.monotonic()
         try:
             req = urllib.request.Request(url, headers={"Accept": "application/json", "User-Agent": "National-Park-Status data script"})
             # The timeout applies to each socket operation: connect, TLS handshake and each read.
-            with urllib.request.urlopen(req, timeout=timeout) as r:
+            with urllib.request.urlopen(req, timeout=min(SOCKET_TIMEOUT, time_left())) as r:
                 body = r.read()
             print(f"  {len(body)} bytes in {time.monotonic() - t0:.1f} s", flush=True)
             return json.loads(body.decode("utf-8"))
@@ -61,10 +71,36 @@ def get_json(url):
             last = e
             print(f"  try {i + 1} of {TRIES} failed after {time.monotonic() - t0:.1f} s: {e}", flush=True)
             if i < TRIES - 1:
-                time.sleep(min(3 * 2 ** i, time_left()))
+                time.sleep(min(2 * 2 ** i, time_left()))
     raise RuntimeError(f"{url} failed {TRIES} times: {last}")
 
 
+# ---- months ----
+def ym(s):
+    return int(s[:4]), int(s[5:7])
+
+
+def ym_str(y, m):
+    return f"{y:04d}-{m:02d}"
+
+
+def add_months(s, n):
+    y, m = ym(s)
+    k = y * 12 + (m - 1) + n
+    return ym_str(k // 12, k % 12 + 1)
+
+
+def months_between(a, b):
+    """Number of months from a to b (b - a)."""
+    (ya, ma), (yb, mb) = ym(a), ym(b)
+    return (yb - ya) * 12 + (mb - ma)
+
+
+def last_complete_month(today):
+    return add_months(ym_str(today.year, today.month), -1)
+
+
+# ---- inputs ----
 def load_parks():
     html = (ROOT / "index.html").read_text(encoding="utf-8")
     parks = []
@@ -76,11 +112,29 @@ def load_parks():
     return parks
 
 
-def find_key(rec, *patterns):
-    for k in rec:
-        if any(re.fullmatch(p, k, re.I) for p in patterns):
-            return k
-    return None
+def load_store():
+    """Read the data file. Returns None if there is no file or the file has an old format."""
+    if not OUT.exists():
+        return None
+    m = re.search(r"window\.PARK_HISTORY = (\{.*\});", OUT.read_text(encoding="utf-8"), re.S)
+    data = json.loads(m.group(1)) if m else None
+    if not data or data.get("format") != 2:
+        return None
+    return data
+
+
+def save_store(data):
+    OUT.parent.mkdir(exist_ok=True)
+    OUT.write_text("// Generated by scripts/fetch_history.py. Do not edit by hand.\n"
+                   "// Each array has one value for each month from \"first\" to \"last\".\n"
+                   "window.PARK_HISTORY = " + json.dumps(data, separators=(",", ":"), ensure_ascii=False) + ";\n",
+                   encoding="utf-8")
+    print("wrote", OUT, OUT.stat().st_size, "bytes", flush=True)
+
+
+# ---- sources ----
+def stats_code(p):
+    return STATS_CODE.get(p["id"], p["id"].upper())
 
 
 def records(payload):
@@ -93,102 +147,100 @@ def records(payload):
     return []
 
 
-def fetch_visits(parks, years):
-    codes = sorted({STATS_CODE.get(p["id"], p["id"].upper()) for p in parks})
+def fetch_visits(codes, start, end):
+    """Returns {UNITCODE: {"YYYY-MM": visits or None}} for the months from start to end."""
+    (ys, ms), (ye, me) = ym(start), ym(end)
     out = {}
     for i in range(0, len(codes), 20):
         batch = codes[i:i + 20]
-        q = urllib.parse.urlencode({"unitCodes": ",".join(batch), "startMonth": 1, "startYear": years[0],
-                                    "endMonth": 12, "endYear": years[-1]})
-        url = "https://irmaservices.nps.gov/v3/rest/stats/visitation?" + q
-        print("GET", url, flush=True)
-        recs = records(get_json(url))
-        if not recs:
-            raise RuntimeError("Visitor statistics: empty response")
-        if i == 0:
-            print("  sample record:", json.dumps(recs[0])[:400])
-        k_unit = find_key(recs[0], r"unit_?code")
-        k_year = find_key(recs[0], r"year")
-        k_month = find_key(recs[0], r"month")
-        k_vis = find_key(recs[0], r"recreation_?visit(or)?s?")
-        if not all([k_unit, k_year, k_month, k_vis]):
-            raise RuntimeError(f"Visitor statistics: unknown fields {list(recs[0])}")
-        for rec in recs:
-            y, mth = int(rec[k_year]), int(rec[k_month])
-            if y in years and 1 <= mth <= 12:
-                v = rec[k_vis]
-                out.setdefault(rec[k_unit].upper(), {}).setdefault(str(y), [None] * 12)[mth - 1] = None if v is None else int(v)
+        q = urllib.parse.urlencode({"unitCodes": ",".join(batch), "startMonth": ms, "startYear": ys,
+                                    "endMonth": me, "endYear": ye})
+        for rec in records(get_json("https://irmaservices.nps.gov/v3/rest/stats/visitation?" + q)):
+            if not {"UnitCode", "Year", "Month", "RecreationVisitors"} <= rec.keys():
+                raise RuntimeError(f"Visitor statistics: unknown fields {list(rec)}")
+            v = rec["RecreationVisitors"]
+            out.setdefault(rec["UnitCode"].upper(), {})[ym_str(int(rec["Year"]), int(rec["Month"]))] = None if v is None else int(v)
         time.sleep(1)
-    result = {}
-    for p in parks:
-        code = STATS_CODE.get(p["id"], p["id"].upper())
-        if code not in out:
-            print(f"  WARNING: no visits for {p['name']} ({code})", file=sys.stderr)
-        result[p["id"]] = {str(y): out.get(code, {}).get(str(y), [None] * 12) for y in years}
-    return result
+    return out
 
 
-def fetch_weather(p, years):
+def fetch_weather(p, start, end):
+    """Returns {"YYYY-MM": {"hi", "lo", "rain", "snow"} or None}. None means a month with missing days."""
+    last_day = calendar.monthrange(*ym(end))[1]
     q = urllib.parse.urlencode({
         "latitude": p["lat"], "longitude": p["lon"],
-        "start_date": f"{years[0]}-01-01", "end_date": f"{years[-1]}-12-31",
+        "start_date": f"{start}-01", "end_date": f"{end}-{last_day:02d}",
         "daily": "temperature_2m_max,temperature_2m_min,rain_sum,snowfall_sum",
         "temperature_unit": "fahrenheit", "precipitation_unit": "inch", "timezone": "auto"})
-    url = "https://archive-api.open-meteo.com/v1/archive?" + q
-    print("GET", url, flush=True)
-    d = get_json(url)["daily"]
-    hi, lo, rain, snow = ([[] for _ in range(12)] for _ in range(4))
-    totals = {}  # (year, month) -> [rain, snow]
-    for t, mx, mn, r, s in zip(d["time"], d["temperature_2m_max"], d["temperature_2m_min"], d["rain_sum"], d["snowfall_sum"]):
-        y, m = int(t[:4]), int(t[5:7]) - 1
-        if mx is not None: hi[m].append(mx)
-        if mn is not None: lo[m].append(mn)
-        tot = totals.setdefault((y, m), [0.0, 0.0])
-        tot[0] += r or 0
-        tot[1] += s or 0
-    for (y, m), (r, s) in totals.items():
-        rain[m].append(r)
-        snow[m].append(s)
-    avg = lambda a, nd: round(sum(a) / len(a), nd) if a else None
-    return {"hi": [avg(a, 1) for a in hi], "lo": [avg(a, 1) for a in lo],
-            "rain": [avg(a, 2) for a in rain], "snow": [avg(a, 1) for a in snow]}
+    d = get_json("https://archive-api.open-meteo.com/v1/archive?" + q).get("daily") or {}
+    days = {}
+    for t, mx, mn, r, s in zip(d.get("time", []), d.get("temperature_2m_max", []), d.get("temperature_2m_min", []),
+                               d.get("rain_sum", []), d.get("snowfall_sum", [])):
+        days.setdefault(t[:7], []).append((mx, mn, r, s))
+    out = {}
+    n = months_between(start, end) + 1
+    for k in range(n):
+        mon = add_months(start, k)
+        rows = days.get(mon, [])
+        complete = len(rows) == calendar.monthrange(*ym(mon))[1] and all(None not in row for row in rows)
+        if not complete:
+            out[mon] = None
+            continue
+        out[mon] = {"hi": round(sum(r[0] for r in rows) / len(rows), 1),
+                    "lo": round(sum(r[1] for r in rows) / len(rows), 1),
+                    "rain": round(sum(r[2] for r in rows), 2),
+                    "snow": round(sum(r[3] for r in rows), 1)}
+    return out
 
 
-def load_previous():
-    """Read the last good data file, so that one failed source does not delete good data."""
-    f = ROOT / "data" / "park-history.js"
-    if not f.exists():
-        return None
-    m = re.search(r"window\.PARK_HISTORY = (\{.*\});", f.read_text(encoding="utf-8"), re.S)
-    return json.loads(m.group(1)) if m else None
-
-
+# ---- main ----
 def main():
-    this_year = dt.date.today().year
-    years = list(range(this_year - YEARS_BACK, this_year))
+    today = dt.date.today()
     parks = load_parks()
-    prev = load_previous()
-    prev_ok = prev is not None and prev.get("years") == years
-    errors = []
+    store = load_store()
+    target = last_complete_month(today)  # the newest month that has ended
 
-    try:
-        visits = fetch_visits(parks, years)
-    except Exception as e:
-        errors.append(f"visits: {e}")
-        print("ERROR visits:", e, flush=True)
-        visits = {p["id"]: (prev["parks"][p["id"]]["visits"] if prev_ok and p["id"] in prev["parks"]
-                            else {str(y): [None] * 12 for y in years}) for p in parks}
+    if store is None:
+        print(f"No data file in the current format. Getting all months from {FIRST_MONTH}.", flush=True)
+        start = FIRST_MONTH
+    else:
+        start = add_months(store["last"], 1)
+    if months_between(start, target) < 0:
+        print(f"The file has data to {store['last']}. The next month, {start}, has not ended. Nothing to do.")
+        return
 
-    weather = {}
-    fails_in_a_row = 0
+    # Step 1: the first park only. Find the newest month that has visits and complete weather.
+    first = parks[0]
+    print(f"Checking {start} to {target} for the first park, {first['name']}.", flush=True)
+    v1 = fetch_visits([stats_code(first)], start, target).get(stats_code(first), {})
+    w1 = fetch_weather(first, start, target)
+    end = None
+    for k in range(months_between(start, target) + 1):
+        mon = add_months(start, k)
+        if v1.get(mon) is None or w1.get(mon) is None:
+            print(f"The first park has no {'visits' if v1.get(mon) is None else 'complete weather'} for {mon}. "
+                  f"The script stops here and does not request data for the other parks.", flush=True)
+            break
+        end = mon
+    if end is None:
+        print("No new data. The data file did not change.")
+        return
+    print(f"New months: {start} to {end}. Getting them for all parks.", flush=True)
+
+    # Step 2: all parks, new months only.
+    codes = sorted({stats_code(p) for p in parks})
+    visits = fetch_visits(codes, start, end)
+    weather, errors, fails_in_a_row = {}, [], 0
     for p in parks:
+        if p is first:
+            weather[p["id"]] = w1
+            continue
         print("weather", p["id"], p["name"], flush=True)
         try:
-            weather[p["id"]] = fetch_weather(p, years)
+            weather[p["id"]] = fetch_weather(p, start, end)
             fails_in_a_row = 0
         except DeadlineExceeded as e:
             errors.append(f"weather: {e}")
-            print("ERROR weather:", e, flush=True)
             break
         except Exception as e:
             errors.append(f"weather {p['id']}: {e}")
@@ -196,34 +248,29 @@ def main():
             fails_in_a_row += 1
             if fails_in_a_row >= MAX_FAILS_IN_A_ROW:
                 errors.append(f"weather: stopped after {fails_in_a_row} parks failed one after the other")
-                print("ERROR weather: the host does not answer. The script stops the weather requests.", flush=True)
                 break
-        time.sleep(1)
-    for p in parks:
-        if p["id"] not in weather:
-            weather[p["id"]] = (prev["parks"][p["id"]]["wx"] if prev_ok and p["id"] in prev["parks"]
-                                else {"hi": [None] * 12, "lo": [None] * 12, "rain": [None] * 12, "snow": [None] * 12})
-
-    has_visits = any(v is not None for p in visits.values() for y in p.values() for v in y)
-    has_weather = any(v is not None for p in weather.values() for v in p["hi"])
-    if not has_visits and not has_weather:
-        sys.exit("No data from any source. The data file did not change.\n" + "\n".join(errors))
-    data = {
-        "generated": dt.date.today().isoformat(),
-        "years": years,
-        "units": {"temp": "°F", "rain": "in", "snow": "in"},
-        "sources": {"visits": "NPS Visitor Use Statistics, recreation visits",
-                    "weather": "Open-Meteo historical weather archive (ERA5)"},
-        "parks": {p["id"]: {"visits": visits[p["id"]], "wx": weather[p["id"]]} for p in parks},
-    }
-    out = ROOT / "data" / "park-history.js"
-    out.parent.mkdir(exist_ok=True)
-    out.write_text("// Generated by scripts/fetch_history.py. Do not edit by hand.\nwindow.PARK_HISTORY = "
-                   + json.dumps(data, separators=(",", ":"), ensure_ascii=False) + ";\n", encoding="utf-8")
-    print("wrote", out, out.stat().st_size, "bytes", flush=True)
+        time.sleep(0.5)
     if errors:
-        # The file keeps the good data, but the run must show that a source failed.
-        sys.exit(f"{len(errors)} source errors:\n" + "\n".join(errors[:20]))
+        # Do not add months with holes. The next run tries the same months again.
+        sys.exit("Weather failed. The data file did not change.\n" + "\n".join(errors[:20]))
+
+    # Step 3: add the new months.
+    new_months = [add_months(start, k) for k in range(months_between(start, end) + 1)]
+    if store is None:
+        store = {"format": 2, "first": FIRST_MONTH, "last": None, "parks": {}}
+    for p in parks:
+        rec = store["parks"].setdefault(p["id"], {"v": [], "hi": [], "lo": [], "rain": [], "snow": []})
+        pv = visits.get(stats_code(p), {})
+        for mon in new_months:
+            w = weather[p["id"]].get(mon) or {}
+            rec["v"].append(pv.get(mon))
+            for key in ("hi", "lo", "rain", "snow"):
+                rec[key].append(w.get(key))
+    store["last"] = end
+    store["updated"] = today.isoformat()
+    store["sources"] = {"visits": "NPS Visitor Use Statistics, recreation visits",
+                        "weather": "Open-Meteo historical weather archive (ERA5)"}
+    save_store(store)
 
 
 if __name__ == "__main__":

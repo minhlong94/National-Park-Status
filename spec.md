@@ -100,7 +100,7 @@ Original text from the owner:
 Requirements:
 
 - When the reader clicks a park, show an interactive chart of the visits in each month.
-- Show the last 3 complete calendar years.
+- Show the last 3 calendar years in the data file (see R11).
 - Use vertical bars. Give each year a different color.
 - Also show these historical monthly values:
   - the average low and high temperature
@@ -110,8 +110,8 @@ Requirements:
 - A table view shows the same values.
 - Data sources:
   - Visits: NPS Visitor Use Statistics (irmaservices.nps.gov).
-  - Weather: Open-Meteo historical weather archive (archive-api.open-meteo.com). The page shows the average of the 3 years for each month.
-- A GitHub Actions workflow gets the data and saves it in `data/park-history.js`. It runs on day 3 of each month. When it runs on `main`, it also pushes the data to `gh-pages`.
+  - Weather: Open-Meteo historical weather archive (archive-api.open-meteo.com). The page shows the average of each calendar month over the last 36 months.
+- A GitHub Actions workflow gets the data and saves it in `data/park-history.js`. It runs each Monday (see R11). When it runs on `main`, it also pushes the data to `gh-pages`.
 - Each year has a fixed color. The colors pass the palette check for color vision deficiency.
 - The reader can click a year in the legend to show or hide that year.
 - If almost no snow falls in a park, the page shows a short text instead of the snow chart.
@@ -132,4 +132,22 @@ Requirements:
 - If 3 parks fail one after the other, the script stops the requests to that host.
 - The "Get the data" step stops after 15 minutes. The job stops after 20 minutes.
 - If one source fails, the workflow keeps the good data from the other source. The run then shows a failure.
+- Status: done.
+
+### R11. Store the monthly data and add only new months
+
+Original text from the owner:
+
+> Monthly data doesn't change much. Save it in a separate file so that it doesn't need constant refresh. You only need to refresh if future data comes. For example for now store it up to Sep 2026 (if available), refresh only if it's Nov, but attempt to get data for the first park and halt getting data for all parks if the first park returns null data for Oct
+
+Requirements:
+
+- Keep the monthly data in a separate file: `data/park-history.js`.
+- The file keeps one value for each month, from January 2023 to the last month with data (for example, September 2026 if NPS published it).
+- Old months do not change. The script does not get them again.
+- The script requests a month only after the month ends. For example, it requests October 2026 from November 1, 2026.
+- The script first requests the new month for the first park only. If the first park has no visits or no complete weather for that month, the script stops. It does not request data for the other parks.
+- If the first park has data, the script gets the month for all parks and adds it.
+- The page shows the visits for the last 3 calendar years in the file. The weather values are the averages of each calendar month over the last 36 months.
+- The workflow runs each Monday. Most runs make no request or two requests.
 - Status: done.
