@@ -20,6 +20,7 @@ This page shows the current conditions of all 63 U.S. national parks. The list s
 - **Fall color**: the usual dates when the leaves change, from satellite data, and reports of colored leaves near the park in this season.
 - **Best time to visit**: short banners under each park name. "Best:" shows the best months, from the weather, the number of visitors, rain and snow. "Fall:" shows the best months for fall color. A star shows when now is a good time. The filter shows the parks that are best to visit this month, or in the months you select.
 - **Fall color map**: a map of the parks with their usual fall color on a date. Move the date slider to see the fall color move across the country. Click a park to open it in the table.
+- **Nearby airports**: 2 to 4 airports with scheduled flights near each park, with the IATA code and the straight-line distance.
 - **Closure history**: the major full and partial closures from the last 5 years. The list also shows shutdowns of all parks.
 
 The table shows 10 parks on each page. The first page shows the 10 most visited parks.
@@ -37,6 +38,7 @@ Click **Refresh data** to get the current park statuses and weather again. The m
 | Monthly visits | [NPS Visitor Use Statistics](https://irma.nps.gov/Stats/) (`irmaservices.nps.gov`) |
 | Monthly climate | [Open-Meteo historical weather](https://open-meteo.com/en/docs/historical-weather-api) (`archive-api.open-meteo.com`) |
 | Fall color, usual timing | [NASA MODIS land surface phenology (MCD12Q2)](https://lpdaac.usgs.gov/products/mcd12q2v061/), from the [ORNL DAAC MODIS web service](https://modis.ornl.gov/data/modis_webservice.html) |
+| Nearby airports | [OurAirports](https://ourairports.com/data/) (public domain) |
 | Fall color, this season | [USA National Phenology Network](https://www.usanpn.org/) (`services.usanpn.org`) |
 
 If you do not give a key, the page uses the shared NPS `DEMO_KEY`. This key allows approximately 30 requests per hour from each IP address.
@@ -78,6 +80,14 @@ The script `scripts/fetch_foliage.py` keeps two files:
 - `data/foliage-now.js`: the reports of colored and falling leaves within 50 km of each park in the last 14 days. The script gets these reports only from Aug 15 to Dec 15.
 
 The workflow `.github/workflows/update-foliage.yml` runs the script each Monday.
+
+## Airport data
+
+The file `data/airports.js` keeps the nearby airports of each park. The script `scripts/build_airports.py` makes it from the OurAirports data. Airports change very little, so no workflow refreshes this file. To update it, run:
+
+```sh
+python3 scripts/build_airports.py
+```
 
 ## Run the page on your computer
 

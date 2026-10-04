@@ -435,3 +435,22 @@ Requirements:
 - The full meaning shows when the reader puts the pointer on the banner. Screen readers also get it.
 - The banners are on one line when there is space. A month range does not break across two lines.
 - Status: done.
+
+### R27. Nearby airports
+
+Original text from the owner:
+
+> For each park add nearby airports (more than 1) with iata code
+
+Requirements:
+
+- For each park, show 2 or more nearby airports with their IATA codes.
+- Use only medium and large airports with scheduled passenger flights and an IATA code, in the United States and its territories.
+- For each park:
+  - the 3 nearest airports
+  - the nearest large airport, if it is not one of the 3
+  - Airports farther than 500 miles are left out, but each park keeps at least 2 airports.
+- The distance is the straight-line distance in miles from the park point.
+- The table shows the codes under the banners (for example "✈ TYS · AVL · TRI · CLT"). The park details show a list with the code, the airport name, the distance and a "Large airport" tag.
+- Source: OurAirports (public domain). The script `scripts/build_airports.py` makes `data/airports.js`. Airports change very little, so the page does not refresh this file.
+- Status: done.
