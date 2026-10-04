@@ -250,7 +250,7 @@ Requirements:
 - The park table has a "Best time" column. The sort list has "Best to visit this month".
 - The park details show the best months, the reasons, the months with limited access, the usual open dates of the seasonal road (if the park has one) and a score strip with the same months as the charts.
 - The page tells the reader that the score does not include events, wildlife seasons or road openings.
-- Status: done.
+- Status: changed by R21. The page does not show the score now.
 
 ### R16. Park details layout
 
@@ -260,7 +260,7 @@ Original text from the owner:
 
 Requirements:
 
-- The "Best time to visit" block is at the bottom of the park details.
+- The "Best time to visit" block is at the bottom of the park details. (R21 removes this block.)
 - The park details have three columns: alerts, 3-day forecast and closure history. On a narrow screen, the columns go one below the other.
 - Status: done.
 
@@ -309,4 +309,67 @@ Requirements:
 - The columns (alerts, forecast, closure history) go to the next line when there is not enough width.
 - The 3-day forecast shows one row for each day: day, high and low, weather, precipitation.
 - Links in the park details use the link color, so that they are easy to read in dark mode.
+- Status: done.
+
+### R20. Regional fall color map
+
+Original text from the owner:
+
+> I dont need park-specific details. Regional is fine to me, e.g., like one from explorefall
+
+Requirements:
+
+- The fall color map shows regions, not parks. The color fills the whole country, like the ExploreFall map. The park dots and the park list are removed from the map.
+- Data: NASA MODIS land surface phenology (MCD12Q2) on a grid:
+  - 438 points: every 1.5° in the lower 48 states, and every 2° of latitude and 4° of longitude in Alaska (`data/foliage-grid-cells.json`).
+  - For each point: the median day in a 21 km box when greenness starts to drop, the middle of the drop and leaves down, averaged over the last 5 NASA years (`data/foliage-grid.js`).
+- The script `scripts/fetch_foliage_grid.py` collects the grid in about 1,300 requests. It stops after 45 minutes, saves its progress, and the next run continues.
+- The data changes once a year. When the grid is complete, the script checks for a new NASA year at one point in the Great Smoky Mountains. If that point has no data for the new year, the script stops.
+- The page blends the 4 nearest grid points for each pixel and shows a stage for the chosen date:
+  - no change yet
+  - starting
+  - partial
+  - near peak
+  - peak color (from the middle of the drop to 60% of the way to leaves down)
+  - past peak
+  - leaves down
+  - no clear fall color
+- A list shows the states at peak color, near peak and past peak on the date. A table shows the usual dates for each state.
+- The fall color text in each park's details does not change.
+- Status: reverted by R22. The grid collection took too long.
+
+### R21. Best time to visit: banner and filter, no score
+
+Original text from the owner:
+
+> I do not need the best time to visit score. I want it as a banner below the park's name that encourages users to visit. Also I want the Best time to visit filter, and it should have best time to visit this month, or filter selected months
+
+Requirements:
+
+- The page does not show the visit score. It removes the score strip, the score in the tooltip, the score column and the "Best time to visit" block in the park details. The page still calculates the best months as in R15.
+- Under the name of each park in the table, a banner shows the best months:
+  - If this month is one of them: "Now is a great time to visit!" and the best months.
+  - If not: "Best time to visit:" and the best months.
+  - The reasons show when the reader puts the pointer on the banner.
+- The "Best time" column and the "Best to visit this month" sort are removed.
+- A "Best time to visit" filter has three choices:
+  - Any time
+  - This month
+  - Choose months: a button for each month. The reader can select one or more months.
+- The filter keeps the parks whose best months include a selected month. It works together with the search and the other filters.
+- Status: done.
+
+### R22. Stop the grid, go back to the park map, use the grid method for parks without data
+
+Original text from the owner:
+
+> The points grid run too long - stop it and revert back to the original. For parks without data, use this grid method
+
+Requirements:
+
+- Stop the grid collection. Revert the regional map (R20) and the grid script. The fall color map shows the park dots again (R17).
+- Keep the best time banner and filter (R21).
+- For parks without fall color data (fewer than 3 years with data in the 3 km box), use the grid method: get all years again with a 21 km box and use the pixels that have a growing cycle. In October 2026 this is 18 parks and 72 requests.
+- Each park gets the wide box only once. The file `data/foliage.js` lists these parks in `wide`. New NASA years use the wide box for them.
+- The park details tell the reader when a park uses the 21 km box.
 - Status: done.
