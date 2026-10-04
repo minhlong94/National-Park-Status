@@ -211,6 +211,13 @@ def update_now(parks, today):
     data = fh.get_json(NPN + "observations/getObservations.json?" + urllib.parse.urlencode(params))
     rows = data if isinstance(data, list) else data.get("observations", [])
     print(f"{len(rows)} reports. Sample: {json.dumps(rows[0])[:300] if rows else 'none'}", flush=True)
+    if not rows:
+        # Check the request: the same dates one year earlier. Observers often enter reports some weeks late.
+        old = [(k, v.replace(str(today.year), str(today.year - 1)) if k in ("start_date", "end_date") else v) for k, v in params]
+        prev = fh.get_json(NPN + "observations/getObservations.json?" + urllib.parse.urlencode(old))
+        prev = prev if isinstance(prev, list) else prev.get("observations", [])
+        print(f"Check: the same dates one year earlier have {len(prev)} reports. "
+              + ("The request works. The reports for this period are not entered yet." if prev else "The request may be wrong."), flush=True)
     kind = {pid: "colored" for pid in ids["colored"]} | {pid: "falling" for pid in ids["falling"]}
     out = {}
     for p in parks:

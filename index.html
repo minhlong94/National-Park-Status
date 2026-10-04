@@ -1082,8 +1082,8 @@ function fallSummary(id){
   const amps = years.map(y => R[y].amp).filter(x => x != null).sort((a,b)=>a-b);
   const amp = amps.length ? amps[Math.floor(amps.length/2)] : 0;
   const out = {years, sen: mean("sen"), mid: mean("mid"), dor: mean("dor"), amp};
-  // A clear fall: at least 3 years, the middle of the change from late July to December, and a real change in greenness.
-  out.clear = years.length >= 3 && PARK_BY[id].lat > 0 && out.mid >= 200 && out.mid <= 360 && amp >= 0.08 && out.sen != null && out.dor != null;
+  // A clear fall: outside the tropics, at least 3 years, the middle of the drop from Aug 25 to Nov 30, and a large change in greenness.
+  out.clear = years.length >= 3 && PARK_BY[id].lat >= 24 && out.mid >= 236 && out.mid <= 333 && amp >= 0.15 && out.sen != null && out.dor != null;
   return out;
 }
 function fallNow(id){
@@ -1091,6 +1091,7 @@ function fallNow(id){
   if (!N) return null;
   const age = (Date.now() - Date.parse(N.to + "T12:00:00Z")) / 86400000;
   if (age > 21) return {stale: true};
+  if (!Object.keys(N.parks || {}).length) return null; // no reports for any park: the reports are probably not entered yet
   return {from: N.from, to: N.to, km: N.km, rec: N.parks[id] || null};
 }
 const compact = n => n >= 1e6 ? (n/1e6).toFixed(n >= 1e7 ? 0 : 1).replace(/\.0$/,"") + "M" : n >= 1e3 ? Math.round(n/1e3) + "K" : String(Math.round(n));
@@ -1211,15 +1212,16 @@ function drawMonthly(box, id){
       const HS = 58, yb = 30;
       let g = MONTHS.map((m,i) => `<line x1="${L+band*i}" x2="${L+band*i}" y1="${yb-14}" y2="${yb+8}" stroke="var(--line)" stroke-width="1"/>`).join("") + axisX(L, band, HS-4) + washLayer(L, band, 4, yb+10);
       const x1 = xDoy(fall.sen), x2 = xDoy(fall.dor), xm = xDoy(fall.mid);
-      g += `<rect x="${x1}" y="${yb-6}" width="${Math.max(4, x2-x1)}" height="12" rx="4" fill="var(--fall)"/>`;
-      g += `<circle cx="${xm}" cy="${yb}" r="5" fill="var(--ink)" stroke="var(--panel)" stroke-width="2"/>`;
-      g += `<text x="${xm}" y="${yb-12}" text-anchor="middle" font-size="11" font-weight="600" fill="var(--ink)">${doyText(fall.mid)}</text>`;
+      // Light part: greenness starts to drop. Full color: the second half of the drop, when leaf color is usually best.
+      g += `<rect x="${x1}" y="${yb-6}" width="${Math.max(4, xm-x1)}" height="12" rx="4" fill="var(--fall)" opacity=".35"/>`;
+      g += `<rect x="${xm}" y="${yb-6}" width="${Math.max(4, x2-xm)}" height="12" rx="4" fill="var(--fall)"/>`;
+      g += `<text x="${(xm+x2)/2}" y="${yb-12}" text-anchor="middle" font-size="11" font-weight="600" fill="var(--ink)">${doyText(fall.mid)} – ${doyText(fall.dor)}</text>`;
       g += hitLayer(L, band, 4, yb+10, false);
       fallHtml += `<div class="mtitle">Fall color <span>usual timing from satellite, ${span}</span></div><svg viewBox="0 0 ${W} ${HS}" width="${W}" height="${HS}" aria-hidden="true">${g}</svg>`;
-      text = `Greenness usually starts to drop about <b>${doyText(fall.sen)}</b>. The middle of the leaf change is about <b>${doyText(fall.mid)}</b>. Leaves are off about <b>${doyText(fall.dor)}</b>.`;
+      text = `Leaf color is usually best from about <b>${doyText(fall.mid)}</b> to <b>${doyText(fall.dor)}</b>. <span>Satellite data: greenness starts to drop about ${doyText(fall.sen)}. Half of the drop is complete about ${doyText(fall.mid)}. Most leaves are off about ${doyText(fall.dor)}. The dates are for one point in the park. Higher and lower areas change at different times.</span>`;
     } else {
       fallHtml += `<div class="mtitle">Fall color <span>usual timing from satellite${span ? ", " + span : ""}</span></div>`;
-      text = `The satellite data shows no clear fall color change at this park.`;
+      text = `At the forecast point of this park, the satellite data shows no clear fall color change. Other areas of the park can have fall color.`;
     }
     fallHtml += `<p class="mfall">${text}</p>`;
   }
@@ -1232,6 +1234,7 @@ function drawMonthly(box, id){
   } else if (fall && fall.clear && now && now.stale){
     fallHtml += `<p class="mfall"><span>Reports for this season start on Aug 15.</span></p>`;
   }
+  if (fall && fall.clear) fallHtml += `<p class="mfall"><a href="https://www.explorefall.com/" target="_blank" rel="noopener">Fall foliage map and forecast on ExploreFall</a> <span>(other website)</span></p>`;
   const span = (yr0 === yr1 ? `${yr0}` : `${yr0}–${yr1}`) + (H.lastMonth < 12 ? ` (${yr1} to ${MONTHS[H.lastMonth-1]})` : "");
 
   box.innerHTML = `
@@ -1274,7 +1277,8 @@ function drawMonthly(box, id){
     tip.append(row("var(--snow)", "Snow", P.wx.snow[i] == null ? "–" : `${P.wx.snow[i].toFixed(1)} in`));
     if (fall && fall.clear){
       const m0 = doyDate(fall.sen).getUTCMonth(), m1 = doyDate(fall.dor).getUTCMonth();
-      if (i >= m0 && i <= m1) tip.append(row("var(--fall)", "Fall color", i === doyDate(fall.mid).getUTCMonth() ? `middle ${doyText(fall.mid)}` : "usual window"));
+      const mm = doyDate(fall.mid).getUTCMonth();
+      if (i >= m0 && i <= m1) tip.append(row("var(--fall)", "Fall color", i >= mm ? "usually best" : "greenness drops"));
     }
     tip.hidden = false;
     const bx = box.getBoundingClientRect(), tw = tip.offsetWidth, th = tip.offsetHeight;

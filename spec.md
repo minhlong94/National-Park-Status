@@ -168,12 +168,28 @@ Requirements:
   - when the leaves are off
 - Source: NASA MODIS land surface phenology (MCD12Q2), from the ORNL DAAC MODIS web service. Each value is the median of the pixels in a 3 km box at the park point. The page shows the average of the last 5 years with data.
 - NASA publishes one year at a time, 1 to 2 years late. The file `data/foliage.js` keeps each year. Old years do not change. The script first checks the first park for a new year. If the first park has no data, the script stops.
-- If a park has no clear fall color change, the page tells the reader. Examples: deserts, tropical parks and evergreen parks.
+- If a park has no clear fall color change, the page tells the reader. Examples: deserts, tropical parks and evergreen parks. A clear change has all of these:
+  - the park is north of 24° N
+  - there are at least 3 years of data
+  - the middle of the greenness drop is from Aug 25 to Nov 30
+  - the change in greenness (EVI amplitude) is 0.15 or more
+- The satellite data measures greenness, not leaf color. The page says that leaf color is usually best from the middle of the greenness drop to the day most leaves are off.
+- The page links to the ExploreFall fall foliage map. Its maps and forecasts are the work of another company, with no public data service. The page does not copy them.
+- If no park has this-season reports (the reports are not entered yet), the page does not show the this-season line.
 - **This season.** Show the reports of "Colored leaves" and "Falling leaves" within 50 km of each park in the last 14 days.
 - Source: USA National Phenology Network (USA-NPN). One request gets the reports for all parks. The file is `data/foliage-now.js`.
 - The script gets the reports for this season only from Aug 15 to Dec 15.
 - The page shows a fall color strip with the same months as the other charts, and a short text.
 - The workflow `.github/workflows/update-foliage.yml` runs each Monday. All data workflows use one queue, so two runs never push at the same time.
+- Status: done.
+
+### R12a. ExploreFall
+
+Original text from the owner:
+
+> Cant you get foliage map from https://www.explorefall.com/?
+
+- ExploreFall has no public data service. Its maps and forecasts are its own work. The page does not copy them. Each park with a clear fall color change has a link to the ExploreFall map.
 - Status: done.
 
 ### R13. Show all parks in pages of 10
