@@ -358,3 +358,18 @@ Requirements:
   - Choose months: a button for each month. The reader can select one or more months.
 - The filter keeps the parks whose best months include a selected month. It works together with the search and the other filters.
 - Status: done.
+
+### R22. Stop the grid, go back to the park map, use the grid method for parks without data
+
+Original text from the owner:
+
+> The points grid run too long - stop it and revert back to the original. For parks without data, use this grid method
+
+Requirements:
+
+- Stop the grid collection. Revert the regional map (R20) and the grid script. The fall color map shows the park dots again (R17).
+- Keep the best time banner and filter (R21).
+- For parks without fall color data (fewer than 3 years with data in the 3 km box), use the grid method: get all years again with a 21 km box and use the pixels that have a growing cycle. In October 2026 this is 18 parks and 72 requests.
+- Each park gets the wide box only once. The file `data/foliage.js` lists these parks in `wide`. New NASA years use the wide box for them.
+- The park details tell the reader when a park uses the 21 km box.
+- Status: done.

@@ -41,6 +41,8 @@ BANDS = {"sen": r"Senescence\.Num_Modes_01", "mid": r"MidGreendown\.Num_Modes_01
          "dor": r"Dormancy\.Num_Modes_01", "amp": r"EVI_Amplitude\.Num_Modes_01"}
 FILL = 32767
 KM = 1                       # 1 km above, below, left and right: a 3 x 3 km box (500 m pixels)
+KM_WIDE = 10                 # grid method for parks without data: a 21 x 21 km box, pixels with a cycle only
+MIN_DATA_YEARS = 3           # a park with fewer years of data than this gets the wide box
 
 NPN = "https://services.usanpn.org/npn_portal/"
 SEASON = ((8, 15), (12, 15)) # month, day: the period when the script gets this-season reports
@@ -86,7 +88,7 @@ def available_years(p):
     return sorted({int(d["calendar_date"][:4]) for d in data.get("dates", [])})
 
 
-def park_years(p, bands, years):
+def park_years(p, bands, years, km=KM):
     """Returns {year: {"sen","mid","dor" (day of year) and "amp", or None}} for the years given."""
     raw = {y: {} for y in years}
     for key, band in bands.items():
@@ -95,7 +97,7 @@ def park_years(p, bands, years):
             ys = years[i:i + 10]
             data = modis_get(f"{PRODUCT}/subset", latitude=p["lat"], longitude=p["lon"], band=band,
                              startDate=f"A{ys[0]}001", endDate=f"A{ys[-1]}365",
-                             kmAboveBelow=KM, kmLeftRight=KM)
+                             kmAboveBelow=km, kmLeftRight=km)
             try:
                 scale = float(data.get("scale") or 1) or 1
             except (TypeError, ValueError):  # for example "Not applicable" for the date bands
@@ -127,6 +129,37 @@ def park_years(p, bands, years):
     return out
 
 
+def km_for(store, p):
+    return KM_WIDE if store and p["id"] in store.get("wide", []) else KM
+
+
+def fill_missing(store, parks):
+    """Grid method for parks without data: get all years again with the 21 km box (once for each park)."""
+    todo = [p for p in parks if p["id"] not in store.get("wide", [])
+            and sum(1 for v in store["parks"].get(p["id"], {}).values() if v and v.get("mid") is not None) < MIN_DATA_YEARS]
+    if not todo:
+        return False
+    years = sorted(map(int, store["years"]))
+    bands = band_names()
+    print(f"Wide box for {len(todo)} parks without data: {[p['id'] for p in todo]}", flush=True)
+    for p in todo:
+        print("foliage (wide box)", p["id"], p["name"], flush=True)
+        res = park_years(p, bands, years, km=KM_WIDE)
+        store["parks"][p["id"]] = {str(y): res.get(y) for y in years}
+        store.setdefault("wide", []).append(p["id"])  # try each park once; keep the wide box for new years
+        got = sum(1 for v in res.values() if v)
+        print(f"  {got} of {len(years)} years with data", flush=True)
+    return True
+
+
+def save_typical(store):
+    store["updated"] = dt.date.today().isoformat()
+    store["source"] = "NASA MODIS land surface phenology (MCD12Q2), ORNL DAAC MODIS web service"
+    write_js(TYPICAL_OUT, "PARK_FOLIAGE", store,
+             "Day of the year (Jan 1 = 0) when greenness starts to drop (sen), the middle of the change (mid) and leaves off (dor). "
+             "Parks in 'wide' use a 21 km box (grid method), the others a 3 km box.")
+
+
 def update_typical(parks):
     store = read_js(TYPICAL_OUT, "PARK_FOLIAGE")
     if not store or store.get("format") != 1:
@@ -137,13 +170,16 @@ def update_typical(parks):
     new = [y for y in avail if y not in have]
     if not new:
         print(f"Typical timing: no new year. The newest year in the file is {max(have) if have else 'none'}.")
+        if store and fill_missing(store, parks):
+            save_typical(store)
+            return True
         return False
     print(f"Typical timing: the service lists {avail}. New years: {new}.", flush=True)
     bands = band_names()
     print("bands:", bands, flush=True)
 
     # Step 1: the first park only. Keep the new years that have data.
-    r1 = park_years(first, bands, new)
+    r1 = park_years(first, bands, new, km=km_for(store, first))
     new = [y for y in new if r1.get(y)]
     if not new:
         print("The first park has no data for the new years. The script stops here "
@@ -155,7 +191,7 @@ def update_typical(parks):
     results = {first["id"]: r1}
     for p in parks[1:]:
         print("foliage", p["id"], p["name"], flush=True)
-        results[p["id"]] = park_years(p, bands, new)
+        results[p["id"]] = park_years(p, bands, new, km=km_for(store, p))
     if store is None:
         store = {"format": 1, "years": [], "parks": {}}
     for p in parks:
@@ -163,10 +199,8 @@ def update_typical(parks):
         for y in new:
             rec[str(y)] = results[p["id"]].get(y)
     store["years"] = sorted(set(store["years"]) | set(new))
-    store["updated"] = dt.date.today().isoformat()
-    store["source"] = "NASA MODIS land surface phenology (MCD12Q2), ORNL DAAC MODIS web service"
-    write_js(TYPICAL_OUT, "PARK_FOLIAGE", store,
-             "Day of the year (Jan 1 = 0) when greenness starts to drop (sen), the middle of the change (mid) and leaves off (dor).")
+    fill_missing(store, parks)
+    save_typical(store)
     return True
 
 

@@ -1448,7 +1448,7 @@ function drawMonthly(box, id){
       <thead><tr><th>Month</th>${years.map(y => `<th class="num">Visits ${y}</th>`).join("")}<th class="num">Low °F</th><th class="num">High °F</th><th class="num">Rain in</th><th class="num">Snow in</th></tr></thead>
       <tbody>${MONTHS.map((m,i) => `<tr><td>${m}</td>${years.map(y => `<td class="num">${vis(y)[i] == null ? "–" : fmtInt(vis(y)[i])}</td>`).join("")}<td class="num">${lo[i] ?? "–"}</td><td class="num">${hi[i] ?? "–"}</td><td class="num">${P.wx.rain[i] ?? "–"}</td><td class="num">${P.wx.snow[i] ?? "–"}</td></tr>`).join("")}</tbody>
     </table></div></details>
-    <p class="msrc">Sources: NPS Visitor Use Statistics (recreation visits). Open-Meteo historical weather (ERA5 model) at the forecast point of the park. Data to ${esc(H.lastLabel)}.${fall ? " Fall color: NASA MODIS land surface phenology (MCD12Q2), 3 km box at the same point." : ""}${now && !now.stale ? " This season: USA National Phenology Network." : ""}</p>`;
+    <p class="msrc">Sources: NPS Visitor Use Statistics (recreation visits). Open-Meteo historical weather (ERA5 model) at the forecast point of the park. Data to ${esc(H.lastLabel)}.${fall ? ` Fall color: NASA MODIS land surface phenology (MCD12Q2), ${(window.PARK_FOLIAGE.wide || []).includes(id) ? "21 km box (the 3 km box had no data)" : "3 km box"} at the same point.` : ""}${now && !now.stale ? " This season: USA National Phenology Network." : ""}</p>`;
 
   // Shared hover: one month, all four charts, one tooltip
   const tip = box.querySelector(".mtip");
