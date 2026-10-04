@@ -474,3 +474,19 @@ Requirements:
 - The chart axes stay in °F and inches. One axis has one unit.
 - Wind speeds stay in mph.
 - Status: done.
+
+### R29. Save the statuses and weather in the browser
+
+Original text from the owner:
+
+> Cache the result of status and weather in the browser and refresh only when prompted
+
+Requirements:
+
+- The page saves the last park statuses (NPS alerts), the weather and the NWS warnings in the browser (localStorage).
+- When the page opens, it shows the saved data and does not send requests. The top of the page shows the time of the saved data.
+- The page gets new data only when the reader clicks "Refresh data".
+- On the first visit (no saved data), the page gets the data one time.
+- If one source fails during a refresh, the page keeps the saved data of that source and shows its time.
+- If the browser blocks the storage, the page still works without saved data.
+- Status: done.
