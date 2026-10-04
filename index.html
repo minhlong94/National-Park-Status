@@ -747,6 +747,15 @@ const RX = {
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const fmtInt = n => n.toLocaleString("en-US");
+// Short form for big numbers (R23): 4.8M, 400K, 7.8K. Numbers under 1,000 do not change.
+function shortNum(n){
+  if (n == null || isNaN(n)) return "–";
+  const a = Math.abs(n), trim = x => x.replace(/\.0$/, "");
+  if (a >= 999500) return trim((n / 1e6).toFixed(a >= 99.95e6 ? 0 : 1)) + "M";
+  if (a >= 9999.5) return Math.round(n / 1e3) + "K";
+  if (a >= 1000) return trim((n / 1e3).toFixed(1)) + "K";
+  return String(Math.round(n));
+}
 const PAGE_SIZE = 10; // the first page shows the 10 most visited parks
 const state = { alerts:{}, wx:{}, nws:{}, filter:"all", sort:"visits", q:"", open:new Set(), loaded:false, page:1, best:"any", bestMonths:new Set() };
 
@@ -1114,7 +1123,7 @@ function render(){
     html.push(`<tr class="park" data-code="${p.id}" tabindex="0" aria-expanded="${isOpen}">
       <td class="rank">${p.r}</td>
       <td><div class="pname">${esc(p.name)}</div><div class="pstate">${esc(p.st)}</div>${bestBanner(p.id)}</td>
-      <td class="num">${fmtInt(p.v)}</td>
+      <td class="num">${shortNum(p.v)}</td>
       <td><span class="chip ${st.cls}">${st.label}</span></td>
       ${cell(c.road)}${cell(c.trail)}${cell(c.facility)}${cell(c.other)}
       <td class="num"><span class="cnt ${(HISTORY[p.id]||[]).length?"":"zero"}">${(HISTORY[p.id]||[]).length}</span></td>
@@ -1212,7 +1221,7 @@ function fallNow(id){
   if (!Object.keys(N.parks || {}).length) return null; // no reports for any park: the reports are probably not entered yet
   return {from: N.from, to: N.to, km: N.km, rec: N.parks[id] || null};
 }
-const compact = n => n >= 1e6 ? (n/1e6).toFixed(n >= 1e7 ? 0 : 1).replace(/\.0$/,"") + "M" : n >= 1e3 ? Math.round(n/1e3) + "K" : String(Math.round(n));
+const compact = shortNum;
 function niceStep(range, count){
   const raw = range / Math.max(1, count), mag = Math.pow(10, Math.floor(Math.log10(raw))), f = raw / mag;
   return (f <= 1 ? 1 : f <= 2 ? 2 : f <= 2.5 ? 2.5 : f <= 5 ? 5 : 10) * mag;
@@ -1446,7 +1455,7 @@ function drawMonthly(box, id){
     <div class="mtip" hidden></div>
     <details><summary>Show the values as a table</summary><div class="tablewrap"><table>
       <thead><tr><th>Month</th>${years.map(y => `<th class="num">Visits ${y}</th>`).join("")}<th class="num">Low °F</th><th class="num">High °F</th><th class="num">Rain in</th><th class="num">Snow in</th></tr></thead>
-      <tbody>${MONTHS.map((m,i) => `<tr><td>${m}</td>${years.map(y => `<td class="num">${vis(y)[i] == null ? "–" : fmtInt(vis(y)[i])}</td>`).join("")}<td class="num">${lo[i] ?? "–"}</td><td class="num">${hi[i] ?? "–"}</td><td class="num">${P.wx.rain[i] ?? "–"}</td><td class="num">${P.wx.snow[i] ?? "–"}</td></tr>`).join("")}</tbody>
+      <tbody>${MONTHS.map((m,i) => `<tr><td>${m}</td>${years.map(y => `<td class="num">${vis(y)[i] == null ? "–" : shortNum(vis(y)[i])}</td>`).join("")}<td class="num">${lo[i] ?? "–"}</td><td class="num">${hi[i] ?? "–"}</td><td class="num">${P.wx.rain[i] ?? "–"}</td><td class="num">${P.wx.snow[i] ?? "–"}</td></tr>`).join("")}</tbody>
     </table></div></details>
     <p class="msrc">Sources: NPS Visitor Use Statistics (recreation visits). Open-Meteo historical weather (ERA5 model) at the forecast point of the park. Data to ${esc(H.lastLabel)}.${fall ? ` Fall color: NASA MODIS land surface phenology (MCD12Q2), ${(window.PARK_FOLIAGE.wide || []).includes(id) ? "21 km box (the 3 km box had no data)" : "3 km box"} at the same point.` : ""}${now && !now.stale ? " This season: USA National Phenology Network." : ""}</p>`;
 
@@ -1463,7 +1472,7 @@ function drawMonthly(box, id){
     box.querySelectorAll(".wash").forEach(w => { w.setAttribute("x", L + band*i); w.setAttribute("visibility", "visible"); });
     tip.replaceChildren();
     const h = document.createElement("div"); h.className = "mth"; h.textContent = MONTHS_LONG[i]; tip.append(h);
-    years.slice().reverse().forEach(y => { if (!hiddenYears.has(y)) tip.append(row(colorOf(y), `Visits ${y}`, vis(y)[i] == null ? "No data yet" : fmtInt(vis(y)[i]))); });
+    years.slice().reverse().forEach(y => { if (!hiddenYears.has(y)) tip.append(row(colorOf(y), `Visits ${y}`, vis(y)[i] == null ? "No data yet" : shortNum(vis(y)[i]))); });
     tip.append(document.createElement("hr"));
     tip.append(row("var(--temp)", "Low to high", lo[i] == null ? "–" : `${Math.round(lo[i])}° to ${Math.round(hi[i])}°F`));
     tip.append(row("var(--rain)", "Rain", P.wx.rain[i] == null ? "–" : `${P.wx.rain[i].toFixed(2)} in`));
