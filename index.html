@@ -19,12 +19,12 @@
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
   --paper:#161D1A; --panel:#1E2724; --ink:#E4E9E4; --muted:#9AA8A1; --line:#33413B;
   --pine:#3F7A60; --pine-ink:#F3F6F1; --open:#6DB585; --partial:#E0A93A; --closed:#E2695C; --info:#7FA9C8;
-  --y1:#3987e5; --y2:#d95926; --y3:#199e70; --temp:#e66767; --rain:#9085e9; --snow:#a3b3c6; --fall:#d98b3a; --score-ink:#161D1A; --wash:rgba(228,233,228,.07);
+  --y1:#3987e5; --y2:#d95926; --y3:#199e70; --temp:#e66767; --rain:#9085e9; --snow:#a3b3c6; --fall:#c9772a; --score-ink:#161D1A; --wash:rgba(228,233,228,.07);
 }}
 :root[data-theme="dark"]{
   --paper:#161D1A; --panel:#1E2724; --ink:#E4E9E4; --muted:#9AA8A1; --line:#33413B;
   --pine:#3F7A60; --pine-ink:#F3F6F1; --open:#6DB585; --partial:#E0A93A; --closed:#E2695C; --info:#7FA9C8;
-  --y1:#3987e5; --y2:#d95926; --y3:#199e70; --temp:#e66767; --rain:#9085e9; --snow:#a3b3c6; --fall:#d98b3a; --score-ink:#161D1A; --wash:rgba(228,233,228,.07);
+  --y1:#3987e5; --y2:#d95926; --y3:#199e70; --temp:#e66767; --rain:#9085e9; --snow:#a3b3c6; --fall:#c9772a; --score-ink:#161D1A; --wash:rgba(228,233,228,.07);
 }
 *,*::before,*::after{box-sizing:inherit}
 html{scroll-padding-top:env(safe-area-inset-top,0px)}
@@ -114,6 +114,35 @@ tr.detail[hidden]{display:none}
 .histsec .tablewrap table{min-width:760px}
 .histsec td{font-size:14px}
 .dur{font-variant-numeric:tabular-nums;white-space:nowrap}
+.fallsec{margin-top:34px}
+.fallsec h2{font-size:26px;margin:0 0 4px;font-weight:700}
+.fallsec>p{color:var(--muted);margin:0 0 12px;max-width:80ch}
+.fctl{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:0 0 10px}
+.fctl label{font-weight:600}
+.fctl input[type=range]{flex:1 1 260px;max-width:520px;accent-color:var(--fall)}
+.fctl output{font:700 18px/1 "Archivo Narrow",Arial,sans-serif;min-width:7ch}
+.fctl button{padding:7px 12px;font-weight:500}
+.fgrid{display:grid;grid-template-columns:minmax(0,2.2fr) minmax(220px,1fr);gap:16px;align-items:start}
+@media (max-width:760px){.fgrid{grid-template-columns:1fr}}
+.fmap{position:relative;border:1px solid var(--line);border-radius:8px;background:var(--panel);padding:6px}
+.fmap svg{display:block;width:100%;height:auto}
+.fmap .dot{cursor:pointer;outline:none}
+.fmap .dot:focus-visible{stroke:var(--info);stroke-width:3}
+.flegend{display:flex;gap:14px;flex-wrap:wrap;font-size:13px;color:var(--muted);margin:8px 0 0}
+.flegend span{display:inline-flex;gap:6px;align-items:center}
+.flegend i{display:inline-block;border-radius:50%}
+.flist{font-size:14px}
+.flist h3{font:600 16px/1.2 "Archivo Narrow",Arial,sans-serif;margin:0 0 6px}
+.flist ul{list-style:none;margin:0 0 12px;padding:0}
+.flist li{padding:3px 0;border-top:1px solid var(--line)}
+.flist li:first-child{border-top:0}
+.flist button{all:unset;cursor:pointer;color:var(--info);text-decoration:underline}
+.flist button:focus-visible{outline:2px solid var(--info);outline-offset:2px}
+.flist small{color:var(--muted)}
+.fallsec details{margin-top:12px;font-size:14px}
+.fallsec details summary{cursor:pointer;color:var(--info)}
+.fallsec details table{min-width:520px}
+.fallsec details td,.fallsec details th{padding:6px 10px;font-size:13px}
 .roadsec{margin-top:34px}
 .roadsec h2{font-size:26px;margin:0 0 4px;font-weight:700}
 .roadsec>p{color:var(--muted);margin:0 0 14px;max-width:75ch}
@@ -249,6 +278,26 @@ footer a{color:var(--info)}
     </table>
   </div>
   <nav class="pager" id="pager" aria-label="Pages of the park table"></nav>
+
+  <section class="fallsec" id="fallmap" aria-labelledby="fh">
+    <h2 id="fh">Fall color map</h2>
+    <p>The usual fall color of each park on a date, from NASA satellite data (the average of the last 5 years with data). Move the slider to change the date. Click a park to open it in the table.</p>
+    <div class="fctl">
+      <label for="fdate">Date</label>
+      <input type="range" id="fdate" min="212" max="348" step="1" aria-describedby="fdate-out">
+      <output id="fdate-out" for="fdate"></output>
+      <button type="button" id="ftoday">Today</button>
+    </div>
+    <div class="fgrid">
+      <div class="fmap" id="fmapbox"><p class="none" style="padding:12px">Loading the map…</p></div>
+      <div class="flist" id="flist" aria-live="polite"></div>
+    </div>
+    <div class="flegend" id="flegend"></div>
+    <details><summary>Show the dates as a table</summary><div class="tablewrap"><table>
+      <thead><tr><th>Park</th><th>Greenness starts to drop</th><th>Leaf color usually best</th></tr></thead>
+      <tbody id="frows"></tbody>
+    </table></div></details>
+  </section>
 
   <section class="roadsec" id="roads" aria-labelledby="rh">
     <h2 id="rh">Seasonal road history</h2>
@@ -1467,12 +1516,146 @@ document.querySelectorAll("[data-h]").forEach(b => b.addEventListener("click", (
   document.querySelectorAll("[data-h]").forEach(x => x.setAttribute("aria-pressed", x===b));
   histFilter = b.dataset.h; renderHistory();
 }));
+// ---- Fall color map (R17) ----
+// Base map: us-atlas (states, already projected with the Albers USA projection, 975 x 610).
+// Park points: the same projection from d3-geo. The libraries load from the jsDelivr CDN.
+const MAP_LIBS = ["https://cdn.jsdelivr.net/npm/d3-array@3.2.4/dist/d3-array.min.js",
+                  "https://cdn.jsdelivr.net/npm/d3-geo@3.1.1/dist/d3-geo.min.js",
+                  "https://cdn.jsdelivr.net/npm/topojson-client@3.1.0/dist/topojson-client.min.js"];
+const MAP_STATES = "https://cdn.jsdelivr.net/npm/us-atlas@3.0.1/states-albers-10m.json";
+const FALL_STATE = {
+  best:  {label: "Leaf color usually best", color: "var(--fall)", r: 7},
+  start: {label: "Greenness starts to drop", color: "var(--y3)", r: 5},
+  out:   {label: "Not in the fall color period", color: "var(--muted)", r: 3.5},
+  none:  {label: "No clear fall color", color: "none", r: 4}
+};
+let fallDay = null, mapReady = null;
+function loadScript(src){
+  return new Promise((resolve, reject) => { const s = document.createElement("script"); s.src = src; s.onload = resolve; s.onerror = () => reject(new Error(src)); document.head.appendChild(s); });
+}
+function fallState(id, d){
+  const f = fallSummary(id);
+  if (!f || !f.clear) return "none";
+  if (d < f.sen || d > f.dor) return "out";
+  return d < f.mid ? "start" : "best";
+}
+function todayDoy(){ const t = new Date(); return Math.round((Date.UTC(2001, t.getMonth(), t.getDate()) - Date.UTC(2001, 0, 1)) / 86400000); }
+function goToPark(id){
+  const p = PARK_BY[id];
+  state.q = ""; $("search").value = "";
+  state.filter = "all"; document.querySelectorAll("[data-f]").forEach(x => x.setAttribute("aria-pressed", x.dataset.f === "all"));
+  state.sort = "visits"; $("sort").value = "visits";
+  state.page = Math.ceil(p.r / PAGE_SIZE);
+  state.open.add(id);
+  render();
+  const row = document.querySelector(`tr.park[data-code="${id}"]`);
+  if (row){ row.scrollIntoView({block: "start", behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth"}); row.focus({preventScroll: true}); }
+}
+function renderFallList(){
+  const d = fallDay, groups = {best: [], start: []};
+  PARKS.forEach(p => { const st = fallState(p.id, d); if (groups[st]) groups[st].push(p); });
+  const item = p => { const f = fallSummary(p.id); return `<li><button type="button" data-park="${p.id}">${esc(p.name)}</button> <small>${doyText(f.mid)} – ${doyText(f.dor)}</small></li>`; };
+  $("flist").innerHTML = `<h3>${FALL_STATE.best.label} (${groups.best.length})</h3>` +
+    (groups.best.length ? `<ul>${groups.best.map(item).join("")}</ul>` : `<p class="none">No park on this date.</p>`) +
+    `<h3>${FALL_STATE.start.label} (${groups.start.length})</h3>` +
+    (groups.start.length ? `<ul>${groups.start.map(item).join("")}</ul>` : `<p class="none">No park on this date.</p>`);
+}
+function renderFallTable(){
+  const rows = PARKS.map(p => ({p, f: fallSummary(p.id)})).filter(x => x.f && x.f.clear).sort((a,b) => a.f.mid - b.f.mid);
+  $("frows").innerHTML = rows.map(({p, f}) => `<tr><td>${esc(p.name)}</td><td>${doyText(f.sen)}</td><td>${doyText(f.mid)} – ${doyText(f.dor)}</td></tr>`).join("") +
+    `<tr><td colspan="3" class="none">${PARKS.length - rows.length} parks have no clear fall color at their forecast point.</td></tr>`;
+}
+function renderFallMap(){
+  if (fallDay === null) return;
+  $("fdate").value = fallDay;
+  $("fdate-out").textContent = doyText(fallDay);
+  renderFallList();
+  const box = $("fmapbox"), svg = box.querySelector("svg");
+  if (!svg) return;
+  // On a small map, make the dots larger so they stay easy to see and to tap.
+  const k = Math.min(2.2, Math.max(1, 975 / Math.max(1, svg.getBoundingClientRect().width) * 0.6));
+  svg.querySelectorAll(".dot").forEach(c => {
+    const st = FALL_STATE[fallState(c.dataset.park, fallDay)];
+    c.setAttribute("r", (st.r * k).toFixed(1));
+    c.setAttribute("fill", st.color);
+    c.setAttribute("stroke", st.color === "none" ? "var(--muted)" : "var(--panel)");
+    c.setAttribute("stroke-width", st.color === "none" ? 1.5 : 1.5);
+    c.setAttribute("aria-label", `${PARK_BY[c.dataset.park].name}: ${st.label}`);
+  });
+  // Draw the larger dots last, so they stay on top
+  [...svg.querySelectorAll(".dot")].sort((a,b) => a.getAttribute("r") - b.getAttribute("r")).forEach(c => c.parentNode.appendChild(c));
+}
+function buildFallMap(){
+  if (mapReady) return mapReady;
+  const box = $("fmapbox");
+  mapReady = (async () => {
+    for (const src of MAP_LIBS) await loadScript(src);
+    const us = await (await fetch(MAP_STATES)).json();
+    const path = d3.geoPath();
+    const proj = d3.geoAlbersUsa().scale(1300).translate([487.5, 305]);
+    const states = topojson.feature(us, us.objects.states).features.map(f => `<path d="${path(f)}"/>`).join("");
+    let dots = "";
+    PARKS.forEach(p => {
+      const xy = proj([p.lon, p.lat]);
+      if (!xy) return; // American Samoa and the Virgin Islands are not on this map
+      dots += `<circle class="dot" data-park="${p.id}" cx="${xy[0].toFixed(1)}" cy="${xy[1].toFixed(1)}" r="4" tabindex="0" role="button"/>`;
+    });
+    box.innerHTML = `<svg viewBox="0 0 975 610" role="group" aria-label="Map of the parks and their usual fall color on the chosen date">
+      <g fill="var(--paper)" stroke="var(--line)" stroke-width="1">${states}</g>${dots}</svg><div class="mtip" hidden></div>`;
+    const tip = box.querySelector(".mtip");
+    const show = (c, e) => {
+      const id = c.dataset.park, p = PARK_BY[id], f = fallSummary(id), st = FALL_STATE[fallState(id, fallDay)];
+      tip.replaceChildren();
+      const h = document.createElement("div"); h.className = "mth"; h.textContent = p.name; tip.append(h);
+      const line = t => { const d = document.createElement("div"); d.textContent = t; tip.append(d); };
+      line(`${doyText(fallDay)}: ${st.label.toLowerCase()}`);
+      if (f && f.clear) line(`Best: about ${doyText(f.mid)} – ${doyText(f.dor)}`);
+      tip.hidden = false;
+      const bx = box.getBoundingClientRect(), r = c.getBoundingClientRect();
+      let x = (e && e.clientX != null ? e.clientX : r.right) - bx.left + 12, y = (e && e.clientY != null ? e.clientY : r.top) - bx.top + 12;
+      if (x + tip.offsetWidth > bx.width) x = Math.max(0, x - tip.offsetWidth - 24);
+      if (y + tip.offsetHeight > bx.height) y = Math.max(0, bx.height - tip.offsetHeight);
+      tip.style.left = x + "px"; tip.style.top = y + "px";
+    };
+    box.querySelectorAll(".dot").forEach(c => {
+      c.addEventListener("pointermove", e => show(c, e));
+      c.addEventListener("pointerleave", () => tip.hidden = true);
+      c.addEventListener("focus", () => show(c));
+      c.addEventListener("blur", () => tip.hidden = true);
+      c.addEventListener("click", () => goToPark(c.dataset.park));
+      c.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " "){ e.preventDefault(); goToPark(c.dataset.park); } });
+    });
+    renderFallMap();
+  })().catch(() => {
+    box.innerHTML = `<p class="none" style="padding:12px">The map did not load. The list and the table show the same information.</p>`;
+  });
+  return mapReady;
+}
+function initFallMap(){
+  const t = todayDoy();
+  fallDay = Math.min(348, Math.max(212, t)); // outside the fall period, start at Aug 1 or Dec 15
+  $("flegend").innerHTML = Object.values(FALL_STATE).map(st =>
+    `<span><i style="width:${st.r*2}px;height:${st.r*2}px;background:${st.color === "none" ? "transparent" : st.color};${st.color === "none" ? "border:1.5px solid var(--muted);" : ""}"></i>${st.label}</span>`).join("") +
+    `<span>American Samoa and the Virgin Islands are not on the map.</span>`;
+  renderFallTable();
+  renderFallMap();
+  buildFallMap();
+}
+$("fdate").addEventListener("input", e => { fallDay = +e.target.value; renderFallMap(); });
+window.addEventListener("resize", () => { clearTimeout(window.fallTimer); window.fallTimer = setTimeout(renderFallMap, 150); });
+$("ftoday").addEventListener("click", () => { fallDay = Math.min(348, Math.max(212, todayDoy())); renderFallMap(); });
+$("flist").addEventListener("click", e => { const b = e.target.closest("[data-park]"); if (b) goToPark(b.dataset.park); });
+
 renderRoads();
 renderHistory();
 render();
 refresh();
 // The "Best time" column uses the stored monthly and fall color data. Load it once. It does not refresh.
-Promise.all([loadHistory(), loadFoliage()]).then(() => { if (!("PARK_FOLIAGE" in window)) window.PARK_FOLIAGE = null; render(); }).catch(() => {});
+Promise.all([loadHistory(), loadFoliage()]).then(() => {
+  if (!("PARK_FOLIAGE" in window)) window.PARK_FOLIAGE = null;
+  render();
+  if (window.PARK_FOLIAGE) initFallMap(); else $("fmapbox").innerHTML = `<p class="none" style="padding:12px">The fall color data did not load.</p>`;
+}).catch(() => {});
 </script>
 </body>
 </html>

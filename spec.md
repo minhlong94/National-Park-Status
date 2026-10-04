@@ -262,3 +262,24 @@ Requirements:
 - The "Best time to visit" block is at the bottom of the park details.
 - The park details have three columns: alerts, 3-day forecast and closure history. On a narrow screen, the columns go one below the other.
 - Status: done.
+
+### R17. Fall color map from NASA data
+
+Original text from the owner (the answer to "ExploreFall embed or a map from the NASA data?"):
+
+> NASA data
+
+Requirements:
+
+- Show a map of the United States with one dot for each park. The map uses the stored NASA data (`data/foliage.js`). It does not need new data.
+- A date slider (Aug 1 to Dec 15) starts at today. For the date, each dot shows the usual state of the park:
+  - leaf color usually best (large fall-color dot)
+  - greenness starts to drop (medium green dot)
+  - not in the fall color period (small gray dot)
+  - no clear fall color (hollow dot)
+- The dots have different sizes, so the reader does not need the color to see the state. The colors pass the palette check in light and dark mode.
+- A list next to the map shows the parks in each state on the date. A table shows the usual dates of all parks.
+- Point to a dot to see its dates. Click a dot or a list item to open the park in the table.
+- The base map is `us-atlas` (Albers USA, with Alaska and Hawaii). The libraries `d3-geo` and `topojson-client` load from the jsDelivr CDN. If they do not load, the list and the table still work.
+- American Samoa and the Virgin Islands are not on the map. They have no clear fall color.
+- Status: done.
