@@ -85,7 +85,9 @@ tr.park:hover td{background:color-mix(in srgb,var(--pine) 6%,transparent)}
 .warn{color:var(--closed);font-size:12.5px;font-weight:600;display:block;margin-top:4px;white-space:normal;max-width:24ch}
 tr.detail td{background:var(--paper);padding:0}
 tr.detail[hidden]{display:none}
-.dbox{padding:16px 18px 20px 64px;display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:22px}
+.dbox{padding:16px 18px 20px 64px;display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:22px;
+  position:sticky;left:0;max-width:var(--vis-w,100%)}
+.dbox a{color:var(--info)}
 .dbox h2{font-size:17px;margin:0 0 8px;font-weight:600}
 .alert{border-left:4px solid var(--line);padding:6px 0 6px 10px;margin:0 0 10px}
 .alert.k-closure{border-color:var(--closed)}.alert.k-danger{border-color:var(--closed)}.alert.k-caution{border-color:var(--partial)}.alert.k-info{border-color:var(--info)}
@@ -94,9 +96,11 @@ tr.detail[hidden]{display:none}
 .alert .am{font-size:12.5px;color:var(--muted);margin-top:4px}
 .alert a{color:var(--info)}
 .none{color:var(--muted);font-size:14px}
-.fc{display:flex;gap:10px;flex-wrap:wrap}
-.fc div{border:1px solid var(--line);border-radius:6px;padding:8px 10px;min-width:96px;background:var(--panel);font-size:13px}
-.fc b{display:block;font-size:13px}
+.fc{display:flex;flex-direction:column;gap:6px}
+.fc>div{display:grid;grid-template-columns:7.5em 6.5em 1fr;gap:2px 10px;align-items:baseline;border:1px solid var(--line);border-radius:6px;padding:7px 10px;background:var(--panel);font-size:13px}
+.fc b{font-size:13px}
+.fc .ft{font-weight:600;font-variant-numeric:tabular-nums}
+.fc .fp{grid-column:2/-1;color:var(--muted)}
 .banner{border:1px solid var(--closed);color:var(--closed);border-radius:8px;padding:10px 14px;margin:14px 0;font-size:14px}
 .banner[hidden]{display:none}
 .hist{list-style:none;margin:0;padding:0}
@@ -169,7 +173,7 @@ tr.detail[hidden]{display:none}
 .rintr h3{font:600 17px/1.2 "Archivo Narrow",Arial,sans-serif;margin:0 0 6px}
 .rlinks{margin:10px 0 0;font-size:14px}
 .rlinks a{color:var(--info);cursor:pointer}
-.mviz{grid-column:1/-1;border-top:1px solid var(--line);padding-top:14px;position:sticky;left:18px}
+.mviz{grid-column:1/-1;border-top:1px solid var(--line);padding-top:14px;position:relative;min-width:0}
 .mviz h2{margin:0 0 2px}
 .mviz .msub{color:var(--muted);font-size:13px;margin:0 0 10px;max-width:90ch}
 .mviz .mtitle{font-size:13.5px;font-weight:600;margin:12px 0 2px}
@@ -992,6 +996,12 @@ function matches(p, q){
   const name = p.name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f\u02bb]/g,"");
   return name.includes(q) || p.name.toLowerCase().includes(q) || states.includes(q) || p.code === q || p.id === q;
 }
+// The park table scrolls sideways on small screens. The park details use the visible width (CSS --vis-w).
+function syncDetailWidth(){
+  const wrap = $("rows").closest(".tablewrap");
+  wrap.style.setProperty("--vis-w", wrap.clientWidth + "px");
+}
+window.addEventListener("resize", syncDetailWidth);
 function renderPager(pages){
   const nav = $("pager");
   if (pages <= 1){ nav.innerHTML = ""; return; }
@@ -1060,6 +1070,7 @@ function render(){
   tb.innerHTML = html.join("") || `<tr><td colspan="12" class="none" style="padding:18px">No parks match your search and filter.</td></tr>`;
   $("count").textContent = shown ? `Showing ${first+1}–${first+pageRows.length} of ${shown} parks` + (shown < NP ? ` (${NP} in all)` : "") : `Showing 0 of ${NP} parks`;
   renderPager(pages);
+  syncDetailWidth();
   state.open.forEach(openMonthly);
   if (state.loaded){
     $("t-open").textContent=tOpen; $("t-partial").textContent=tPart; $("t-closed").textContent=tClosed;
@@ -1089,7 +1100,7 @@ function detail(p, list, w, warns){
     const d = w.daily;
     wxHtml += `<div class="fc">` + d.time.map((t,i) => {
       const day = new Date(t+"T12:00:00").toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"});
-      return `<div><b>${day}</b>${Math.round(d.temperature_2m_max[i])}° / ${Math.round(d.temperature_2m_min[i])}°<br>${esc(WMO[d.weather_code[i]]||"—")}<br>Precip ${d.precipitation_probability_max[i] ?? 0}%, ${(d.precipitation_sum[i]||0).toFixed(2)} in</div>`;
+      return `<div><b>${day}</b><span class="ft">${Math.round(d.temperature_2m_max[i])}° / ${Math.round(d.temperature_2m_min[i])}°</span><span>${esc(WMO[d.weather_code[i]]||"—")}</span><span class="fp">Precip ${d.precipitation_probability_max[i] ?? 0}%, ${(d.precipitation_sum[i]||0).toFixed(2)} in</span></div>`;
     }).join("") + `</div>`;
     wxHtml += `<p class="none" style="margin-top:8px">Humidity ${w.current.relative_humidity_2m}% · The forecast is for one point near the main visitor area. In large parks, the temperature changes much with elevation.</p>`;
   } else wxHtml += `<p class="none">The weather did not load.</p>`;
@@ -1285,11 +1296,6 @@ function drawMonthly(box, id){
   const years = H.years, yr0 = years[0], yr1 = years[years.length-1];
   const shown = years.filter(y => !hiddenYears.has(y));
   // The park table scrolls sideways on small screens. Fit the charts to the visible width.
-  const wrap = box.closest(".tablewrap"), dbox = box.closest(".dbox");
-  if (wrap && dbox){
-    const cs = getComputedStyle(dbox);
-    box.style.maxWidth = Math.max(280, wrap.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight)) + "px";
-  }
   const W = Math.max(280, box.clientWidth), L = 52, R = 10, band = (W-L-R)/12;
   const colorOf = y => `var(${YEAR_VARS[years.indexOf(y) % YEAR_VARS.length]})`;
   const vis = y => P.visits[y] || [];
@@ -1477,7 +1483,8 @@ function showMonthly(id){
 }
 let mvizTimer = 0;
 window.addEventListener("resize", () => { clearTimeout(mvizTimer); mvizTimer = setTimeout(() => {
-  document.querySelectorAll(".mviz[data-w]").forEach(box => { box.style.maxWidth = ""; drawMonthly(box, box.dataset.mviz); });
+  syncDetailWidth();
+  document.querySelectorAll(".mviz[data-w]").forEach(box => drawMonthly(box, box.dataset.mviz));
 }, 150); });
 
 function openMonthly(code){
