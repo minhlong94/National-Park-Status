@@ -204,13 +204,14 @@ def update_now(parks, today):
     ids = phenophase_ids()
     print("phenophase ids:", ids, flush=True)
     start = today - dt.timedelta(days=NOW_DAYS)
-    params = [("request_src", "national-park-status"), ("start_date", start.isoformat()), ("end_date", today.isoformat()),
-              ("bottom_left_x1", -180), ("bottom_left_y1", 15), ("upper_right_x2", -60), ("upper_right_y2", 72)]
+    # Do not send a bounding box: with the box parameters, the service returns no reports (tested Oct 2026).
+    # The script finds the reports near each park by distance.
+    params = [("request_src", "national-park-status"), ("start_date", start.isoformat()), ("end_date", today.isoformat())]
     for i, pid in enumerate(ids["colored"] + ids["falling"]):
         params.append((f"phenophase_id[{i}]", pid))
     data = fh.get_json(NPN + "observations/getObservations.json?" + urllib.parse.urlencode(params))
     rows = data if isinstance(data, list) else data.get("observations", [])
-    print(f"{len(rows)} reports. Sample: {json.dumps(rows[0])[:300] if rows else 'none'}", flush=True)
+    print(f"{len(rows)} reports. Fields: {sorted(rows[0]) if rows else 'none'}", flush=True)
     if not rows:
         # Check the request: the same dates one year earlier. Observers often enter reports some weeks late.
         old = [(k, v.replace(str(today.year), str(today.year - 1)) if k in ("start_date", "end_date") else v) for k, v in params]

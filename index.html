@@ -1381,7 +1381,7 @@ function drawMonthly(box, id){
   }
   if (now && !now.stale){
     const r = now.rec, range = `${fmtD(now.from)} to ${fmtD(now.to)}`;
-    const part = (k, name) => r && r[k][1] ? `${name} in ${r[k][0]} of ${r[k][1]} reports` : "";
+    const part = (k, name) => r && r[k][1] ? `${name} in ${Math.round(100 * r[k][0] / r[k][1])}% of ${r[k][1]} reports` : "";
     const msg = r ? [part("colored","colored leaves"), part("falling","falling leaves")].filter(Boolean).join(", ") + ` from ${r.sites} ${r.sites === 1 ? "site" : "sites"}` : `no reports`;
     if (!fall) fallHtml += `<div class="mtitle">Fall color</div>`;
     fallHtml += `<p class="mfall"><span>This season, ${range}, within ${now.km} km of the park:</span> ${esc(msg)}.</p>`;
