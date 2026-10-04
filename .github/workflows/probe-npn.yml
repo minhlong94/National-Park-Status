@@ -1,0 +1,50 @@
+name: Probe USA-NPN (temporary)
+
+on:
+  push:
+    paths:
+      - .github/workflows/probe-npn.yml
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Try request formats
+        timeout-minutes: 6
+        shell: python3 -u {0}
+        run: |
+          import json, urllib.parse, urllib.request
+          B = "https://services.usanpn.org/npn_portal/observations/"
+          base = [("request_src", "national-park-status"), ("start_date", "2025-10-01"), ("end_date", "2025-10-07")]
+          box = [("bottom_left_x1", -180), ("bottom_left_y1", 15), ("upper_right_x2", -60), ("upper_right_y2", 72)]
+          ph = [("phenophase_id[0]", 498), ("phenophase_id[1]", 471)]
+          tests = {
+            "A GET obs box+phenophase": ("GET", "getObservations.json", base + box + ph),
+            "B GET obs box only": ("GET", "getObservations.json", base + box),
+            "C GET obs phenophase only": ("GET", "getObservations.json", base + ph),
+            "D GET obs state VA": ("GET", "getObservations.json", base + [("state[0]", "VA")]),
+            "E POST obs box+phenophase": ("POST", "getObservations.json", base + box + ph),
+            "F POST obs state VA + phenophase": ("POST", "getObservations.json", base + [("state[0]", "VA")] + ph),
+            "G GET summarized box+phenophase": ("GET", "getSummarizedData.json", base + box + ph),
+            "H POST summarized state VA": ("POST", "getSummarizedData.json", base + [("state[0]", "VA")]),
+            "I GET obs no filters": ("GET", "getObservations.json", base),
+          }
+          for name, (method, ep, params) in tests.items():
+              q = urllib.parse.urlencode(params)
+              try:
+                  if method == "GET":
+                      req = urllib.request.Request(B + ep + "?" + q)
+                  else:
+                      req = urllib.request.Request(B + ep, data=q.encode(), headers={"Content-Type": "application/x-www-form-urlencoded"})
+                  with urllib.request.urlopen(req, timeout=60) as r:
+                      body = r.read().decode("utf-8", "replace")
+                  try:
+                      data = json.loads(body)
+                      n = len(data) if isinstance(data, list) else f"object keys {list(data)[:8]}"
+                  except ValueError:
+                      n = "not JSON"
+                  print(f"{name}: HTTP {r.status}, {len(body)} bytes, items={n}")
+                  print("   start:", body[:350].replace("\n", " "))
+              except Exception as e:
+                  print(f"{name}: ERROR {e}")
