@@ -230,3 +230,35 @@ Requirements:
 - After the merge, push `main` to `gh-pages`, so the live page shows the change.
 - Do not do this if the owner says not to.
 - Status: done. Continues for each request.
+
+### R15. Best time to visit each park
+
+Original text from the owner:
+
+> Can you find the best time to visit each parks?
+
+Requirements:
+
+- For each park and each month, calculate a visit score from 0 to 100. Use only the stored data:
+  - weather comfort (45%): the average daily high. 60–80°F is best.
+  - fewer visitors (25%): the visits of the month compared with the busiest month.
+  - little rain (15%) and little snow (15%).
+  - fall color: add 10 in the months when leaf color is usually best.
+- If a month has less than 5% of the visits of the busiest month, access is probably limited. Its score is cut to 30%.
+- The best months are a maximum of 2 windows of neighbor months, with a maximum of 3 months in each window, near the top score.
+- The park table has a "Best time" column. The sort list has "Best to visit this month".
+- The park details show the best months, the reasons, the months with limited access, the usual open dates of the seasonal road (if the park has one) and a score strip with the same months as the charts.
+- The page tells the reader that the score does not include events, wildlife seasons or road openings.
+- Status: done.
+
+### R16. Park details layout
+
+Original text from the owner:
+
+> Ok add it to the bottom of each park click like this. Additionally put Closure History as a column so that it does not overflow the opening section
+
+Requirements:
+
+- The "Best time to visit" block is at the bottom of the park details.
+- The park details have three columns: alerts, 3-day forecast and closure history. On a narrow screen, the columns go one below the other.
+- Status: done.
