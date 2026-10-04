@@ -250,7 +250,7 @@ Requirements:
 - The park table has a "Best time" column. The sort list has "Best to visit this month".
 - The park details show the best months, the reasons, the months with limited access, the usual open dates of the seasonal road (if the park has one) and a score strip with the same months as the charts.
 - The page tells the reader that the score does not include events, wildlife seasons or road openings.
-- Status: done.
+- Status: changed by R21. The page does not show the score now.
 
 ### R16. Park details layout
 
@@ -260,7 +260,7 @@ Original text from the owner:
 
 Requirements:
 
-- The "Best time to visit" block is at the bottom of the park details.
+- The "Best time to visit" block is at the bottom of the park details. (R21 removes this block.)
 - The park details have three columns: alerts, 3-day forecast and closure history. On a narrow screen, the columns go one below the other.
 - Status: done.
 
@@ -336,4 +336,25 @@ Requirements:
   - no clear fall color
 - A list shows the states at peak color, near peak and past peak on the date. A table shows the usual dates for each state.
 - The fall color text in each park's details does not change.
+- Status: done.
+
+### R21. Best time to visit: banner and filter, no score
+
+Original text from the owner:
+
+> I do not need the best time to visit score. I want it as a banner below the park's name that encourages users to visit. Also I want the Best time to visit filter, and it should have best time to visit this month, or filter selected months
+
+Requirements:
+
+- The page does not show the visit score. It removes the score strip, the score in the tooltip, the score column and the "Best time to visit" block in the park details. The page still calculates the best months as in R15.
+- Under the name of each park in the table, a banner shows the best months:
+  - If this month is one of them: "Now is a great time to visit!" and the best months.
+  - If not: "Best time to visit:" and the best months.
+  - The reasons show when the reader puts the pointer on the banner.
+- The "Best time" column and the "Best to visit this month" sort are removed.
+- A "Best time to visit" filter has three choices:
+  - Any time
+  - This month
+  - Choose months: a button for each month. The reader can select one or more months.
+- The filter keeps the parks whose best months include a selected month. It works together with the search and the other filters.
 - Status: done.
