@@ -1,0 +1,1026 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Park Conditions — All 63 U.S. National Parks</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Narrow:wght@500;600;700&family=Public+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#EEF0EA; --panel:#F8F9F5; --ink:#22313A; --muted:#5E6B66; --line:#CDD3CB;
+  --pine:#2F5D4A; --pine-ink:#F3F6F1;
+  --open:#3C7A4F; --partial:#B07A12; --closed:#B23A2E; --info:#3E6A8A;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --paper:#161D1A; --panel:#1E2724; --ink:#E4E9E4; --muted:#9AA8A1; --line:#33413B;
+  --pine:#3F7A60; --pine-ink:#F3F6F1; --open:#6DB585; --partial:#E0A93A; --closed:#E2695C; --info:#7FA9C8;
+}}
+:root[data-theme="dark"]{
+  --paper:#161D1A; --panel:#1E2724; --ink:#E4E9E4; --muted:#9AA8A1; --line:#33413B;
+  --pine:#3F7A60; --pine-ink:#F3F6F1; --open:#6DB585; --partial:#E0A93A; --closed:#E2695C; --info:#7FA9C8;
+}
+*,*::before,*::after{box-sizing:inherit}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--paper);color:var(--ink);
+  font:400 15px/1.5 "Public Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+.wrap{max-width:1180px;margin:0 auto;padding:28px 20px 60px}
+h1,h2,.pname{font-family:"Archivo Narrow","Arial Narrow",Arial,sans-serif}
+header.top{display:flex;flex-wrap:wrap;gap:18px;align-items:flex-end;justify-content:space-between;
+  border-bottom:3px solid var(--pine);padding-bottom:16px}
+h1{font-size:clamp(28px,4.4vw,44px);line-height:1.05;margin:0;font-weight:700;letter-spacing:-.01em}
+.sub{color:var(--muted);margin:6px 0 0;max-width:62ch}
+.actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+button{font:600 14px/1 "Public Sans",system-ui,sans-serif;border-radius:6px;cursor:pointer;padding:11px 16px;border:1px solid var(--line);background:var(--panel);color:var(--ink)}
+button.primary{background:var(--pine);color:var(--pine-ink);border-color:var(--pine)}
+button:disabled{opacity:.6;cursor:progress}
+button:focus-visible,input:focus-visible,summary:focus-visible{outline:3px solid var(--info);outline-offset:2px}
+.stamp{font-size:13px;color:var(--muted);min-width:14ch}
+.srcs{display:flex;gap:16px;flex-wrap:wrap;font-size:13px;color:var(--muted);margin:14px 0 4px}
+.srcs b{font-weight:600;color:var(--ink)}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;vertical-align:1px;background:var(--line)}
+.dot.ok{background:var(--open)}.dot.err{background:var(--closed)}.dot.busy{background:var(--partial)}
+.settings{margin:10px 0 0;font-size:14px}
+.settings summary{cursor:pointer;color:var(--muted)}
+.settings .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:10px}
+.settings input{font:inherit;padding:9px 10px;border:1px solid var(--line);border-radius:6px;background:var(--panel);color:var(--ink);min-width:300px;max-width:100%}
+.settings p{color:var(--muted);margin:8px 0 0;max-width:70ch}
+.settings a{color:var(--info)}
+.summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:8px;overflow:hidden;margin:20px 0}
+.summary div{background:var(--panel);padding:12px 14px}
+.summary strong{display:block;font:700 26px/1.1 "Archivo Narrow",Arial,sans-serif}
+.summary span{font-size:13px;color:var(--muted)}
+.searchbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:0 0 10px}
+.searchbar input{flex:1 1 280px;font:inherit;padding:11px 12px;border:1px solid var(--line);border-radius:6px;background:var(--panel);color:var(--ink)}
+.searchbar label{font-size:14px;color:var(--muted);display:flex;gap:6px;align-items:center}
+.searchbar select{font:inherit;padding:9px 8px;border:1px solid var(--line);border-radius:6px;background:var(--panel);color:var(--ink)}
+.searchbar .count{font-size:13px;color:var(--muted)}
+.filters{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 12px}
+.filters button{padding:8px 12px;font-weight:500}
+.filters button[aria-pressed="true"]{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:8px;background:var(--panel)}
+table{width:100%;border-collapse:collapse;min-width:900px}
+th{text-align:left;font-size:13px;font-weight:600;color:var(--muted);padding:10px 12px;border-bottom:1px solid var(--line);white-space:nowrap}
+th.num,td.num{text-align:right;font-variant-numeric:tabular-nums}
+td{padding:12px;border-bottom:1px solid var(--line);vertical-align:top}
+tr.park{cursor:pointer}
+tr.park:hover td{background:color-mix(in srgb,var(--pine) 6%,transparent)}
+.rank{font:700 22px/1 "Archivo Narrow",Arial,sans-serif;color:var(--pine);width:40px}
+.pname{font-size:19px;font-weight:600;line-height:1.15}
+.pstate{font-size:13px;color:var(--muted)}
+.chip{display:inline-block;font-size:13px;font-weight:600;padding:3px 9px;border-radius:999px;white-space:nowrap;border:1.5px solid currentColor}
+.chip.open{color:var(--open)}.chip.partial{color:var(--partial)}.chip.closed{color:var(--closed)}.chip.unk{color:var(--muted)}
+.cnt{font-variant-numeric:tabular-nums;font-weight:600}
+.cnt.zero{color:var(--muted);font-weight:400}
+.wx{white-space:nowrap}
+.wx .t{font:700 20px/1 "Archivo Narrow",Arial,sans-serif}
+.wx small{display:block;color:var(--muted);font-size:12.5px;margin-top:3px}
+.warn{color:var(--closed);font-size:12.5px;font-weight:600;display:block;margin-top:4px;white-space:normal;max-width:24ch}
+tr.detail td{background:var(--paper);padding:0}
+tr.detail[hidden]{display:none}
+.dbox{padding:16px 18px 20px 64px;display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:18px}
+.dbox h2{font-size:17px;margin:0 0 8px;font-weight:600}
+.alert{border-left:4px solid var(--line);padding:6px 0 6px 10px;margin:0 0 10px}
+.alert.k-closure{border-color:var(--closed)}.alert.k-danger{border-color:var(--closed)}.alert.k-caution{border-color:var(--partial)}.alert.k-info{border-color:var(--info)}
+.alert .at{font-weight:600}
+.alert .ad{color:var(--muted);font-size:14px;margin-top:3px}
+.alert .am{font-size:12.5px;color:var(--muted);margin-top:4px}
+.alert a{color:var(--info)}
+.none{color:var(--muted);font-size:14px}
+.fc{display:flex;gap:10px;flex-wrap:wrap}
+.fc div{border:1px solid var(--line);border-radius:6px;padding:8px 10px;min-width:96px;background:var(--panel);font-size:13px}
+.fc b{display:block;font-size:13px}
+.banner{border:1px solid var(--closed);color:var(--closed);border-radius:8px;padding:10px 14px;margin:14px 0;font-size:14px}
+.banner[hidden]{display:none}
+.hist{list-style:none;margin:0;padding:0}
+.hist li{display:grid;grid-template-columns:118px 1fr;gap:10px;padding:8px 0;border-top:1px solid var(--line)}
+.hist li:first-child{border-top:0}
+.hist .hd{font-variant-numeric:tabular-nums;font-size:13px;color:var(--muted);line-height:1.35}
+.hist .hd b{display:block;color:var(--ink);font-size:14px}
+.hist .ht{font-weight:600}
+.hist .hn{font-size:14px;color:var(--muted);margin-top:2px}
+.tag{display:inline-block;font-size:12px;font-weight:600;border-radius:4px;padding:1px 6px;margin-right:6px;vertical-align:1px;background:color-mix(in srgb,currentColor 14%,transparent)}
+.tag.full{color:var(--closed)}.tag.partial{color:var(--partial)}.tag.limited{color:var(--info)}
+.histsec{margin-top:34px}
+.histsec h2{font-size:26px;margin:0 0 4px;font-weight:700}
+.histsec>p{color:var(--muted);margin:0 0 14px;max-width:75ch}
+.histsec .tablewrap table{min-width:760px}
+.histsec td{font-size:14px}
+.dur{font-variant-numeric:tabular-nums;white-space:nowrap}
+.roadsec{margin-top:34px}
+.roadsec h2{font-size:26px;margin:0 0 4px;font-weight:700}
+.roadsec>p{color:var(--muted);margin:0 0 14px;max-width:75ch}
+.rtabs{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 14px}
+.rtabs button{padding:8px 12px;font-weight:500;text-align:left;line-height:1.25}
+.rtabs button small{display:block;font-weight:400;font-size:12px;color:var(--muted)}
+.rtabs button[aria-pressed="true"]{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.rtabs button[aria-pressed="true"] small{color:var(--paper);opacity:.8}
+.rstats{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:8px;overflow:hidden;margin:0 0 14px}
+.rstats div{background:var(--panel);padding:10px 12px}
+.rstats strong{display:block;font:700 22px/1.1 "Archivo Narrow",Arial,sans-serif}
+.rstats span{font-size:12.5px;color:var(--muted)}
+.rchart{border:1px solid var(--line);border-radius:8px;background:var(--panel);padding:10px 8px 4px;margin:0 0 14px;overflow-x:auto}
+.rchart svg{display:block;min-width:640px;width:100%;height:auto}
+.rchart .cap{font-size:12.5px;color:var(--muted);padding:0 6px 6px}
+.rabout{font-size:14px;color:var(--muted);margin:0 0 12px;max-width:80ch}
+.rabout a{color:var(--info)}
+.roadsec .tablewrap{max-height:520px;overflow:auto}
+.roadsec table{min-width:640px}
+.roadsec thead th{position:sticky;top:0;background:var(--panel)}
+.roadsec td{font-size:14px;padding:8px 12px}
+.flag{color:var(--partial);font-weight:600}
+.rintr{border:1px solid var(--line);border-radius:8px;background:var(--panel);padding:10px 14px;margin:0 0 14px}
+.rintr h3{font:600 17px/1.2 "Archivo Narrow",Arial,sans-serif;margin:0 0 6px}
+.rlinks{margin:10px 0 0;font-size:14px}
+.rlinks a{color:var(--info);cursor:pointer}
+footer{margin-top:22px;font-size:13px;color:var(--muted);max-width:90ch}
+footer a{color:var(--info)}
+@media (max-width:640px){.dbox{padding-left:18px}.settings input{min-width:0;width:100%}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <h1>Park conditions board</h1>
+      <p class="sub">This board shows road, trail and facility closures and the current weather for all 63 U.S. national parks. The list sorts the parks by 2025 recreation visits.</p>
+    </div>
+    <div class="actions">
+      <span class="stamp" id="stamp">Not loaded yet</span>
+      <button class="primary" id="refresh">Refresh data</button>
+    </div>
+  </header>
+
+  <div class="srcs" aria-live="polite">
+    <span><i class="dot" id="d-nps"></i><b>NPS alerts</b> <span id="s-nps">waiting</span></span>
+    <span><i class="dot" id="d-wx"></i><b>Weather</b> <span id="s-wx">waiting</span></span>
+    <span><i class="dot" id="d-nws"></i><b>NWS warnings</b> <span id="s-nws">waiting</span></span>
+  </div>
+
+  <details class="settings" id="settings">
+    <summary>NPS API key</summary>
+    <div class="row">
+      <input id="key" type="text" spellcheck="false" autocomplete="off" placeholder="Paste your NPS API key. If empty, the page uses DEMO_KEY." aria-label="NPS API key">
+      <button id="savekey">Save key</button>
+    </div>
+    <p>If you do not give a key, the page uses the shared <code>DEMO_KEY</code>. The <code>DEMO_KEY</code> allows approximately 30 requests per hour from each IP address. You can get a free personal key in approximately one minute at <a href="https://www.nps.gov/subjects/developer/get-started.htm" target="_blank" rel="noopener">nps.gov/subjects/developer</a>. The page keeps your key only in this browser.</p>
+  </details>
+
+  <div class="banner" id="banner" hidden></div>
+
+  <section class="summary" id="summary" aria-label="Totals">
+    <div><strong id="t-open">–</strong><span>Parks fully open</span></div>
+    <div><strong id="t-partial">–</strong><span>Parks with closures</span></div>
+    <div><strong id="t-closed">–</strong><span>Parks closed</span></div>
+    <div><strong id="t-road">–</strong><span>Road closures and alerts</span></div>
+    <div><strong id="t-trail">–</strong><span>Trail closures and alerts</span></div>
+    <div><strong id="t-wx">–</strong><span>Active weather warnings</span></div>
+  </section>
+
+  <div class="searchbar">
+    <input id="search" type="search" placeholder="Search parks by name, state or code (e.g. Zion, UT, AK)" aria-label="Search parks" autocomplete="off">
+    <label>Sort <select id="sort" aria-label="Sort parks">
+      <option value="visits">Most visited (2025)</option>
+      <option value="name">Name A–Z</option>
+      <option value="closures">Most closures now</option>
+      <option value="temp">Warmest now</option>
+    </select></label>
+    <span class="count" id="count"></span>
+  </div>
+  <div class="filters" role="group" aria-label="Filter parks">
+    <button data-f="all" aria-pressed="true">All parks</button>
+    <button data-f="closures" aria-pressed="false">Has closures</button>
+    <button data-f="roads" aria-pressed="false">Road issues</button>
+    <button data-f="trails" aria-pressed="false">Trail issues</button>
+    <button data-f="wx" aria-pressed="false">Weather warnings</button>
+  </div>
+
+  <div class="tablewrap">
+    <table>
+      <thead><tr>
+        <th>#</th><th>Park</th><th class="num">2025 visits</th><th>Status</th>
+        <th class="num">Roads</th><th class="num">Trails</th><th class="num">Facilities</th><th class="num">Other</th>
+        <th class="num">Past closures</th><th>Weather now</th><th>Today</th>
+      </tr></thead>
+      <tbody id="rows"></tbody>
+    </table>
+  </div>
+
+  <section class="roadsec" id="roads" aria-labelledby="rh">
+    <h2 id="rh">Seasonal road history</h2>
+    <p>This section shows the opening and closing dates of the large park roads that snow closes each winter. It shows only the last 10 years, with the newest year first. Each bar is one season. The bottom of the bar is the day the road opened. The top of the bar is the day the road closed for winter.</p>
+    <div class="rtabs" role="group" aria-label="Choose a road" id="rtabs"></div>
+    <div id="rbody"></div>
+  </section>
+
+  <section class="histsec" aria-labelledby="hh">
+    <h2 id="hh">Closure history</h2>
+    <p>This table shows the major full and partial closures from the last 5 years, with the newest first. It also shows shutdowns of all parks. The data comes from NPS news releases and news reports. The list is not complete. Refresh does not change it.</p>
+    <div class="filters" role="group" aria-label="Filter history">
+      <button data-h="all" aria-pressed="true">All events</button>
+      <button data-h="full" aria-pressed="false">Full park closures</button>
+      <button data-h="Wildfire" aria-pressed="false">Wildfire</button>
+      <button data-h="Flood" aria-pressed="false">Flood and storms</button>
+            <button data-h="Shutdown" aria-pressed="false">Shutdowns</button>
+    </div>
+    <div class="tablewrap"><table>
+      <thead><tr><th>Closed</th><th>Reopened</th><th class="num">Days</th><th>Park</th><th>Event</th><th>Scope</th></tr></thead>
+      <tbody id="hrows"></tbody>
+    </table></div>
+  </section>
+
+  <footer>
+    Click a park row to see all its alerts, its closure history and a 3-day forecast.
+    The seasonal road dates come from the NPS Yosemite and Glacier datasets and from Rocky Mountain press releases.
+    The park status comes from official NPS alerts (developer.nps.gov).
+    The page sorts each alert into a type by keywords. Read the alert text before you drive.
+    The weather comes from Open-Meteo. The warnings come from the National Weather Service (api.weather.gov).
+    The visits are recreation visits in calendar year 2025, from NPS Visitor Use Statistics. NPS gives Sequoia and Kings Canyon as separate numbers.
+    Temperatures are in °F. Wind speeds are in mph.
+    <br>Source code: <a href="https://github.com/minhlong94/National-Park-Status" target="_blank" rel="noopener">github.com/minhlong94/National-Park-Status</a>
+  </footer>
+</div>
+
+<script>
+"use strict";
+const PARKS = [
+  {r:1, code:"grsm", name:"Great Smoky Mountains", st:"TN / NC", v:11527939, lat:35.6118, lon:-83.4895},
+  {r:2, code:"zion", name:"Zion", st:"UT", v:4984525, lat:37.2982, lon:-113.0263},
+  {r:3, code:"yell", name:"Yellowstone", st:"WY / MT / ID", v:4762988, lat:44.4280, lon:-110.5885},
+  {r:4, code:"grca", name:"Grand Canyon", st:"AZ", v:4430653, lat:36.0544, lon:-112.1401},
+  {r:5, code:"yose", name:"Yosemite", st:"CA", v:4278413, lat:37.7456, lon:-119.5936},
+  {r:6, code:"romo", name:"Rocky Mountain", st:"CO", v:4171431, lat:40.3428, lon:-105.6836},
+  {r:7, code:"acad", name:"Acadia", st:"ME", v:4079318, lat:44.3386, lon:-68.2733},
+  {r:8, code:"grte", name:"Grand Teton", st:"WY", v:3800648, lat:43.7904, lon:-110.6818},
+  {r:9, code:"olym", name:"Olympic", st:"WA", v:3584187, lat:47.8021, lon:-123.6044},
+  {r:10, code:"glac", name:"Glacier", st:"MT", v:3136557, lat:48.7596, lon:-113.7870},
+  {r:11, code:"cuva", name:"Cuyahoga Valley", st:"OH", v:3025325, lat:41.2808, lon:-81.5678},
+  {r:12, code:"jotr", name:"Joshua Tree", st:"CA", v:2932644, lat:33.8734, lon:-115.9010},
+  {r:13, code:"indu", name:"Indiana Dunes", st:"IN", v:2629497, lat:41.6533, lon:-87.0524},
+  {r:14, code:"hosp", name:"Hot Springs", st:"AR", v:2494611, lat:34.5217, lon:-93.0424},
+  {r:15, code:"jeff", name:"Gateway Arch", st:"MO", v:2209028, lat:38.6247, lon:-90.1848},
+  {r:16, code:"brca", name:"Bryce Canyon", st:"UT", v:1967367, lat:37.5930, lon:-112.1871},
+  {r:17, code:"neri", name:"New River Gorge", st:"WV", v:1958440, lat:38.0700, lon:-81.0750},
+  {r:18, code:"havo", name:"Hawaiʻi Volcanoes", st:"HI", v:1877854, lat:19.4194, lon:-155.2885},
+  {r:19, code:"shen", name:"Shenandoah", st:"VA", v:1682152, lat:38.5300, lon:-78.4350},
+  {r:20, code:"mora", name:"Mount Rainier", st:"WA", v:1635342, lat:46.7860, lon:-121.7350},
+  {r:21, code:"arch", name:"Arches", st:"UT", v:1511740, lat:38.7331, lon:-109.5925},
+  {r:22, code:"care", name:"Capitol Reef", st:"UT", v:1388476, lat:38.2917, lon:-111.2615},
+  {r:23, code:"seki", name:"Sequoia", st:"CA", v:1378337, lat:36.5647, lon:-118.7735, note:"NPS manages Sequoia and Kings Canyon together. The two parks share NPS alerts."},
+  {r:24, code:"deva", name:"Death Valley", st:"CA / NV", v:1320134, lat:36.4617, lon:-116.8667},
+  {r:25, code:"redw", name:"Redwood", st:"CA", v:1202480, lat:41.2132, lon:-124.0046},
+  {r:26, code:"badl", name:"Badlands", st:"SD", v:1139361, lat:43.7500, lon:-101.9400},
+  {r:27, code:"hale", name:"Haleakalā", st:"HI", v:853711, lat:20.7097, lon:-156.2533},
+  {r:28, code:"sagu", name:"Saguaro", st:"AZ", v:847749, lat:32.2500, lon:-110.9500},
+  {r:29, code:"cany", name:"Canyonlands", st:"UT", v:796057, lat:38.4597, lon:-109.8210},
+  {r:30, code:"seki", id:"kica", name:"Kings Canyon", st:"CA", v:779791, lat:36.7391, lon:-118.9631, note:"NPS manages Sequoia and Kings Canyon together. The two parks share NPS alerts."},
+  {r:31, code:"ever", name:"Everglades", st:"FL", v:778198, lat:25.3950, lon:-80.5830},
+  {r:32, code:"glba", name:"Glacier Bay", st:"AK", v:740044, lat:58.4550, lon:-135.8840},
+  {r:33, code:"thro", name:"Theodore Roosevelt", st:"ND", v:729893, lat:46.9170, lon:-103.5300},
+  {r:34, code:"maca", name:"Mammoth Cave", st:"KY", v:660734, lat:37.1870, lon:-86.1000},
+  {r:35, code:"whsa", name:"White Sands", st:"NM", v:659742, lat:32.7790, lon:-106.1720},
+  {r:36, code:"crla", name:"Crater Lake", st:"OR", v:632242, lat:42.9446, lon:-122.1090},
+  {r:37, code:"wica", name:"Wind Cave", st:"SD", v:606258, lat:43.5560, lon:-103.4780},
+  {r:38, code:"bibe", name:"Big Bend", st:"TX", v:568104, lat:29.3275, lon:-103.2063},
+  {r:39, code:"dena", name:"Denali", st:"AK", v:543300, lat:63.7300, lon:-148.9150},
+  {r:40, code:"lavo", name:"Lassen Volcanic", st:"CA", v:504777, lat:40.4977, lon:-121.4207},
+  {r:41, code:"bisc", name:"Biscayne", st:"FL", v:486567, lat:25.4650, lon:-80.3350},
+  {r:42, code:"viis", name:"Virgin Islands", st:"USVI", v:471074, lat:18.3420, lon:-64.7450},
+  {r:43, code:"meve", name:"Mesa Verde", st:"CO", v:463130, lat:37.1838, lon:-108.4887},
+  {r:44, code:"grsa", name:"Great Sand Dunes", st:"CO", v:432498, lat:37.7330, lon:-105.5120},
+  {r:45, code:"kefj", name:"Kenai Fjords", st:"AK", v:425369, lat:60.1800, lon:-149.6300},
+  {r:46, code:"cave", name:"Carlsbad Caverns", st:"NM", v:410778, lat:32.1750, lon:-104.4440},
+  {r:47, code:"pinn", name:"Pinnacles", st:"CA", v:343208, lat:36.4900, lon:-121.1800},
+  {r:48, code:"pefo", name:"Petrified Forest", st:"AZ", v:315951, lat:34.9100, lon:-109.8070},
+  {r:49, code:"cong", name:"Congaree", st:"SC", v:287833, lat:33.8300, lon:-80.8230},
+  {r:50, code:"blca", name:"Black Canyon of the Gunnison", st:"CO", v:250086, lat:38.5750, lon:-107.7240},
+  {r:51, code:"chis", name:"Channel Islands", st:"CA", v:227186, lat:34.0070, lon:-119.7785},
+  {r:52, code:"gumo", name:"Guadalupe Mountains", st:"TX", v:206423, lat:31.8960, lon:-104.8300},
+  {r:53, code:"voya", name:"Voyageurs", st:"MN", v:206326, lat:48.5970, lon:-93.1690},
+  {r:54, code:"grba", name:"Great Basin", st:"NV", v:161210, lat:39.0050, lon:-114.2200},
+  {r:55, code:"wrst", name:"Wrangell–St. Elias", st:"AK", v:108840, lat:61.4330, lon:-142.9220},
+  {r:56, code:"drto", name:"Dry Tortugas", st:"FL", v:89355, lat:24.6285, lon:-82.8732},
+  {r:57, code:"noca", name:"North Cascades", st:"WA", v:46925, lat:48.6700, lon:-121.2500},
+  {r:58, code:"npsa", name:"American Samoa", st:"AS", v:43258, lat:-14.2580, lon:-170.6830},
+  {r:59, code:"katm", name:"Katmai", st:"AK", v:34479, lat:58.5540, lon:-155.7780},
+  {r:60, code:"isro", name:"Isle Royale", st:"MI", v:29091, lat:48.0000, lon:-88.9000},
+  {r:61, code:"lacl", name:"Lake Clark", st:"AK", v:19778, lat:60.2000, lon:-154.3100},
+  {r:62, code:"gaar", name:"Gates of the Arctic", st:"AK", v:14923, lat:67.7800, lon:-153.3000},
+  {r:63, code:"kova", name:"Kobuk Valley", st:"AK", v:7786, lat:67.3500, lon:-159.1200}
+];
+PARKS.forEach(p => { if (!p.id) p.id = p.code; });
+const NP = PARKS.length;
+
+
+// Closure history: major closures from the last 5 years, researched Oct 2026. Not exhaustive.
+// end = reopening date (for shutdowns, the date the shutdown ended; days = official length).
+const SYSTEM = [
+  {start:"2025-10-01", end:"2025-11-12", days:43, cause:"Shutdown", scope:"limited", title:"43-day shutdown of the federal government",
+   note:"This was the longest shutdown in U.S. history. Parks stayed open, and visitors could use roads and trails. But visitor centers closed and staff went on unpaid leave (furlough). Some states paid to keep services open."}
+];
+const HISTORY = {
+  grsm:[
+    {start:"2024-09-26", end:"2024-10-02", cause:"Flood", scope:"partial", title:"Hurricane Helene: Newfound Gap Road",
+     note:"US 441 and many other roads closed. The flood water at Cataloochee was 9.5 ft deep. Newfound Gap Road and Kuwohi Road reopened on Oct 2."},
+    {start:"2024-09-27", end:"2025-04-04", cause:"Flood", scope:"partial", title:"Hurricane Helene: Cataloochee Valley",
+     note:"This area of the park had the most damage. Parts of it reopened on Apr 4, 2025. Balsam Mountain and Big Creek also closed for a long time."}
+  ],
+  yell:[
+    {start:"2022-06-13", end:"2022-06-22", cause:"Flood", scope:"full", title:"500-year flood",
+     note:"The park evacuated 10,000 visitors. This was the first full closure in 34 years. The south loop reopened on Jun 22. Cars entered on alternate days, by license-plate number."},
+    {start:"2022-06-13", end:"2022-07-02", cause:"Flood", scope:"partial", title:"500-year flood: north loop",
+     note:"The north loop reopened on Jul 2. The flood destroyed sections of the North and Northeast entrance roads. These roads stayed closed to normal traffic."}
+  ],
+  grca:[
+    {start:"2025-07-11", end:"2026-05-15", cause:"Wildfire", scope:"partial", title:"Dragon Bravo Fire: North Rim", dateText:"Jul 2025",
+     note:"Lightning started the fire on Jul 4. The fire burned 145,504 acres. It destroyed the historic Grand Canyon Lodge and the visitor center. The North Rim opened with limits from Oct 1 to Nov 30, 2025. It opened for summer on May 15, 2026, with limited services and no lodge."}
+  ],
+  yose:[
+    {start:"2023-02-25", end:"2023-03-18", cause:"Flood", scope:"full", title:"Record snowstorms",
+     note:"Up to 15 ft of snow fell. There were 22 rockslides or debris flows on park roads. The park reopened with limited access, in daylight only."}
+  ],
+  deva:[
+    {start:"2023-08-20", end:"2023-10-15", cause:"Flood", scope:"full", title:"Hurricane Hilary flash floods",
+     note:"In one day, more rain fell than in a usual year. The rain damaged every road in the park. This was the longest closure in park history. On Oct 15, the park opened partially, only from the west (Lone Pine) and from Death Valley Junction."},
+    {start:"2022-08-05", end:null, cause:"Flood", scope:"partial", title:"Record flash flood", dateText:"Aug 5, 2022",
+     note:"1.70 in of rain fell at Furnace Creek. At that time, this was the record for one day. The flood closed roads in all areas of the park and trapped visitors. The roads reopened in phases."}
+  ],
+  jotr:[
+    {start:"2023-08-18", end:"2023-08-22", cause:"Flood", scope:"full", title:"Tropical Storm Hilary",
+     note:"The park closed on Aug 18 as a precaution. It reopened for day use on Aug 22. Paved roads and visitor centers were open. Dirt roads and campgrounds stayed closed."}
+  ],
+  ever:[
+    {start:"2022-09-27", end:"2022-10-03", cause:"Flood", scope:"partial", title:"Hurricane Ian", dateText:"Late Sep 2022",
+     note:"A limited area reopened on Sep 30, from the Homestead entrance to Paurotis Pond. Main Park Road and Flamingo reopened on Oct 3. The Gulf Coast entrance and Flamingo campground stayed closed longer."}
+  ],
+  drto:[
+    {start:"2024-10-08", end:null, cause:"Flood", scope:"full", title:"Hurricane Milton", dateText:"Oct 8, 2024",
+     note:"The park closed before the storm. Published sources do not confirm the reopening date."},
+    {start:"2022-09-27", end:"2022-10-02", cause:"Flood", scope:"full", title:"Hurricane Ian (direct hit)", dateText:"Late Sep 2022",
+     note:"Garden Key, Loggerhead Key, the docks and the campground closed while staff examined the damage. Part of the park reopened on Oct 2."}
+  ],
+  bisc:[
+    {start:"2024-10-08", end:null, cause:"Flood", scope:"full", title:"Hurricane Milton", dateText:"Oct 8, 2024",
+     note:"The park closed before the storm. Published sources do not confirm the reopening date."},
+    {start:"2022-09-27", end:"2022-09-30", cause:"Flood", scope:"full", title:"Hurricane Ian", dateText:"Late Sep 2022",
+     note:"The park reopened for normal operation on Sep 30."}
+  ]
+};
+// Only show events that started or were still in effect within the last 5 years.
+const HIST_CUTOFF = (() => { const d = new Date(); d.setFullYear(d.getFullYear()-5); return d.toISOString().slice(0,10); })();
+const inWindow = e => (e.end || e.start) >= HIST_CUTOFF || e.start >= HIST_CUTOFF;
+Object.keys(HISTORY).forEach(k => HISTORY[k] = HISTORY[k].filter(inWindow));
+
+// Seasonal road opening/closing dates. Sources: NPS Yosemite seasonal dataset (updated Jan 16, 2026),
+// NPS Glacier "Logan Pass Opening and Closing Dates" (updated Apr 21, 2023), NPS/RMNP press releases, 2023–2026 NPS news.
+const ROADS = [
+ {id:"tioga", park:"yose", name:"Tioga Road", sub:"Yosemite · Hwy 120 over Tioga Pass (9,943 ft)",
+  src:"https://www.nps.gov/yose/planyourvisit/seasonal.htm", extra:"Snowpack",
+  about:"Each winter, the road closes from Tuolumne Grove to the Tioga Pass entrance. Snow removal starts at approximately April 15. It usually takes one to two months. Snowpack is the water content of the snow on April 1, as a percentage of the average (Tuolumne drainage).",
+  rows:`2026|May 15||
+2025|May 26|Nov 12|72%
+2024|Jun 10|Nov 11|99%
+2023|Jul 22|Nov 15|244%|Latest opening on record
+2022|May 27|Oct 31|41%
+2021|May 27|Oct 21|63%
+2020|Jun 15|Nov 05|46%|The COVID-19 park closure made the opening late
+2019|Jul 01|Nov 19|176%
+2018|May 21|Nov 20|67%
+2017|Jun 29|Nov 14|177%
+2016|May 18|Nov 16|89%
+2015|May 04|Nov 01|7%
+2014|May 02|Nov 13|33%
+2013|May 11|Nov 18|52%
+2012|May 07|Nov 08|43%
+2011|Jun 18|Dec 31|178%|Reopened Dec 16, 2011–Jan 17, 2012
+2010|Jun 05|Jan 17|107%|Closed Jan 17, 2011
+2009|May 19|Nov 12|92%
+2008|May 21|Oct 30|99%
+2007|May 11|Dec 06|46%
+2006|Jun 17|Nov 27|129%
+2005|Jun 24|Nov 25|163%
+2004|May 14|Oct 17|83%
+2003|May 31|Oct 31|65%
+2002|May 22|Nov 05|95%
+2001|May 12|Nov 11|67%
+2000|May 18|Nov 09|97%
+1999|May 28|Nov 23|110%|Reopened Dec 23, 1999–Jan 1, 2000
+1998|Jul 01|Nov 12|156%
+1997|Jun 13|Nov 12|105%
+1996|May 13|Nov 05|111%
+1995|Jun 30|Dec 11|178%
+1994|May 25|Nov 10|51%
+1993|Jun 03|Nov 24|159%
+1992|May 15|Nov 10|58%
+1991|May 26|Nov 14|79%
+1990|May 17|Nov 19|45%
+1989|May 12|Nov 24|83%
+1988|Apr 29|Nov 14|31%
+1987|May 02|Nov 13|51%
+1986|May 24|Nov 29|137%
+1985|May 08|Nov 12|97%
+1984|May 19|Nov 08|85%
+1983|Jun 29|Nov 11|224%
+1982|May 28|Nov 15|131%
+1981|May 15|Nov 12|77%
+1980|Jun 06|Dec 02|144%
+1979|May 18||
+1978|Jun 03||
+1977|Apr 08||
+1976|Apr 10||
+1975|May 29||
+1974|May 17||
+1973|May 18||
+1972|Apr 20||
+1971|May 14||
+1970|May 16||
+1969|Jun 07||
+1968|May 10||
+1967|Jun 17||
+1966|May 28||
+1965|May 29||
+1964|May 15||
+1963|May 30||
+1962|May 23||
+1961|Apr 21||
+1960|May 13||
+1958|Jun 22||
+1957|May 25||`},
+ {id:"gpr", park:"yose", name:"Glacier Point Road", sub:"Yosemite · beyond Badger Pass",
+  src:"https://www.nps.gov/yose/planyourvisit/seasonal.htm",
+  about:"In winter, the first 5 miles stay open to Badger Pass Ski Area. Snow closes the road to Glacier Point, usually from November to late May.",
+  rows:`2026|May 09||
+2025|May 10|Nov 12|
+2024|May 14|Nov 11|
+2023|Jul 15|Nov 14||Opened late because of construction and record snow
+2022|Did not open|Did not open||Closed all year for road repair
+2021|Apr 30|Dec 07|
+2020|Jun 11|Nov 05|
+2019|May 10|Nov 25|
+2018|Apr 28|Nov 20|
+2017|May 11|Nov 14|
+2016|Apr 19|Nov 16|
+2015|Mar 28|Nov 02|
+2014|Apr 14|Nov 28|
+2013|May 03|Nov 18|
+2012|Apr 20|Nov 08|
+2011|May 27|Nov 19|
+2010|May 29|Nov 07|
+2009|May 05|Nov 12|
+2008|May 02|Dec 12|
+2007|May 04|Dec 06|
+2006|May 25|Nov 27|
+2005|May 25||
+2004|May 14||
+2003|May 31|Oct 31|
+2002|May 17|Nov 05|
+2001|May 15||
+2000|May 15|Nov 09|
+1999|May 28|Nov 23|
+1998|Jul 01|Nov 06|
+1997|May 22|Nov 12|
+1996|May 24|Nov 05|
+1995|Jul 01|Dec 11|`},
+ {id:"gtsr", park:"glac", name:"Going-to-the-Sun Road", sub:"Glacier · over Logan Pass (6,646 ft)",
+  src:"https://www.nps.gov/glac/learn/news/logan-pass-opening-and-closing-dates.htm",
+  about:"The dates are for vehicle access over Logan Pass. The lower sections stay open all year. Since 1992, the pass closes on the third Monday of October if the weather permits. NPS did not publish closing dates after 2022. During the season, weather can close the alpine section for some days. The list below the chart shows the recent closures.",
+  rows:`2026|Jun 22||
+2025|Jun 16||
+2024|Jun 22||
+2023|Jun 13||
+2022|Jul 13|Oct 16||Same date as the latest opening on record. Many avalanches this year. The west side closed on Oct 1 for repair work
+2021|Jun 25|Oct 13|
+2020|Jul 13|Oct 09||COVID-19: Only the section from West Entrance to Rising Sun opened. The east side stayed closed all season
+2019|Jun 22|Sep 25|
+2018|Jun 22|Sep 29|
+2017|Jun 28|Sep 03||The Sprague Fire closed the west side. The east side to Logan Pass stayed open until Oct 9
+2016|Jun 16|Oct 10|
+2015|Jun 19|Oct 05||West side to Logan Pass Jun 10; east-side rehab closure
+2014|Jul 02|Sep 22||East-side rehab closure; west side to Logan Pass through Oct 20
+2013|Jun 21|Sep 23||Closed by government shutdown
+2012|Jun 19|Sep 16||West-side rehab closure; east side to Logan Pass through Oct 15
+2011|Jul 13|Sep 17||Exceptional snowpack; west-side rehab closure
+2010|Jun 24|Oct 18|
+2009|Jun 26|Oct 19|
+2008|Jul 02|Oct 20|
+2007|Jul 01|Sep 16||Delayed by Nov 2006 storm damage
+2006|Jun 23|Oct 23||Washouts from Jun 16 flooding
+2005|May 22|Oct 31|
+2004|May 30|Oct 18|
+2003|May 30|Oct 28|
+2002|Jun 28|Oct 28|
+2001|Jun 07|Oct 22|
+2000|May 27|Oct 16|
+1999|Jun 16|Oct 15|
+1998|May 29|Oct 19|
+1997|Jun 18|Oct 21|
+1996|Jun 21|Oct 14|
+1995|Jun 23|Oct 16||Opened Jun 21, closed by rockslide Jun 23, reopened Jun 26
+1994|Jun 02|Oct 17|
+1993|Jun 04|Oct 18|
+1992|May 23|Oct 19|
+1991|Jun 23|Oct 24||Avalanche damage
+1990|Jun 18|Oct 04|
+1989|Jun 09|Nov 03|
+1988|May 25|Nov 04|
+1987|May 16|Nov 16||Earliest opening on record
+1986|May 31|Nov 06|
+1985|Jun 01|Oct 15|
+1984|Jun 14|Oct 17|
+1983|Jun 05|Nov 06|
+1982|Jun 18|Oct 29|
+1981|Jun 05|Nov 12|
+1980|May 24|Nov 03||Closed next day; reopened Jun 6
+1979|Jun 08|Oct 22|
+1978|Jun 13|Oct 30|
+1977|May 27|Oct 26|
+1976|May 30|Oct 26|
+1975|Jun 17|Oct 22|
+1974|Jun 19|Nov 08|
+1973|Jun 01|Oct 29|
+1972|Jun 08|Oct 24|
+1971|Jun 09|Oct 19|
+1970|Jun 10|Oct 13|
+1969|May 30|Oct 07|
+1968|Jun 07|Oct 11|
+1967|Jun 12|Oct 22|
+1966|May 28|Oct 21|
+1965|Jun 06|Nov 12|
+1964|Jun 30|Oct 28||Opened Jun 8–9, then flooding closed park; reopened Jun 30
+1963|May 30|Oct 24|
+1962|Jun 01|Nov 05|
+1961|Jun 07|Oct 21|
+1960|Jun 07|Oct 28|
+1959|Jun 12|Oct 22|
+1958|May 23|Nov 03|
+1957|May 27|Oct 18|
+1956|Jun 01|Oct 21|
+1955|Jun 15|Oct 22|
+1954|Jun 15|Nov 10|
+1953|Jun 24|Oct 30|
+1952|May 30|Nov 21|
+1951|Jun 09||
+1950|Jun 15||
+1949|May 30||
+1948|Jun 11||
+1947|Jun 15||
+1946|Jun 11||
+1945|Jun 15||
+1944|Jun 06||
+1943|Jul 10|||Reduced WWII staffing; road left to melt out
+1942|Jun 14||
+1941|May 28||
+1940|May 28||
+1939|May 27||
+1938|Jun 11||
+1937|Jun 12||
+1936|Jun 11||
+1935|Jun 13||
+1934|Jun 01||
+1933|Jul 15|||Road dedicated and opened`},
+ {id:"trr", park:"romo", name:"Trail Ridge Road", sub:"Rocky Mountain · highest paved through road (12,183 ft)",
+  src:"https://www.nps.gov/romo/planyourvisit/trail-ridge-road.htm",
+  about:"The closed section is between Many Parks Curve and the Colorado River Trailhead. The road usually opens at approximately Memorial Day. It usually closes in mid- to late October. NPS does not publish one table of dates. This list shows only the years that park press releases confirm.",
+  rows:`2025|May 30|Nov 14|
+2024|May 31|Oct 25|
+2023|May 26||
+2016|May 28||
+2015|May 29|Oct 29|
+2014|May 23|Nov 04|
+2012|May 14|||Third-earliest opening since 1932
+2011|Jun 06|||Most late-season snow in 30 years
+2010|May 28|Oct 29||Never reopened after Oct 22
+2009|May 21||
+2008|May 23|Nov 06|
+2002|May 07|||Earliest opening on record
+1963|May 11||
+1943|Jun 26|||Latest opening on record`}
+];
+
+
+// Brief mid-season closures of the alpine section (after the road had opened for the year).
+const INTERRUPTS = {
+  gtsr: {
+    2026: [
+      {from:"Sep 06", to:"Sep 09", what:"Avalanche to Jackson Glacier Overlook", why:"Heavy rain, flood watch and rockfall risk",
+       detail:"NPS closed the road at 5 p.m. on Sep 6 as a precaution. NPS reopened it at approximately 2 p.m. on Sep 9. Some news reports gave earlier reopening dates of Sep 7 or Sep 8."},
+      {from:"Sep 14", to:null, what:"Avalanche to Jackson Glacier Overlook", why:"Snow at Logan Pass and freezing temperatures",
+       detail:"During the night, the snow level went down to approximately 6,500 ft. Published sources do not confirm the reopening date."}
+    ],
+    2025: [
+      {from:"Jun 20", to:"Jun 23", what:"Logan Pass", why:"Approximately 10 in of snow at Logan Pass",
+       detail:"The road closed late on Jun 20, less than one week after it opened for the season. The full road reopened at approximately 10:30 a.m. on Jun 23."}
+    ]
+  }
+};
+
+const CAUSE_GROUP = {Flood:"Flood", Eruption:"Flood"};
+const SYSTEM_W = SYSTEM.filter(inWindow);
+
+const WMO = {0:"Clear",1:"Mostly clear",2:"Partly cloudy",3:"Overcast",45:"Fog",48:"Freezing fog",
+  51:"Light drizzle",53:"Drizzle",55:"Heavy drizzle",56:"Freezing drizzle",57:"Freezing drizzle",
+  61:"Light rain",63:"Rain",65:"Heavy rain",66:"Freezing rain",67:"Freezing rain",
+  71:"Light snow",73:"Snow",75:"Heavy snow",77:"Snow grains",80:"Rain showers",81:"Rain showers",82:"Violent showers",
+  85:"Snow showers",86:"Heavy snow showers",95:"Thunderstorm",96:"Thunderstorm, hail",99:"Thunderstorm, hail"};
+
+const RX = {
+  road:/\b(road|roads|highway|hwy|drive|parkway|route|rte|pass|bridge|traffic|lane|vehicle|vehicles|parking|entrance|tunnel|shuttle|chains?|scenic drive|pull-?out|construction)\b/i,
+  trail:/\b(trail|trails|trailhead|hike|hiking|path|summit|backcountry|loop|falls|overlook|boardwalk|climbing|route to)\b/i,
+  facility:/\b(campground|campgrounds|camping|visitor center|lodge|restroom|restrooms|picnic|store|museum|facility|facilities|water|building|amphitheater|cafe|restaurant|tram|elevator|tickets?)\b/i,
+  closed:/\b(closed|closure|closures|close|closing|shut)\b/i,
+  parkClosed:/\b(park is (temporarily )?closed|entire park (is )?closed|all (park )?areas (are )?closed|park closed to all)\b/i
+};
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const fmtInt = n => n.toLocaleString("en-US");
+const state = { alerts:{}, wx:{}, nws:{}, filter:"all", sort:"visits", q:"", open:new Set(), loaded:false };
+
+function getKey(){ try{ return localStorage.getItem("npsKey") || "DEMO_KEY"; }catch(e){ return "DEMO_KEY"; } }
+function setKey(k){ try{ k ? localStorage.setItem("npsKey", k) : localStorage.removeItem("npsKey"); }catch(e){} }
+
+function setSrc(which, cls, text){ $("d-"+which).className = "dot " + cls; $("s-"+which).textContent = text; }
+
+function classify(a){
+  const text = (a.title || "") + " " + (a.description || "");
+  const isClosure = a.category === "Park Closure" || RX.closed.test(a.title || "");
+  let type = "other";
+  if (RX.road.test(text)) type = "road";
+  else if (RX.trail.test(text)) type = "trail";
+  else if (RX.facility.test(text)) type = "facility";
+  // Title wins when it is explicit
+  if (RX.trail.test(a.title||"") && !RX.road.test(a.title||"")) type = "trail";
+  let kind = "info";
+  if (isClosure) kind = "closure";
+  else if (a.category === "Danger") kind = "danger";
+  else if (a.category === "Caution") kind = "caution";
+  const fullClose = a.category === "Park Closure" && RX.parkClosed.test(text);
+  return { type, kind, isClosure, fullClose };
+}
+
+async function loadNPS(){
+  setSrc("nps","busy","loading…");
+  const codes = [...new Set(PARKS.map(p=>p.code))].join(",");
+  const all = []; let start = 0, total = Infinity;
+  while (start < total && start < 5000){
+    const url = `https://developer.nps.gov/api/v1/alerts?parkCode=${codes}&limit=500&start=${start}&api_key=${encodeURIComponent(getKey())}`;
+    const res = await fetch(url, {cache:"no-store"});
+    if (res.status === 429) throw new Error("You used all the requests that the key allows. Add your own free NPS API key below.");
+    if (res.status === 401 || res.status === 403) throw new Error("NPS rejected the API key. Check the key below.");
+    if (!res.ok) throw new Error("NPS API returned HTTP " + res.status);
+    const page = await res.json();
+    const got = page.data || [];
+    all.push(...got);
+    total = +page.total || all.length;
+    if (!got.length) break;
+    start += got.length;
+  }
+  const data = {data: all};
+  const by = {};
+  PARKS.forEach(p => by[p.code] = []);
+  (data.data || []).forEach(a => {
+    const c = (a.parkCode || "").toLowerCase();
+    if (by[c]) by[c].push(Object.assign({}, a, classify(a)));
+  });
+  Object.values(by).forEach(list => list.sort((x,y) => (y.isClosure - x.isClosure) || String(y.lastIndexedDate||"").localeCompare(String(x.lastIndexedDate||""))));
+  state.alerts = by;
+  setSrc("nps","ok", `${(data.data||[]).length} alerts`);
+}
+
+async function loadWeather(){
+  setSrc("wx","busy","loading…");
+  const lat = PARKS.map(p=>p.lat).join(","), lon = PARKS.map(p=>p.lon).join(",");
+  const url = "https://api.open-meteo.com/v1/forecast?latitude="+lat+"&longitude="+lon+
+    "&current=temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,wind_speed_10m,wind_gusts_10m,precipitation"+
+    "&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,precipitation_sum,snowfall_sum"+
+    "&temperature_unit=fahrenheit&wind_speed_unit=mph&precipitation_unit=inch&timezone=auto&forecast_days=3";
+  const res = await fetch(url, {cache:"no-store"});
+  if (!res.ok) throw new Error("Weather API returned HTTP " + res.status);
+  let data = await res.json();
+  if (!Array.isArray(data)) data = [data];
+  const wx = {};
+  PARKS.forEach((p,i) => wx[p.id] = data[i]);
+  state.wx = wx;
+  setSrc("wx","ok",`${NP} parks`);
+}
+
+async function loadNWS(){
+  setSrc("nws","busy","loading…");
+  const out = {}; let ok = 0, i = 0;
+  async function worker(){
+    while (i < PARKS.length){
+      const p = PARKS[i++];
+      try{
+        const res = await fetch(`https://api.weather.gov/alerts/active?point=${p.lat},${p.lon}`, {headers:{Accept:"application/geo+json"}, cache:"no-store"});
+        if (!res.ok) throw new Error(res.status);
+        const j = await res.json();
+        out[p.id] = (j.features||[]).map(f => ({event:f.properties.event, headline:f.properties.headline, severity:f.properties.severity, ends:f.properties.ends || f.properties.expires}));
+        ok++;
+      }catch(e){ out[p.id] = null; }
+    }
+  }
+  await Promise.all(Array.from({length:8}, worker));
+  state.nws = out;
+  if (ok === 0) throw new Error("NWS unreachable");
+  setSrc("nws", ok === NP ? "ok" : "err", ok === NP ? `${NP} parks` : `${ok} of ${NP} parks`);
+}
+
+async function refresh(){
+  const btn = $("refresh");
+  btn.disabled = true; btn.textContent = "Refreshing…";
+  const errs = [];
+  const results = await Promise.allSettled([loadNPS(), loadWeather(), loadNWS()]);
+  ["nps","wx","nws"].forEach((k,i) => {
+    if (results[i].status === "rejected"){
+      const msg = results[i].reason && results[i].reason.message || "failed";
+      setSrc(k,"err", msg.length > 60 ? "failed" : msg);
+      errs.push(msg);
+    }
+  });
+  const banner = $("banner");
+  if (errs.length){
+    const local = location.protocol === "file:" ? "" : "";
+    banner.hidden = false;
+    banner.textContent = "Some data did not load: " + errs.join(" · ") +
+      (errs.some(e => /fetch|network/i.test(e)) ? " If all sources fail, open this file in Chrome, Safari, Edge or Firefox. Some viewers block requests to other sites." : "");
+  } else banner.hidden = true;
+  state.loaded = true;
+  $("stamp").textContent = "Updated " + new Date().toLocaleString("en-US",{month:"short",day:"numeric",hour:"numeric",minute:"2-digit"});
+  btn.disabled = false; btn.textContent = "Refresh data";
+  render();
+}
+
+function parkStatus(list){
+  if (!list) return {cls:"unk", label:"No data"};
+  if (list.some(a => a.fullClose)) return {cls:"closed", label:"Closed"};
+  if (list.some(a => a.isClosure)) return {cls:"partial", label:"Partial closures"};
+  return {cls:"open", label:"Open"};
+}
+
+function counts(list){
+  const c = {road:0, trail:0, facility:0, other:0};
+  (list||[]).forEach(a => c[a.type]++);
+  return c;
+}
+
+function fmtDate(s){
+  if (!s) return "";
+  const d = new Date(s.replace(" ", "T"));
+  return isNaN(d) ? s : d.toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"});
+}
+
+function dayDiff(a,b){ return Math.round((Date.parse(b+"T00:00:00Z")-Date.parse(a+"T00:00:00Z"))/86400000); }
+function fmtD(iso){ return new Date(iso+"T12:00:00Z").toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric",timeZone:"UTC"}); }
+function startText(e){ return e.dateText || fmtD(e.start); }
+function endText(e){ return e.end ? fmtD(e.end) : "Reopened in phases. No single date."; }
+function durText(e){ if (e.days) return fmtInt(e.days); return (e.end && !e.dateText) ? fmtInt(dayDiff(e.start,e.end)) : "–"; }
+const SCOPE = {full:"Full closure", partial:"Partial closure", limited:"Open, limited services"};
+function histList(code){
+  const own = (HISTORY[code]||[]).map(e=>Object.assign({park:code},e));
+  return own.concat(SYSTEM_W.map(e=>Object.assign({park:"*"},e))).sort((a,b)=>b.start.localeCompare(a.start));
+}
+function roadLinks(code){
+  const rs = ROADS.filter(r=>r.park===code);
+  if (!rs.length) return "";
+  return `<p class="rlinks">Seasonal road history: ${rs.map(r=>`<a data-goroad="${r.id}" tabindex="0">${esc(r.name)}</a>`).join(", ")}</p>`;
+}
+function histHTML(code){
+  return `<h2 style="margin-top:16px">Closure history</h2><ul class="hist">` + histList(code).map(e =>
+    `<li><div class="hd"><b>${esc(startText(e))}</b>${e.end ? "to " + esc(fmtD(e.end)) : ""}${durText(e)!=="–" ? `<br>${durText(e)} days` : ""}</div>
+     <div><div class="ht"><span class="tag ${e.scope}">${SCOPE[e.scope]}</span>${esc(e.title)}${e.park==="*" ? " (all parks)" : ""}</div><div class="hn">${esc(e.note)}</div></div></li>`).join("") + `</ul>`;
+}
+const PARK_BY = Object.fromEntries(PARKS.map(p=>[p.id,p]));
+
+const MON = {Jan:0,Feb:1,Mar:2,Apr:3,May:4,Jun:5,Jul:6,Aug:7,Sep:8,Oct:9,Nov:10,Dec:11};
+function doy(y, txt){ // day of year (Jan 1 = 0); returns null for blank/text
+  const m = /^([A-Z][a-z]{2}) (\d{1,2})$/.exec((txt||"").trim()); if (!m) return null;
+  return Math.round((Date.UTC(2001, MON[m[1]], +m[2]) - Date.UTC(2001,0,1))/86400000); // fixed non-leap year so dates compare by calendar day
+}
+function parseRoad(r){
+  return r.rows.trim().split("\n").map(line => {
+    const [y,o,c,x,note] = line.split("|"); const yr=+y;
+    let od = doy(yr,o), cd = doy(yr,c);
+    if (od!==null && cd!==null && cd < od) cd += 365; // closed the following January
+    return {y:yr, o:o||"", c:c||"", x:x||"", note:note||"", od, cd, days:(od!==null&&cd!==null)?cd-od:null};
+  });
+}
+function doyLabel(d){ const dt=new Date(Date.UTC(2001,0,1)+Math.round(d)*86400000); return dt.toLocaleDateString("en-US",{month:"short",day:"numeric",timeZone:"UTC"}); }
+function median(a){ const s=[...a].sort((x,y)=>x-y); const n=s.length; return n? (n%2?s[(n-1)/2]:(s[n/2-1]+s[n/2])/2):null; }
+function roadStats(rows){
+  const op = rows.filter(r=>r.od!==null), dur = rows.filter(r=>r.days!==null), cl = rows.filter(r=>r.cd!==null);
+  const minO = op.reduce((a,b)=>b.od<a.od?b:a), maxO = op.reduce((a,b)=>b.od>a.od?b:a);
+  const maxTies = op.filter(r=>r.od===maxO.od).map(r=>r.y).sort((a,b)=>a-b);
+  const avg = a => a.reduce((s,r)=>s+r,0)/a.length;
+  return {n:op.length, from:Math.min(...op.map(r=>r.y)), to:Math.max(...op.map(r=>r.y)),
+    maxTies, avgO:avg(op.map(r=>r.od)), medO:median(op.map(r=>r.od)), minO, maxO,
+    avgC: cl.length? avg(cl.map(r=>r.cd)) : null,
+    avgDays: dur.length? avg(dur.map(r=>r.days)) : null, nDays:dur.length};
+}
+function roadChart(rows, intr){
+  const W=900,H=300,L=58,R=12,T=14,B=30;
+  const pts = rows.filter(r=>r.od!==null).sort((a,b)=>a.y-b.y);
+  const y0=Math.min(...pts.map(r=>r.y)), y1=Math.max(...pts.map(r=>r.y));
+  const vals = pts.flatMap(r=>[r.od, r.cd, ...((intr[r.y]||[]).flatMap(iv=>[doy(r.y,iv.from), iv.to?doy(r.y,iv.to):null]))].filter(v=>v!==null));
+  const dmin=Math.floor((Math.min(...vals)-7)/30)*30, dmax=Math.ceil((Math.max(...vals)+7)/30)*30;
+  const slot = (W-L-R)/(y1-y0+1);
+  const x = yr => L + (y1-yr+0.5)*slot; // newest year on the left
+  const y = d => H-B - (d-dmin)/(dmax-dmin)*(H-T-B);
+  const bw = Math.max(2, Math.min(18, slot*0.5));
+  let g = "";
+  // gridlines on month starts
+  const monthStarts=[0,31,59,90,120,151,181,212,243,273,304,334,365,396];
+  monthStarts.forEach(m=>{ if(m>=dmin && m<=dmax){ g+=`<line x1="${L}" x2="${W-R}" y1="${y(m)}" y2="${y(m)}" stroke="var(--line)"/><text x="${L-6}" y="${y(m)+4}" text-anchor="end" font-size="11" fill="var(--muted)">${doyLabel(m%365)}</text>`; }});
+  const step = (y1-y0)>40?10:(y1-y0)>15?5:(y1-y0)>12?2:1;
+  for(let yr=Math.ceil(y0/step)*step; yr<=y1; yr+=step) g+=`<text x="${x(yr)}" y="${H-10}" text-anchor="middle" font-size="11" fill="var(--muted)">${yr}</text>`;
+  pts.forEach(r=>{
+    const t = `${r.y}: opened ${r.o}${r.c?", closed "+r.c:""}${r.days!==null?" ("+r.days+" days)":""}`;
+    if (r.cd!==null) g+=`<rect x="${x(r.y)-bw/2}" y="${y(r.cd)}" width="${bw}" height="${Math.max(1,y(r.od)-y(r.cd))}" rx="${Math.min(3,bw/2)}" fill="var(--pine)" opacity="${r.note?0.55:0.85}"><title>${esc(t)}</title></rect>`;
+    (intr[r.y]||[]).forEach(iv=>{ const a=doy(r.y,iv.from), b=iv.to?doy(r.y,iv.to):a+2;
+      g+=`<rect x="${x(r.y)-bw/2-2}" y="${y(b)}" width="${bw+4}" height="${Math.max(3,y(a)-y(b))}" fill="var(--closed)"><title>${esc(r.y+": closed "+iv.from+(iv.to?"–"+iv.to:" (reopening not confirmed)")+" — "+iv.why)}</title></rect>`; });
+    g+=`<circle cx="${x(r.y)}" cy="${y(r.od)}" r="${Math.max(2.5,bw/2+0.5)}" fill="${r.note?"var(--partial)":"var(--ink)"}"><title>${esc(t)}${r.note?" — "+esc(r.note):""}</title></circle>`;
+  });
+  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Season bars by year">${g}</svg>
+    <div class="cap">Dot: the opening date. An orange dot shows a year with a note. Bar: the open season, from the opening date to the closing date. Red mark: a short closure during the season. Put the pointer on a mark to see the exact dates.</div>`;
+}
+const ROAD_YEARS = 10; // show only the last 10 calendar years, newest first
+let roadSel = "tioga";
+function renderRoads(){
+  $("rtabs").innerHTML = ROADS.map(r=>`<button data-road="${r.id}" aria-pressed="${r.id===roadSel}">${esc(r.name)}<small>${esc(PARK_BY[r.park].name)}</small></button>`).join("");
+  const r = ROADS.find(z=>z.id===roadSel);
+  const minYear = new Date().getFullYear() - ROAD_YEARS + 1;
+  const rows = parseRoad(r).filter(z=>z.y>=minYear).sort((a,b)=>b.y-a.y);
+  if (!rows.some(z=>z.od!==null)){ $("rbody").innerHTML = `<p class="rabout">There are no dates for this road in the last ${ROAD_YEARS} years.</p>`; return; }
+  const st = roadStats(rows);
+  const intr = {};
+  Object.entries(INTERRUPTS[r.id] || {}).forEach(([yr,list]) => { if (+yr>=minYear) intr[yr] = [...list].sort((a,b)=>doy(+yr,b.from)-doy(+yr,a.from)); });
+  const iyears = Object.keys(intr).map(Number).sort((a,b)=>b-a);
+  const intrList = iyears.length ? `<div class="rintr"><h3>Short closures after the road opened</h3><ul class="hist">${iyears.flatMap(yr=>intr[yr].map(iv=>`<li><div class="hd"><b>${esc(iv.from)}${iv.to?"–"+esc(iv.to):"–?"}, ${yr}</b>${iv.to?(doy(yr,iv.to)-doy(yr,iv.from))+" days":"Reopening not confirmed"}</div><div><div class="ht"><span class="tag full">Closed</span>${esc(iv.what)}</div><div class="hn">${esc(iv.why)}. ${esc(iv.detail)}</div></div></li>`)).join("")}</ul></div>` : "";
+  $("rbody").innerHTML = `
+    <p class="rabout"><b>${esc(r.sub)}.</b> ${esc(r.about)} <a href="${r.src}" target="_blank" rel="noopener">NPS source</a></p>
+    <div class="rstats">
+      <div><strong>${doyLabel(st.avgO)}</strong><span>Average opening (${st.n} years, ${st.to}–${st.from})</span></div>
+      <div><strong>${doyLabel(st.medO)}</strong><span>Median opening</span></div>
+      <div><strong>${esc(st.minO.o)}, ${st.minO.y}</strong><span>Earliest opening</span></div>
+      <div><strong>${esc(st.maxO.o)}, ${st.maxTies.join(" / ")}</strong><span>Latest opening${st.maxTies.length>1?" (tied)":""}</span></div>
+      ${st.avgC!==null?`<div><strong>${doyLabel(st.avgC%365)}</strong><span>Average closing</span></div>`:""}
+      ${st.avgDays!==null?`<div><strong>${Math.round(st.avgDays)} days</strong><span>Average season (${st.nDays} complete seasons)</span></div>`:""}
+    </div>
+    <div class="rchart">${roadChart(rows, intr)}</div>
+    ${intrList}
+    <div class="tablewrap"><table>
+      <thead><tr><th>Year</th><th>Opened</th><th>Closed</th><th class="num">Days open</th>${iyears.length?`<th>Closures during the season</th>`:""}${r.extra?`<th class="num">${esc(r.extra)} Apr 1</th>`:""}<th>Note</th></tr></thead>
+      <tbody>${rows.map(z=>`<tr><td class="dur"><b>${z.y}</b></td><td class="dur">${esc(z.o)||"–"}</td><td class="dur">${esc(z.c)|| "–"}</td><td class="num dur">${z.days!==null?z.days:"–"}</td>${iyears.length?`<td class="dur">${(intr[z.y]||[]).map(iv=>`<span class="flag" style="color:var(--closed)">${esc(iv.from)}–${iv.to?esc(iv.to):"?"}</span>`).join("<br>")||"–"}</td>`:""}${r.extra?`<td class="num">${esc(z.x)||"–"}</td>`:""}<td>${z.note?`<span class="flag">${esc(z.note)}</span>`:""}</td></tr>`).join("")}</tbody>
+    </table></div>`;
+}
+$("rtabs").addEventListener("click", e => { const b=e.target.closest("[data-road]"); if(b){ roadSel=b.dataset.road; renderRoads(); }});
+function showRoad(id){ roadSel=id; renderRoads(); $("roads").scrollIntoView({behavior: matchMedia("(prefers-reduced-motion: reduce)").matches?"auto":"smooth"}); }
+
+let histFilter = "all";
+function renderHistory(){
+  const all = [];
+  Object.keys(HISTORY).forEach(c => HISTORY[c].forEach(e => all.push(Object.assign({park:c},e))));
+  SYSTEM_W.forEach(e => all.push(Object.assign({park:"*"},e)));
+  all.sort((a,b)=>b.start.localeCompare(a.start));
+  const rows = all.filter(e => histFilter==="all" || (histFilter==="full" ? e.scope==="full" : (CAUSE_GROUP[e.cause]||e.cause)===histFilter));
+  $("hrows").innerHTML = rows.map(e => `<tr>
+    <td class="dur">${esc(startText(e))}</td><td class="dur">${esc(endText(e))}</td><td class="num dur">${durText(e)}</td>
+    <td>${e.park==="*" ? "All parks" : esc(PARK_BY[e.park].name)}</td>
+    <td><div class="ht">${esc(e.title)}</div><div class="hn" style="color:var(--muted)">${esc(e.note)}</div></td>
+    <td><span class="tag ${e.scope}">${SCOPE[e.scope]}</span></td></tr>`).join("");
+}
+
+function cell(n){ return `<td class="num"><span class="cnt ${n? "": "zero"}">${n}</span></td>`; }
+
+// Search: 1–2 letters match a state code (e.g. "ak", "ut"); longer text matches park names, states or NPS codes.
+function matches(p, q){
+  const states = p.st.toLowerCase().split(/\s*\/\s*/);
+  if (q.length <= 2) return states.includes(q) || p.name.toLowerCase().split(/[\s–-]+/).some(w => w.startsWith(q));
+  const name = p.name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f\u02bb]/g,"");
+  return name.includes(q) || p.name.toLowerCase().includes(q) || states.includes(q) || p.code === q || p.id === q;
+}
+function render(){
+  const tb = $("rows");
+  let tOpen=0,tPart=0,tClosed=0,tRoad=0,tTrail=0,tWx=0;
+  const html = [];
+  const q = state.q.trim().toLowerCase();
+  const view = PARKS.map(p => {
+    const list = state.loaded ? state.alerts[p.code] : null;
+    return {p, list, st:parkStatus(list), c:counts(list), w:state.wx[p.id], warns:(state.nws[p.id]||[])};
+  });
+  if (state.sort === "name") view.sort((a,b)=>a.p.name.localeCompare(b.p.name));
+  else if (state.sort === "closures") view.sort((a,b)=>((b.list||[]).filter(x=>x.isClosure).length-(a.list||[]).filter(x=>x.isClosure).length) || a.p.r-b.p.r);
+  else if (state.sort === "temp") view.sort((a,b)=>((b.w&&b.w.current?b.w.current.temperature_2m:-999)-(a.w&&a.w.current?a.w.current.temperature_2m:-999)));
+  let shown = 0;
+  const seenCodes = new Set();
+  view.forEach(({p, list, st, c, warns}) => { // totals cover all parks, regardless of search
+    if (list){ if (st.cls==="open") tOpen++; else if (st.cls==="partial") tPart++; else if (st.cls==="closed") tClosed++; }
+    if (!seenCodes.has(p.code)){ seenCodes.add(p.code); tRoad += c.road; tTrail += c.trail; }
+    tWx += warns.length;
+  });
+  view.forEach(({p, list, st, c, w, warns}) => {
+    if (q && !matches(p, q)) return;
+
+    const f = state.filter;
+    const show = f==="all" || (f==="closures" && (st.cls==="partial"||st.cls==="closed")) ||
+      (f==="roads" && c.road) || (f==="trails" && c.trail) || (f==="wx" && warns.length);
+    if (!show) return;
+    shown++;
+
+    let now = `<span class="none">–</span>`, today = `<span class="none">–</span>`;
+    if (w && w.current){
+      const cu = w.current;
+      now = `<div class="wx"><span class="t">${Math.round(cu.temperature_2m)}°</span> ${esc(WMO[cu.weather_code] || "—")}
+        <small>Feels ${Math.round(cu.apparent_temperature)}° · wind ${Math.round(cu.wind_speed_10m)} mph, gusts ${Math.round(cu.wind_gusts_10m)}</small>
+        ${warns.length ? `<span class="warn">${warns.map(x=>esc(x.event)).join(", ")}</span>` : ""}</div>`;
+      const d = w.daily;
+      today = `<div class="wx">${Math.round(d.temperature_2m_max[0])}° / ${Math.round(d.temperature_2m_min[0])}°
+        <small>Precip ${d.precipitation_probability_max[0] ?? 0}%${d.snowfall_sum[0] ? ` · snow ${d.snowfall_sum[0].toFixed(1)} in` : ""}</small></div>`;
+    } else if (warns.length){
+      now = `<span class="warn">${warns.map(x=>esc(x.event)).join(", ")}</span>`;
+    }
+
+    const isOpen = state.open.has(p.id);
+    html.push(`<tr class="park" data-code="${p.id}" tabindex="0" aria-expanded="${isOpen}">
+      <td class="rank">${p.r}</td>
+      <td><div class="pname">${esc(p.name)}</div><div class="pstate">${esc(p.st)}</div></td>
+      <td class="num">${fmtInt(p.v)}</td>
+      <td><span class="chip ${st.cls}">${st.label}</span></td>
+      ${cell(c.road)}${cell(c.trail)}${cell(c.facility)}${cell(c.other)}
+      <td class="num"><span class="cnt ${(HISTORY[p.id]||[]).length?"":"zero"}">${(HISTORY[p.id]||[]).length}</span></td>
+      <td>${now}</td><td>${today}</td></tr>`);
+    html.push(`<tr class="detail" data-for="${p.id}" ${isOpen? "": "hidden"}><td colspan="11">${detail(p, list, w, warns)}</td></tr>`);
+  });
+  tb.innerHTML = html.join("") || `<tr><td colspan="11" class="none" style="padding:18px">No parks match your search and filter.</td></tr>`;
+  $("count").textContent = `Showing ${shown} of ${NP} parks`;
+  if (state.loaded){
+    $("t-open").textContent=tOpen; $("t-partial").textContent=tPart; $("t-closed").textContent=tClosed;
+    $("t-road").textContent=tRoad; $("t-trail").textContent=tTrail; $("t-wx").textContent=tWx;
+  }
+}
+
+function alertBlock(a){
+  const url = a.url ? ` <a href="${esc(a.url)}" target="_blank" rel="noopener">Details</a>` : "";
+  return `<div class="alert k-${a.kind}">
+    <div class="at">${esc(a.title)}</div>
+    <div class="ad">${esc((a.description||"").slice(0,420))}${(a.description||"").length>420?"…":""}</div>
+    <div class="am">${esc(a.category)}${a.lastIndexedDate ? " · updated " + esc(fmtDate(a.lastIndexedDate)) : ""}${url}</div></div>`;
+}
+
+function detail(p, list, w, warns){
+  const groups = {road:"Roads", trail:"Trails", facility:"Facilities and camping", other:"Other alerts"};
+  let alertsHtml = "";
+  if (!list) alertsHtml = `<p class="none">The alerts did not load.</p>`;
+  else if (!list.length) alertsHtml = `<p class="none">NPS has no active alerts for this park. NPS reports normal operation of roads and trails.</p>`;
+  else Object.keys(groups).forEach(g => {
+    const items = list.filter(a => a.type === g);
+    if (items.length) alertsHtml += `<h2>${groups[g]} (${items.length})</h2>` + items.map(alertBlock).join("");
+  });
+  let wxHtml = `<h2>3-day forecast</h2>`;
+  if (w && w.daily){
+    const d = w.daily;
+    wxHtml += `<div class="fc">` + d.time.map((t,i) => {
+      const day = new Date(t+"T12:00:00").toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"});
+      return `<div><b>${day}</b>${Math.round(d.temperature_2m_max[i])}° / ${Math.round(d.temperature_2m_min[i])}°<br>${esc(WMO[d.weather_code[i]]||"—")}<br>Precip ${d.precipitation_probability_max[i] ?? 0}%, ${(d.precipitation_sum[i]||0).toFixed(2)} in</div>`;
+    }).join("") + `</div>`;
+    wxHtml += `<p class="none" style="margin-top:8px">Humidity ${w.current.relative_humidity_2m}% · The forecast is for one point near the main visitor area. In large parks, the temperature changes much with elevation.</p>`;
+  } else wxHtml += `<p class="none">The weather did not load.</p>`;
+  if (warns && warns.length){
+    wxHtml += `<h2 style="margin-top:14px">NWS warnings</h2>` + warns.map(x => `<div class="alert k-danger"><div class="at">${esc(x.event)}</div><div class="ad">${esc(x.headline||"")}</div></div>`).join("");
+  }
+  return `<div class="dbox"><div>${alertsHtml}${p.note?`<p class="am">${esc(p.note)}</p>`:""}${roadLinks(p.id)}${histHTML(p.id)}<p class="am"><a href="https://www.nps.gov/${p.code}/planyourvisit/conditions.htm" target="_blank" rel="noopener">Official ${esc(p.name)} conditions page</a></p></div><div>${wxHtml}</div></div>`;
+}
+
+function toggle(code){
+  if (state.open.has(code)) state.open.delete(code); else state.open.add(code);
+  const row = document.querySelector(`tr.park[data-code="${code}"]`);
+  const det = document.querySelector(`tr.detail[data-for="${code}"]`);
+  if (row && det){ det.hidden = !state.open.has(code); row.setAttribute("aria-expanded", state.open.has(code)); }
+}
+
+$("rows").addEventListener("click", e => { const gr = e.target.closest("[data-goroad]"); if (gr){ e.stopPropagation(); showRoad(gr.dataset.goroad); return; } const tr = e.target.closest("tr.park"); if (tr && !e.target.closest("a")) toggle(tr.dataset.code); });
+$("rows").addEventListener("keydown", e => { const tr = e.target.closest("tr.park"); if (tr && (e.key==="Enter"||e.key===" ")){ e.preventDefault(); toggle(tr.dataset.code); } });
+document.querySelectorAll("[data-f]").forEach(b => b.addEventListener("click", () => {
+  document.querySelectorAll("[data-f]").forEach(x => x.setAttribute("aria-pressed", x===b));
+  state.filter = b.dataset.f; render();
+}));
+$("refresh").addEventListener("click", refresh);
+$("search").addEventListener("input", e => { state.q = e.target.value; render(); });
+$("sort").addEventListener("change", e => { state.sort = e.target.value; render(); });
+$("savekey").addEventListener("click", () => { setKey($("key").value.trim()); $("savekey").textContent = "Saved"; setTimeout(()=>$("savekey").textContent="Save key",1500); refresh(); });
+try{ const k = localStorage.getItem("npsKey"); if (k) $("key").value = k; }catch(e){}
+
+document.querySelectorAll("[data-h]").forEach(b => b.addEventListener("click", () => {
+  document.querySelectorAll("[data-h]").forEach(x => x.setAttribute("aria-pressed", x===b));
+  histFilter = b.dataset.h; renderHistory();
+}));
+renderRoads();
+renderHistory();
+render();
+refresh();
+</script>
+</body>
+</html>
