@@ -454,3 +454,23 @@ Requirements:
 - The table shows the codes under the banners (for example "✈ TYS · AVL · TRI · CLT"). The park details show a list with the code, the airport name, the distance and a "Large airport" tag.
 - Source: OurAirports (public domain). The script `scripts/build_airports.py` makes `data/airports.js`. Airports change very little, so the page does not refresh this file.
 - Status: done.
+
+### R28. Remove the closures column, add °C and mm
+
+Original text from the owner:
+
+> Remove park closure as a column from the table.
+>
+> Add celsius and mm for temp rain and snow
+
+Requirements:
+
+- The park table does not have the "Past closures" column. The closure history is still in the park details.
+- Temperatures show °F and °C. Rain and snow show inches and mm. This applies to:
+  - the current weather and the forecast for today in the table
+  - the 3-day forecast
+  - the monthly tooltip and the monthly values table (new columns for °C and mm)
+  - the reasons on the best time banner
+- The chart axes stay in °F and inches. One axis has one unit.
+- Wind speeds stay in mph.
+- Status: done.

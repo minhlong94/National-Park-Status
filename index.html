@@ -118,9 +118,11 @@ tr.detail[hidden]{display:none}
 .alert a{color:var(--info)}
 .none{color:var(--muted);font-size:14px}
 .fc{display:flex;flex-direction:column;gap:6px}
-.fc>div{display:grid;grid-template-columns:7.5em 6.5em 1fr;gap:2px 10px;align-items:baseline;border:1px solid var(--line);border-radius:6px;padding:7px 10px;background:var(--panel);font-size:13px}
+.fc>div{display:grid;grid-template-columns:7.5em 7em 1fr;gap:2px 10px;align-items:baseline;border:1px solid var(--line);border-radius:6px;padding:7px 10px;background:var(--panel);font-size:13px}
 .fc b{font-size:13px}
 .fc .ft{font-weight:600;font-variant-numeric:tabular-nums}
+.fc .ft small{display:block;font-weight:400;color:var(--muted)}
+.wx .tc{color:var(--muted);font-size:13px}
 .fc .fp{grid-column:2/-1;color:var(--muted)}
 .banner{border:1px solid var(--closed);color:var(--closed);border-radius:8px;padding:10px 14px;margin:14px 0;font-size:14px}
 .banner[hidden]{display:none}
@@ -303,7 +305,7 @@ footer a{color:var(--info)}
       <thead><tr>
         <th>#</th><th>Park</th><th class="num">2025 visits</th><th>Status</th>
         <th class="num">Roads</th><th class="num">Trails</th><th class="num">Facilities</th><th class="num">Other</th>
-        <th class="num">Past closures</th><th>Weather now</th><th>Today</th>
+        <th>Weather now</th><th>Today</th>
       </tr></thead>
       <tbody id="rows"></tbody>
     </table>
@@ -360,7 +362,7 @@ footer a{color:var(--info)}
     The page sorts each alert into a type by keywords. Read the alert text before you drive.
     The weather comes from Open-Meteo. The warnings come from the National Weather Service (api.weather.gov).
     The visits are recreation visits in calendar year 2025, from NPS Visitor Use Statistics. NPS gives Sequoia and Kings Canyon as separate numbers.
-    Temperatures are in °F. Wind speeds are in mph.
+    Temperatures are in °F and °C. Rain and snow are in inches and mm. Wind speeds are in mph.
     <br>Source code: <a href="https://github.com/minhlong94/National-Park-Status" target="_blank" rel="noopener">github.com/minhlong94/National-Park-Status</a>
   </footer>
 </div>
@@ -758,6 +760,11 @@ const RX = {
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const fmtInt = n => n.toLocaleString("en-US");
+// Metric units next to US units (R28)
+const toC = f => Math.round((f - 32) * 5 / 9);
+const toMm = i => Math.round(i * 25.4);
+const tBoth = f => `${Math.round(f)}°F (${toC(f)}°C)`;
+const inMm = (i, d) => `${(+i).toFixed(d)} in (${toMm(i)} mm)`;
 // Short form for big numbers (R23): 4.8M, 400K, 7.8K. Numbers under 1,000 do not change.
 function shortNum(n){
   if (n == null || isNaN(n)) return "–";
@@ -1158,12 +1165,12 @@ function render(){
     let now = `<span class="none">–</span>`, today = `<span class="none">–</span>`;
     if (w && w.current){
       const cu = w.current;
-      now = `<div class="wx"><span class="t">${Math.round(cu.temperature_2m)}°</span> ${esc(WMO[cu.weather_code] || "—")}
-        <small>Feels ${Math.round(cu.apparent_temperature)}° · wind ${Math.round(cu.wind_speed_10m)} mph, gusts ${Math.round(cu.wind_gusts_10m)}</small>
+      now = `<div class="wx"><span class="t">${Math.round(cu.temperature_2m)}°F</span> <span class="tc">${toC(cu.temperature_2m)}°C</span> ${esc(WMO[cu.weather_code] || "—")}
+        <small>Feels ${tBoth(cu.apparent_temperature)} · wind ${Math.round(cu.wind_speed_10m)} mph, gusts ${Math.round(cu.wind_gusts_10m)}</small>
         ${warns.length ? `<span class="warn">${warns.map(x=>esc(x.event)).join(", ")}</span>` : ""}</div>`;
       const d = w.daily;
-      today = `<div class="wx">${Math.round(d.temperature_2m_max[0])}° / ${Math.round(d.temperature_2m_min[0])}°
-        <small>Precip ${d.precipitation_probability_max[0] ?? 0}%${d.snowfall_sum[0] ? ` · snow ${d.snowfall_sum[0].toFixed(1)} in` : ""}</small></div>`;
+      today = `<div class="wx">${Math.round(d.temperature_2m_max[0])}° / ${Math.round(d.temperature_2m_min[0])}°F
+        <small>${toC(d.temperature_2m_max[0])}° / ${toC(d.temperature_2m_min[0])}°C · precip ${d.precipitation_probability_max[0] ?? 0}%${d.snowfall_sum[0] ? ` · snow ${inMm(d.snowfall_sum[0], 1)}` : ""}</small></div>`;
     } else if (warns.length){
       now = `<span class="warn">${warns.map(x=>esc(x.event)).join(", ")}</span>`;
     }
@@ -1175,11 +1182,10 @@ function render(){
       <td class="num">${shortNum(p.v)}</td>
       <td><span class="chip ${st.cls}">${st.label}</span></td>
       ${cell(c.road)}${cell(c.trail)}${cell(c.facility)}${cell(c.other)}
-      <td class="num"><span class="cnt ${(HISTORY[p.id]||[]).length?"":"zero"}">${(HISTORY[p.id]||[]).length}</span></td>
       <td>${now}</td><td>${today}</td></tr>`);
-    html.push(`<tr class="detail" data-for="${p.id}" ${isOpen? "": "hidden"}><td colspan="11">${detail(p, list, w, warns)}</td></tr>`);
+    html.push(`<tr class="detail" data-for="${p.id}" ${isOpen? "": "hidden"}><td colspan="10">${detail(p, list, w, warns)}</td></tr>`);
   });
-  tb.innerHTML = html.join("") || `<tr><td colspan="11" class="none" style="padding:18px">No parks match your search and filter.</td></tr>`;
+  tb.innerHTML = html.join("") || `<tr><td colspan="10" class="none" style="padding:18px">No parks match your search and filter.</td></tr>`;
   $("count").textContent = shown ? `Showing ${first+1}–${first+pageRows.length} of ${shown} parks` + (shown < NP ? ` (${NP} in all)` : "") : `Showing 0 of ${NP} parks`;
   renderPager(pages);
   syncDetailWidth();
@@ -1212,7 +1218,7 @@ function detail(p, list, w, warns){
     const d = w.daily;
     wxHtml += `<div class="fc">` + d.time.map((t,i) => {
       const day = new Date(t+"T12:00:00").toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"});
-      return `<div><b>${day}</b><span class="ft">${Math.round(d.temperature_2m_max[i])}° / ${Math.round(d.temperature_2m_min[i])}°</span><span>${esc(WMO[d.weather_code[i]]||"—")}</span><span class="fp">Precip ${d.precipitation_probability_max[i] ?? 0}%, ${(d.precipitation_sum[i]||0).toFixed(2)} in</span></div>`;
+      return `<div><b>${day}</b><span class="ft">${Math.round(d.temperature_2m_max[i])}° / ${Math.round(d.temperature_2m_min[i])}°F<small>${toC(d.temperature_2m_max[i])}° / ${toC(d.temperature_2m_min[i])}°C</small></span><span>${esc(WMO[d.weather_code[i]]||"—")}</span><span class="fp">Precip ${d.precipitation_probability_max[i] ?? 0}%, ${inMm(d.precipitation_sum[i]||0, 2)}</span></div>`;
     }).join("") + `</div>`;
     wxHtml += `<p class="none" style="margin-top:8px">Humidity ${w.current.relative_humidity_2m}% · The forecast is for one point near the main visitor area. In large parks, the temperature changes much with elevation.</p>`;
   } else wxHtml += `<p class="none">The weather did not load.</p>`;
@@ -1377,7 +1383,7 @@ function bestTime(id){
   const his = best.map(i => H.wx.hi[i]).filter(v => v != null), reasons = [];
   if (his.length){
     const a = Math.round(Math.min(...his)), b = Math.round(Math.max(...his));
-    reasons.push(a === b ? `average highs of ${a}°F` : `average highs of ${a}–${b}°F`);
+    reasons.push(a === b ? `average highs of ${a}°F (${toC(a)}°C)` : `average highs of ${a}–${b}°F (${toC(a)}–${toC(b)}°C)`);
   }
   const cb = best.map(i => parts[i].crowd).filter(v => v != null);
   if (cb.length){
@@ -1385,7 +1391,7 @@ function bestTime(id){
     reasons.push(share >= 0.85 ? "it is also the busiest time of the year" : `about ${Math.round(share*100)}% of the visitors of the busiest month`);
   }
   const rb = best.map(i => H.wx.rain[i]).filter(v => v != null), sb = best.map(i => H.wx.snow[i]).filter(v => v != null);
-  if (rb.length && avg(rb) > 4) reasons.push(`rain is frequent (about ${Math.round(avg(rb))} in a month)`);
+  if (rb.length && avg(rb) > 4) reasons.push(`rain is frequent (about ${Math.round(avg(rb))} in or ${toMm(avg(rb))} mm a month)`);
   if (sb.length && Math.max(...sb) >= 2) reasons.push("snow is possible");
   const limited = parts.map((p,i) => p.limited ? i : -1).filter(i => i >= 0);
   // Seasonal roads of this park: the usual open dates in the last 10 years
@@ -1493,7 +1499,7 @@ function drawMonthly(box, id){
     <div class="mlegend" role="group" aria-label="Show or hide years">${years.map(y => `<button type="button" data-year="${y}" aria-pressed="${!hiddenYears.has(y)}"><i style="background:${colorOf(y)}"></i>${y}</button>`).join("")}</div>
     <svg viewBox="0 0 ${W} ${H1}" width="${W}" height="${H1}" role="group" aria-label="Recreation visits by month">${g1}</svg>
     ${fallHtml}
-    <div class="mtitle">Temperature <span>average daily low to high, °F, last 3 years</span></div>
+    <div class="mtitle">Temperature <span>average daily low to high, °F, last 3 years (°C in the tooltip and the table)</span></div>
     <svg viewBox="0 0 ${W} ${H2}" width="${W}" height="${H2}" aria-hidden="true">${g2}</svg>
     <div class="mtitle">Rain <span>average monthly total, inches, last 3 years</span></div>
     ${amountChart(P.wx.rain, "--rain")}
@@ -1501,8 +1507,8 @@ function drawMonthly(box, id){
     ${snowTotal >= 0.1 ? amountChart(P.wx.snow, "--snow") : `<p class="none">Almost no snow falls here in an average year.</p>`}
     <div class="mtip" hidden></div>
     <details><summary>Show the values as a table</summary><div class="tablewrap"><table>
-      <thead><tr><th>Month</th>${years.map(y => `<th class="num">Visits ${y}</th>`).join("")}<th class="num">Low °F</th><th class="num">High °F</th><th class="num">Rain in</th><th class="num">Snow in</th></tr></thead>
-      <tbody>${MONTHS.map((m,i) => `<tr><td>${m}</td>${years.map(y => `<td class="num">${vis(y)[i] == null ? "–" : shortNum(vis(y)[i])}</td>`).join("")}<td class="num">${lo[i] ?? "–"}</td><td class="num">${hi[i] ?? "–"}</td><td class="num">${P.wx.rain[i] ?? "–"}</td><td class="num">${P.wx.snow[i] ?? "–"}</td></tr>`).join("")}</tbody>
+      <thead><tr><th>Month</th>${years.map(y => `<th class="num">Visits ${y}</th>`).join("")}<th class="num">Low °F</th><th class="num">Low °C</th><th class="num">High °F</th><th class="num">High °C</th><th class="num">Rain in</th><th class="num">Rain mm</th><th class="num">Snow in</th><th class="num">Snow mm</th></tr></thead>
+      <tbody>${MONTHS.map((m,i) => `<tr><td>${m}</td>${years.map(y => `<td class="num">${vis(y)[i] == null ? "–" : shortNum(vis(y)[i])}</td>`).join("")}<td class="num">${lo[i] ?? "–"}</td><td class="num">${lo[i] == null ? "–" : toC(lo[i])}</td><td class="num">${hi[i] ?? "–"}</td><td class="num">${hi[i] == null ? "–" : toC(hi[i])}</td><td class="num">${P.wx.rain[i] ?? "–"}</td><td class="num">${P.wx.rain[i] == null ? "–" : toMm(P.wx.rain[i])}</td><td class="num">${P.wx.snow[i] ?? "–"}</td><td class="num">${P.wx.snow[i] == null ? "–" : toMm(P.wx.snow[i])}</td></tr>`).join("")}</tbody>
     </table></div></details>
     <p class="msrc">Sources: NPS Visitor Use Statistics (recreation visits). Open-Meteo historical weather (ERA5 model) at the forecast point of the park. Data to ${esc(H.lastLabel)}.${fall ? ` Fall color: NASA MODIS land surface phenology (MCD12Q2), ${(window.PARK_FOLIAGE.wide || []).includes(id) ? "21 km box (the 3 km box had no data)" : "3 km box"} at the same point.` : ""}${now && !now.stale ? " This season: USA National Phenology Network." : ""}</p>`;
 
@@ -1521,9 +1527,9 @@ function drawMonthly(box, id){
     const h = document.createElement("div"); h.className = "mth"; h.textContent = MONTHS_LONG[i]; tip.append(h);
     years.slice().reverse().forEach(y => { if (!hiddenYears.has(y)) tip.append(row(colorOf(y), `Visits ${y}`, vis(y)[i] == null ? "No data yet" : shortNum(vis(y)[i]))); });
     tip.append(document.createElement("hr"));
-    tip.append(row("var(--temp)", "Low to high", lo[i] == null ? "–" : `${Math.round(lo[i])}° to ${Math.round(hi[i])}°F`));
-    tip.append(row("var(--rain)", "Rain", P.wx.rain[i] == null ? "–" : `${P.wx.rain[i].toFixed(2)} in`));
-    tip.append(row("var(--snow)", "Snow", P.wx.snow[i] == null ? "–" : `${P.wx.snow[i].toFixed(1)} in`));
+    tip.append(row("var(--temp)", "Low to high", lo[i] == null ? "–" : `${Math.round(lo[i])}° to ${Math.round(hi[i])}°F (${toC(lo[i])}° to ${toC(hi[i])}°C)`));
+    tip.append(row("var(--rain)", "Rain", P.wx.rain[i] == null ? "–" : inMm(P.wx.rain[i], 2)));
+    tip.append(row("var(--snow)", "Snow", P.wx.snow[i] == null ? "–" : inMm(P.wx.snow[i], 1)));
     if (fall && fall.clear){
       const m0 = doyDate(fall.sen).getUTCMonth(), m1 = doyDate(fall.dor).getUTCMonth();
       const mm = doyDate(fall.mid).getUTCMonth();
