@@ -147,7 +147,7 @@ footer a{color:var(--info)}
   <header class="top">
     <div>
       <h1>Park conditions board</h1>
-      <p class="sub">Road, trail and facility closures plus current weather for all 63 U.S. national parks, ranked by 2025 recreation visits.</p>
+      <p class="sub">This board shows road, trail and facility closures and the current weather for all 63 U.S. national parks. The list sorts the parks by 2025 recreation visits.</p>
     </div>
     <div class="actions">
       <span class="stamp" id="stamp">Not loaded yet</span>
@@ -164,10 +164,10 @@ footer a{color:var(--info)}
   <details class="settings" id="settings">
     <summary>NPS API key</summary>
     <div class="row">
-      <input id="key" type="text" spellcheck="false" autocomplete="off" placeholder="Paste your NPS API key (DEMO_KEY used if blank)" aria-label="NPS API key">
+      <input id="key" type="text" spellcheck="false" autocomplete="off" placeholder="Paste your NPS API key. If empty, the page uses DEMO_KEY." aria-label="NPS API key">
       <button id="savekey">Save key</button>
     </div>
-    <p>The page works with the shared <code>DEMO_KEY</code>, which is limited to about 30 requests per hour per IP. A free personal key takes a minute at <a href="https://www.nps.gov/subjects/developer/get-started.htm" target="_blank" rel="noopener">nps.gov/subjects/developer</a> and is stored only in this browser.</p>
+    <p>If you do not give a key, the page uses the shared <code>DEMO_KEY</code>. The <code>DEMO_KEY</code> allows approximately 30 requests per hour from each IP address. You can get a free personal key in approximately one minute at <a href="https://www.nps.gov/subjects/developer/get-started.htm" target="_blank" rel="noopener">nps.gov/subjects/developer</a>. The page keeps your key only in this browser.</p>
   </details>
 
   <div class="banner" id="banner" hidden></div>
@@ -212,14 +212,14 @@ footer a{color:var(--info)}
 
   <section class="roadsec" id="roads" aria-labelledby="rh">
     <h2 id="rh">Seasonal road history</h2>
-    <p>Year-by-year opening and closing dates for the big snow-closed park roads. Each bar is one season: bottom is the day the road opened, top is the day it closed for winter.</p>
+    <p>This section shows the opening and closing dates of the large park roads that snow closes each winter. It shows only the last 10 years, with the newest year first. Each bar is one season. The bottom of the bar is the day the road opened. The top of the bar is the day the road closed for winter.</p>
     <div class="rtabs" role="group" aria-label="Choose a road" id="rtabs"></div>
     <div id="rbody"></div>
   </section>
 
   <section class="histsec" aria-labelledby="hh">
     <h2 id="hh">Closure history</h2>
-    <p>Major full and partial closures from the last 5 years, newest first, plus system-wide shutdowns. Researched from NPS releases and news coverage; not exhaustive, and it does not change on refresh.</p>
+    <p>This table shows the major full and partial closures from the last 5 years, with the newest first. It also shows shutdowns of all parks. The data comes from NPS news releases and news reports. The list is not complete. Refresh does not change it.</p>
     <div class="filters" role="group" aria-label="Filter history">
       <button data-h="all" aria-pressed="true">All events</button>
       <button data-h="full" aria-pressed="false">Full park closures</button>
@@ -234,7 +234,13 @@ footer a{color:var(--info)}
   </section>
 
   <footer>
-    Click a park row to see every alert, its closure history and a 3-day forecast. Seasonal road dates: NPS Yosemite and Glacier datasets and Rocky Mountain press releases. Status comes from official NPS alerts (developer.nps.gov) and is classified by keyword, so read the alert text before you drive. Weather from Open-Meteo; warnings from the National Weather Service (api.weather.gov). Visitation: NPS Visitor Use Statistics, calendar year 2025 recreation visits (Sequoia and Kings Canyon reported separately). Temperatures °F, wind mph.
+    Click a park row to see all its alerts, its closure history and a 3-day forecast.
+    The seasonal road dates come from the NPS Yosemite and Glacier datasets and from Rocky Mountain press releases.
+    The park status comes from official NPS alerts (developer.nps.gov).
+    The page sorts each alert into a type by keywords. Read the alert text before you drive.
+    The weather comes from Open-Meteo. The warnings come from the National Weather Service (api.weather.gov).
+    The visits are recreation visits in calendar year 2025, from NPS Visitor Use Statistics. NPS gives Sequoia and Kings Canyon as separate numbers.
+    Temperatures are in °F. Wind speeds are in mph.
   </footer>
 </div>
 
@@ -263,14 +269,14 @@ const PARKS = [
   {r:20, code:"mora", name:"Mount Rainier", st:"WA", v:1635342, lat:46.7860, lon:-121.7350},
   {r:21, code:"arch", name:"Arches", st:"UT", v:1511740, lat:38.7331, lon:-109.5925},
   {r:22, code:"care", name:"Capitol Reef", st:"UT", v:1388476, lat:38.2917, lon:-111.2615},
-  {r:23, code:"seki", name:"Sequoia", st:"CA", v:1378337, lat:36.5647, lon:-118.7735, note:"Sequoia and Kings Canyon are managed together and share NPS alerts."},
+  {r:23, code:"seki", name:"Sequoia", st:"CA", v:1378337, lat:36.5647, lon:-118.7735, note:"NPS manages Sequoia and Kings Canyon together. The two parks share NPS alerts."},
   {r:24, code:"deva", name:"Death Valley", st:"CA / NV", v:1320134, lat:36.4617, lon:-116.8667},
   {r:25, code:"redw", name:"Redwood", st:"CA", v:1202480, lat:41.2132, lon:-124.0046},
   {r:26, code:"badl", name:"Badlands", st:"SD", v:1139361, lat:43.7500, lon:-101.9400},
   {r:27, code:"hale", name:"Haleakalā", st:"HI", v:853711, lat:20.7097, lon:-156.2533},
   {r:28, code:"sagu", name:"Saguaro", st:"AZ", v:847749, lat:32.2500, lon:-110.9500},
   {r:29, code:"cany", name:"Canyonlands", st:"UT", v:796057, lat:38.4597, lon:-109.8210},
-  {r:30, code:"seki", id:"kica", name:"Kings Canyon", st:"CA", v:779791, lat:36.7391, lon:-118.9631, note:"Sequoia and Kings Canyon are managed together and share NPS alerts."},
+  {r:30, code:"seki", id:"kica", name:"Kings Canyon", st:"CA", v:779791, lat:36.7391, lon:-118.9631, note:"NPS manages Sequoia and Kings Canyon together. The two parks share NPS alerts."},
   {r:31, code:"ever", name:"Everglades", st:"FL", v:778198, lat:25.3950, lon:-80.5830},
   {r:32, code:"glba", name:"Glacier Bay", st:"AK", v:740044, lat:58.4550, lon:-135.8840},
   {r:33, code:"thro", name:"Theodore Roosevelt", st:"ND", v:729893, lat:46.9170, lon:-103.5300},
@@ -312,55 +318,55 @@ const NP = PARKS.length;
 // Closure history: major closures from the last 5 years, researched Oct 2026. Not exhaustive.
 // end = reopening date (for shutdowns, the date the shutdown ended; days = official length).
 const SYSTEM = [
-  {start:"2025-10-01", end:"2025-11-12", days:43, cause:"Shutdown", scope:"limited", title:"43-day federal government shutdown",
-   note:"Longest shutdown in U.S. history. Parks stayed open with roads and trails accessible, but visitor centers closed and staff were furloughed. Some states paid to keep services running."}
+  {start:"2025-10-01", end:"2025-11-12", days:43, cause:"Shutdown", scope:"limited", title:"43-day shutdown of the federal government",
+   note:"This was the longest shutdown in U.S. history. Parks stayed open, and visitors could use roads and trails. But visitor centers closed and staff went on unpaid leave (furlough). Some states paid to keep services open."}
 ];
 const HISTORY = {
   grsm:[
     {start:"2024-09-26", end:"2024-10-02", cause:"Flood", scope:"partial", title:"Hurricane Helene: Newfound Gap Road",
-     note:"US 441 and multiple roads closed; Cataloochee recorded 9.5 ft of flooding. Newfound Gap Road and Kuwohi Road reopened Oct 2."},
+     note:"US 441 and many other roads closed. The flood water at Cataloochee was 9.5 ft deep. Newfound Gap Road and Kuwohi Road reopened on Oct 2."},
     {start:"2024-09-27", end:"2025-04-04", cause:"Flood", scope:"partial", title:"Hurricane Helene: Cataloochee Valley",
-     note:"Worst-hit area of the park; portions reopened Apr 4, 2025. Balsam Mountain and Big Creek also closed for an extended period."}
+     note:"This area of the park had the most damage. Parts of it reopened on Apr 4, 2025. Balsam Mountain and Big Creek also closed for a long time."}
   ],
   yell:[
     {start:"2022-06-13", end:"2022-06-22", cause:"Flood", scope:"full", title:"500-year flood",
-     note:"10,000 visitors evacuated; first full closure in 34 years. South loop reopened Jun 22 under alternating license-plate entry."},
+     note:"The park evacuated 10,000 visitors. This was the first full closure in 34 years. The south loop reopened on Jun 22. Cars entered on alternate days, by license-plate number."},
     {start:"2022-06-13", end:"2022-07-02", cause:"Flood", scope:"partial", title:"500-year flood: north loop",
-     note:"North loop reopened Jul 2. North and Northeast entrance roads were destroyed in sections and stayed closed to free-flowing traffic."}
+     note:"The north loop reopened on Jul 2. The flood destroyed sections of the North and Northeast entrance roads. These roads stayed closed to normal traffic."}
   ],
   grca:[
     {start:"2025-07-11", end:"2026-05-15", cause:"Wildfire", scope:"partial", title:"Dragon Bravo Fire: North Rim", dateText:"Jul 2025",
-     note:"Lightning-caused fire (Jul 4) burned 145,504 acres and destroyed the historic Grand Canyon Lodge and visitor center. Brief limited reopening Oct 1–Nov 30, 2025; summer reopening May 15, 2026 with limited services and no lodge."}
+     note:"Lightning started the fire on Jul 4. The fire burned 145,504 acres. It destroyed the historic Grand Canyon Lodge and the visitor center. The North Rim opened with limits from Oct 1 to Nov 30, 2025. It opened for summer on May 15, 2026, with limited services and no lodge."}
   ],
   yose:[
     {start:"2023-02-25", end:"2023-03-18", cause:"Flood", scope:"full", title:"Record snowstorms",
-     note:"Up to 15 ft of snow and 22 rockslides or debris flows on park roads. Reopened with limited, daylight-only access."}
+     note:"Up to 15 ft of snow fell. There were 22 rockslides or debris flows on park roads. The park reopened with limited access, in daylight only."}
   ],
   deva:[
     {start:"2023-08-20", end:"2023-10-15", cause:"Flood", scope:"full", title:"Hurricane Hilary flash floods",
-     note:"More than a year's worth of rain in one day damaged every road in the park; longest closure in park history. Partial reopening Oct 15 from the west (Lone Pine) and Death Valley Junction only."},
+     note:"In one day, more rain fell than in a usual year. The rain damaged every road in the park. This was the longest closure in park history. On Oct 15, the park opened partially, only from the west (Lone Pine) and from Death Valley Junction."},
     {start:"2022-08-05", end:null, cause:"Flood", scope:"partial", title:"Record flash flood", dateText:"Aug 5, 2022",
-     note:"1.70 in of rain at Furnace Creek (then the single-day record) closed roads parkwide and stranded visitors; roads reopened in phases."}
+     note:"1.70 in of rain fell at Furnace Creek. At that time, this was the record for one day. The flood closed roads in all areas of the park and trapped visitors. The roads reopened in phases."}
   ],
   jotr:[
     {start:"2023-08-18", end:"2023-08-22", cause:"Flood", scope:"full", title:"Tropical Storm Hilary",
-     note:"Closed as a precaution Aug 18; reopened for day use Aug 22 with paved roads and visitor centers open, dirt roads and campgrounds still closed."}
+     note:"The park closed on Aug 18 as a precaution. It reopened for day use on Aug 22. Paved roads and visitor centers were open. Dirt roads and campgrounds stayed closed."}
   ],
   ever:[
     {start:"2022-09-27", end:"2022-10-03", cause:"Flood", scope:"partial", title:"Hurricane Ian", dateText:"Late Sep 2022",
-     note:"Limited reopening Sep 30 (Homestead entrance to Paurotis Pond). Main Park Road and Flamingo reopened Oct 3; Gulf Coast entrance and Flamingo campground stayed closed longer."}
+     note:"A limited area reopened on Sep 30, from the Homestead entrance to Paurotis Pond. Main Park Road and Flamingo reopened on Oct 3. The Gulf Coast entrance and Flamingo campground stayed closed longer."}
   ],
   drto:[
     {start:"2024-10-08", end:null, cause:"Flood", scope:"full", title:"Hurricane Milton", dateText:"Oct 8, 2024",
-     note:"Closed ahead of the storm; reopening date not confirmed in published sources."},
+     note:"The park closed before the storm. Published sources do not confirm the reopening date."},
     {start:"2022-09-27", end:"2022-10-02", cause:"Flood", scope:"full", title:"Hurricane Ian (direct hit)", dateText:"Late Sep 2022",
-     note:"Garden and Loggerhead Keys, docks and campground closed for damage assessment; partial reopening Oct 2."}
+     note:"Garden Key, Loggerhead Key, the docks and the campground closed while staff examined the damage. Part of the park reopened on Oct 2."}
   ],
   bisc:[
     {start:"2024-10-08", end:null, cause:"Flood", scope:"full", title:"Hurricane Milton", dateText:"Oct 8, 2024",
-     note:"Closed ahead of the storm; reopening date not confirmed in published sources."},
+     note:"The park closed before the storm. Published sources do not confirm the reopening date."},
     {start:"2022-09-27", end:"2022-09-30", cause:"Flood", scope:"full", title:"Hurricane Ian", dateText:"Late Sep 2022",
-     note:"Reopened for normal operations Sep 30."}
+     note:"The park reopened for normal operation on Sep 30."}
   ]
 };
 // Only show events that started or were still in effect within the last 5 years.
@@ -373,14 +379,14 @@ Object.keys(HISTORY).forEach(k => HISTORY[k] = HISTORY[k].filter(inWindow));
 const ROADS = [
  {id:"tioga", park:"yose", name:"Tioga Road", sub:"Yosemite · Hwy 120 over Tioga Pass (9,943 ft)",
   src:"https://www.nps.gov/yose/planyourvisit/seasonal.htm", extra:"Snowpack",
-  about:"Closed from Tuolumne Grove to the Tioga Pass entrance each winter. Plowing starts around April 15 and usually takes one to two months. Snowpack is April 1 snow-water content as % of average (Tuolumne drainage).",
+  about:"Each winter, the road closes from Tuolumne Grove to the Tioga Pass entrance. Snow removal starts at approximately April 15. It usually takes one to two months. Snowpack is the water content of the snow on April 1, as a percentage of the average (Tuolumne drainage).",
   rows:`2026|May 15||
 2025|May 26|Nov 12|72%
 2024|Jun 10|Nov 11|99%
 2023|Jul 22|Nov 15|244%|Latest opening on record
 2022|May 27|Oct 31|41%
 2021|May 27|Oct 21|63%
-2020|Jun 15|Nov 05|46%|COVID-19 park closure delayed opening
+2020|Jun 15|Nov 05|46%|The COVID-19 park closure made the opening late
 2019|Jul 01|Nov 19|176%
 2018|May 21|Nov 20|67%
 2017|Jun 29|Nov 14|177%
@@ -445,12 +451,12 @@ const ROADS = [
 1957|May 25||`},
  {id:"gpr", park:"yose", name:"Glacier Point Road", sub:"Yosemite · beyond Badger Pass",
   src:"https://www.nps.gov/yose/planyourvisit/seasonal.htm",
-  about:"The first 5 miles stay open to Badger Pass Ski Area in winter; the road to Glacier Point closes with snow, usually November to late May.",
+  about:"In winter, the first 5 miles stay open to Badger Pass Ski Area. Snow closes the road to Glacier Point, usually from November to late May.",
   rows:`2026|May 09||
 2025|May 10|Nov 12|
 2024|May 14|Nov 11|
-2023|Jul 15|Nov 14||Opened late due to construction and record snow
-2022|Did not open|Did not open||Closed all year for road rehabilitation
+2023|Jul 15|Nov 14||Opened late because of construction and record snow
+2022|Did not open|Did not open||Closed all year for road repair
 2021|Apr 30|Dec 07|
 2020|Jun 11|Nov 05|
 2019|May 10|Nov 25|
@@ -479,18 +485,18 @@ const ROADS = [
 1996|May 24|Nov 05|
 1995|Jul 01|Dec 11|`},
  {id:"gtsr", park:"glac", name:"Going-to-the-Sun Road", sub:"Glacier · over Logan Pass (6,646 ft)",
-  src:"https://www.nps.gov/glac/learn/news/logan-pass-opening-and-closing-dates.htm", skip:[1933],
-  about:"Dates are for vehicle access over Logan Pass. Lower sections stay open year-round. Since 1992 the pass closes on the third Monday of October, weather permitting. Closing dates after 2022 are not yet published by NPS. Weather can close the alpine section for a few days at a time during the season; recent ones are listed below the chart.",
+  src:"https://www.nps.gov/glac/learn/news/logan-pass-opening-and-closing-dates.htm",
+  about:"The dates are for vehicle access over Logan Pass. The lower sections stay open all year. Since 1992, the pass closes on the third Monday of October if the weather permits. NPS did not publish closing dates after 2022. During the season, weather can close the alpine section for some days. The list below the chart shows the recent closures.",
   rows:`2026|Jun 22||
 2025|Jun 16||
 2024|Jun 22||
 2023|Jun 13||
-2022|Jul 13|Oct 16||Ties latest opening; heavy avalanche year. West side closed Oct 1 for rehab
+2022|Jul 13|Oct 16||Same date as the latest opening on record. Many avalanches this year. The west side closed on Oct 1 for repair work
 2021|Jun 25|Oct 13|
-2020|Jul 13|Oct 09||COVID-19: only West Entrance to Rising Sun opened; east side closed all season
+2020|Jul 13|Oct 09||COVID-19: Only the section from West Entrance to Rising Sun opened. The east side stayed closed all season
 2019|Jun 22|Sep 25|
 2018|Jun 22|Sep 29|
-2017|Jun 28|Sep 03||West side closed by Sprague Fire; east side to Logan Pass through Oct 9
+2017|Jun 28|Sep 03||The Sprague Fire closed the west side. The east side to Logan Pass stayed open until Oct 9
 2016|Jun 16|Oct 10|
 2015|Jun 19|Oct 05||West side to Logan Pass Jun 10; east-side rehab closure
 2014|Jul 02|Sep 22||East-side rehab closure; west side to Logan Pass through Oct 20
@@ -576,8 +582,8 @@ const ROADS = [
 1934|Jun 01||
 1933|Jul 15|||Road dedicated and opened`},
  {id:"trr", park:"romo", name:"Trail Ridge Road", sub:"Rocky Mountain · highest paved through road (12,183 ft)",
-  src:"https://www.nps.gov/romo/planyourvisit/trail-ridge-road.htm", noTrend:true,
-  about:"Closes between Many Parks Curve and the Colorado River Trailhead. Usually opens around Memorial Day and closes in mid- to late October. NPS doesn't publish a single table, so this list only has years confirmed in park press releases.",
+  src:"https://www.nps.gov/romo/planyourvisit/trail-ridge-road.htm",
+  about:"The closed section is between Many Parks Curve and the Colorado River Trailhead. The road usually opens at approximately Memorial Day. It usually closes in mid- to late October. NPS does not publish one table of dates. This list shows only the years that park press releases confirm.",
   rows:`2025|May 30|Nov 14|
 2024|May 31|Oct 25|
 2023|May 26||
@@ -600,13 +606,13 @@ const INTERRUPTS = {
   gtsr: {
     2026: [
       {from:"Sep 06", to:"Sep 09", what:"Avalanche to Jackson Glacier Overlook", why:"Heavy rain, flood watch and rockfall risk",
-       detail:"Closed proactively at 5 p.m. Sep 6; NPS reopened it around 2 p.m. Sep 9. (Some news outlets reported earlier reopenings on Sep 7 or Sep 8.)"},
+       detail:"NPS closed the road at 5 p.m. on Sep 6 as a precaution. NPS reopened it at approximately 2 p.m. on Sep 9. Some news reports gave earlier reopening dates of Sep 7 or Sep 8."},
       {from:"Sep 14", to:null, what:"Avalanche to Jackson Glacier Overlook", why:"Snow at Logan Pass and freezing temperatures",
-       detail:"Snow level dropped to about 6,500 ft overnight. Reopening date not confirmed in published sources."}
+       detail:"During the night, the snow level went down to approximately 6,500 ft. Published sources do not confirm the reopening date."}
     ],
     2025: [
-      {from:"Jun 20", to:"Jun 23", what:"Logan Pass", why:"About 10 in of snow at Logan Pass",
-       detail:"Closed late Jun 20, less than a week after the season opening; full road reopened about 10:30 a.m. Jun 23."}
+      {from:"Jun 20", to:"Jun 23", what:"Logan Pass", why:"Approximately 10 in of snow at Logan Pass",
+       detail:"The road closed late on Jun 20, less than one week after it opened for the season. The full road reopened at approximately 10:30 a.m. on Jun 23."}
     ]
   }
 };
@@ -662,7 +668,7 @@ async function loadNPS(){
   while (start < total && start < 5000){
     const url = `https://developer.nps.gov/api/v1/alerts?parkCode=${codes}&limit=500&start=${start}&api_key=${encodeURIComponent(getKey())}`;
     const res = await fetch(url, {cache:"no-store"});
-    if (res.status === 429) throw new Error("Rate limit reached. Add your own free NPS API key below.");
+    if (res.status === 429) throw new Error("You used all the requests that the key allows. Add your own free NPS API key below.");
     if (res.status === 401 || res.status === 403) throw new Error("NPS rejected the API key. Check the key below.");
     if (!res.ok) throw new Error("NPS API returned HTTP " + res.status);
     const page = await res.json();
@@ -739,7 +745,7 @@ async function refresh(){
     const local = location.protocol === "file:" ? "" : "";
     banner.hidden = false;
     banner.textContent = "Some data did not load: " + errs.join(" · ") +
-      (errs.some(e => /fetch|network/i.test(e)) ? " If every source fails, open this file directly in Chrome, Safari, Edge or Firefox; some viewers block outside requests." : "");
+      (errs.some(e => /fetch|network/i.test(e)) ? " If all sources fail, open this file in Chrome, Safari, Edge or Firefox. Some viewers block requests to other sites." : "");
   } else banner.hidden = true;
   state.loaded = true;
   $("stamp").textContent = "Updated " + new Date().toLocaleString("en-US",{month:"short",day:"numeric",hour:"numeric",minute:"2-digit"});
@@ -769,7 +775,7 @@ function fmtDate(s){
 function dayDiff(a,b){ return Math.round((Date.parse(b+"T00:00:00Z")-Date.parse(a+"T00:00:00Z"))/86400000); }
 function fmtD(iso){ return new Date(iso+"T12:00:00Z").toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric",timeZone:"UTC"}); }
 function startText(e){ return e.dateText || fmtD(e.start); }
-function endText(e){ return e.end ? fmtD(e.end) : "Phased / no single date"; }
+function endText(e){ return e.end ? fmtD(e.end) : "Reopened in phases. No single date."; }
 function durText(e){ if (e.days) return fmtInt(e.days); return (e.end && !e.dateText) ? fmtInt(dayDiff(e.start,e.end)) : "–"; }
 const SCOPE = {full:"Full closure", partial:"Partial closure", limited:"Open, limited services"};
 function histList(code){
@@ -807,13 +813,11 @@ function roadStats(rows){
   const op = rows.filter(r=>r.od!==null), dur = rows.filter(r=>r.days!==null), cl = rows.filter(r=>r.cd!==null);
   const minO = op.reduce((a,b)=>b.od<a.od?b:a), maxO = op.reduce((a,b)=>b.od>a.od?b:a);
   const maxTies = op.filter(r=>r.od===maxO.od).map(r=>r.y).sort((a,b)=>a-b);
-  const last10 = op.filter(r=>r.y>op[0].y-10), prior = op.filter(r=>r.y<=op[0].y-10);
   const avg = a => a.reduce((s,r)=>s+r,0)/a.length;
   return {n:op.length, from:Math.min(...op.map(r=>r.y)), to:Math.max(...op.map(r=>r.y)),
     maxTies, avgO:avg(op.map(r=>r.od)), medO:median(op.map(r=>r.od)), minO, maxO,
     avgC: cl.length? avg(cl.map(r=>r.cd)) : null,
-    avgDays: dur.length? avg(dur.map(r=>r.days)) : null, nDays:dur.length,
-    last10:avg(last10.map(r=>r.od)), prior: prior.length? avg(prior.map(r=>r.od)) : null};
+    avgDays: dur.length? avg(dur.map(r=>r.days)) : null, nDays:dur.length};
 }
 function roadChart(rows, intr){
   const W=900,H=300,L=58,R=12,T=14,B=30;
@@ -821,14 +825,15 @@ function roadChart(rows, intr){
   const y0=Math.min(...pts.map(r=>r.y)), y1=Math.max(...pts.map(r=>r.y));
   const vals = pts.flatMap(r=>[r.od, r.cd, ...((intr[r.y]||[]).flatMap(iv=>[doy(r.y,iv.from), iv.to?doy(r.y,iv.to):null]))].filter(v=>v!==null));
   const dmin=Math.floor((Math.min(...vals)-7)/30)*30, dmax=Math.ceil((Math.max(...vals)+7)/30)*30;
-  const x = yr => L + (yr-y0)/Math.max(1,y1-y0)*(W-L-R);
+  const slot = (W-L-R)/(y1-y0+1);
+  const x = yr => L + (y1-yr+0.5)*slot; // newest year on the left
   const y = d => H-B - (d-dmin)/(dmax-dmin)*(H-T-B);
-  const bw = Math.max(2, Math.min(9, (W-L-R)/(y1-y0+1)*0.6));
+  const bw = Math.max(2, Math.min(18, slot*0.5));
   let g = "";
   // gridlines on month starts
   const monthStarts=[0,31,59,90,120,151,181,212,243,273,304,334,365,396];
   monthStarts.forEach(m=>{ if(m>=dmin && m<=dmax){ g+=`<line x1="${L}" x2="${W-R}" y1="${y(m)}" y2="${y(m)}" stroke="var(--line)"/><text x="${L-6}" y="${y(m)+4}" text-anchor="end" font-size="11" fill="var(--muted)">${doyLabel(m%365)}</text>`; }});
-  const step = (y1-y0)>40?10:(y1-y0)>15?5:2;
+  const step = (y1-y0)>40?10:(y1-y0)>15?5:(y1-y0)>12?2:1;
   for(let yr=Math.ceil(y0/step)*step; yr<=y1; yr+=step) g+=`<text x="${x(yr)}" y="${H-10}" text-anchor="middle" font-size="11" fill="var(--muted)">${yr}</text>`;
   pts.forEach(r=>{
     const t = `${r.y}: opened ${r.o}${r.c?", closed "+r.c:""}${r.days!==null?" ("+r.days+" days)":""}`;
@@ -838,31 +843,35 @@ function roadChart(rows, intr){
     g+=`<circle cx="${x(r.y)}" cy="${y(r.od)}" r="${Math.max(2.5,bw/2+0.5)}" fill="${r.note?"var(--partial)":"var(--ink)"}"><title>${esc(t)}${r.note?" — "+esc(r.note):""}</title></circle>`;
   });
   return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Season bars by year">${g}</svg>
-    <div class="cap">Dot = opening date (orange dot = year with a note). Bar = season open, up to the closing date. Red mark = brief mid-season closure. Hover for exact dates.</div>`;
+    <div class="cap">Dot: the opening date. An orange dot shows a year with a note. Bar: the open season, from the opening date to the closing date. Red mark: a short closure during the season. Put the pointer on a mark to see the exact dates.</div>`;
 }
+const ROAD_YEARS = 10; // show only the last 10 calendar years, newest first
 let roadSel = "tioga";
 function renderRoads(){
   $("rtabs").innerHTML = ROADS.map(r=>`<button data-road="${r.id}" aria-pressed="${r.id===roadSel}">${esc(r.name)}<small>${esc(PARK_BY[r.park].name)}</small></button>`).join("");
-  const r = ROADS.find(z=>z.id===roadSel), rows = parseRoad(r), st = roadStats(rows.filter(z=>!(r.skip||[]).includes(z.y)));
-  const intr = INTERRUPTS[r.id] || {};
+  const r = ROADS.find(z=>z.id===roadSel);
+  const minYear = new Date().getFullYear() - ROAD_YEARS + 1;
+  const rows = parseRoad(r).filter(z=>z.y>=minYear).sort((a,b)=>b.y-a.y);
+  if (!rows.some(z=>z.od!==null)){ $("rbody").innerHTML = `<p class="rabout">There are no dates for this road in the last ${ROAD_YEARS} years.</p>`; return; }
+  const st = roadStats(rows);
+  const intr = {};
+  Object.entries(INTERRUPTS[r.id] || {}).forEach(([yr,list]) => { if (+yr>=minYear) intr[yr] = [...list].sort((a,b)=>doy(+yr,b.from)-doy(+yr,a.from)); });
   const iyears = Object.keys(intr).map(Number).sort((a,b)=>b-a);
-  const intrList = iyears.length ? `<div class="rintr"><h3>Brief closures after opening</h3><ul class="hist">${iyears.flatMap(yr=>intr[yr].map(iv=>`<li><div class="hd"><b>${esc(iv.from)}${iv.to?"–"+esc(iv.to):"–?"}, ${yr}</b>${iv.to?(doy(yr,iv.to)-doy(yr,iv.from))+" days":"Reopening not confirmed"}</div><div><div class="ht"><span class="tag full">Closed</span>${esc(iv.what)}</div><div class="hn">${esc(iv.why)}. ${esc(iv.detail)}</div></div></li>`)).join("")}</ul></div>` : "";
-  const trend = (!r.noTrend && st.prior!==null) ? Math.round(st.last10 - st.prior) : null;
+  const intrList = iyears.length ? `<div class="rintr"><h3>Short closures after the road opened</h3><ul class="hist">${iyears.flatMap(yr=>intr[yr].map(iv=>`<li><div class="hd"><b>${esc(iv.from)}${iv.to?"–"+esc(iv.to):"–?"}, ${yr}</b>${iv.to?(doy(yr,iv.to)-doy(yr,iv.from))+" days":"Reopening not confirmed"}</div><div><div class="ht"><span class="tag full">Closed</span>${esc(iv.what)}</div><div class="hn">${esc(iv.why)}. ${esc(iv.detail)}</div></div></li>`)).join("")}</ul></div>` : "";
   $("rbody").innerHTML = `
     <p class="rabout"><b>${esc(r.sub)}.</b> ${esc(r.about)} <a href="${r.src}" target="_blank" rel="noopener">NPS source</a></p>
     <div class="rstats">
-      <div><strong>${doyLabel(st.avgO)}</strong><span>Average opening (${st.n} yrs, ${st.from}–${st.to}${(r.skip||[]).length?", excl. "+r.skip.join(", "):""})</span></div>
+      <div><strong>${doyLabel(st.avgO)}</strong><span>Average opening (${st.n} years, ${st.to}–${st.from})</span></div>
       <div><strong>${doyLabel(st.medO)}</strong><span>Median opening</span></div>
       <div><strong>${esc(st.minO.o)}, ${st.minO.y}</strong><span>Earliest opening</span></div>
       <div><strong>${esc(st.maxO.o)}, ${st.maxTies.join(" / ")}</strong><span>Latest opening${st.maxTies.length>1?" (tied)":""}</span></div>
       ${st.avgC!==null?`<div><strong>${doyLabel(st.avgC%365)}</strong><span>Average closing</span></div>`:""}
-      ${st.avgDays!==null?`<div><strong>${Math.round(st.avgDays)} days</strong><span>Average season (${st.nDays} full seasons)</span></div>`:""}
-      ${trend!==null?`<div><strong>${trend>0?"+":""}${trend} days</strong><span>Avg opening ${st.to-9}–${st.to} vs. ${st.from}–${st.to-10}</span></div>`:""}
+      ${st.avgDays!==null?`<div><strong>${Math.round(st.avgDays)} days</strong><span>Average season (${st.nDays} complete seasons)</span></div>`:""}
     </div>
     <div class="rchart">${roadChart(rows, intr)}</div>
     ${intrList}
     <div class="tablewrap"><table>
-      <thead><tr><th>Year</th><th>Opened</th><th>Closed</th><th class="num">Days open</th>${iyears.length?`<th>Mid-season closures</th>`:""}${r.extra?`<th class="num">${esc(r.extra)} Apr 1</th>`:""}<th>Note</th></tr></thead>
+      <thead><tr><th>Year</th><th>Opened</th><th>Closed</th><th class="num">Days open</th>${iyears.length?`<th>Closures during the season</th>`:""}${r.extra?`<th class="num">${esc(r.extra)} Apr 1</th>`:""}<th>Note</th></tr></thead>
       <tbody>${rows.map(z=>`<tr><td class="dur"><b>${z.y}</b></td><td class="dur">${esc(z.o)||"–"}</td><td class="dur">${esc(z.c)|| "–"}</td><td class="num dur">${z.days!==null?z.days:"–"}</td>${iyears.length?`<td class="dur">${(intr[z.y]||[]).map(iv=>`<span class="flag" style="color:var(--closed)">${esc(iv.from)}–${iv.to?esc(iv.to):"?"}</span>`).join("<br>")||"–"}</td>`:""}${r.extra?`<td class="num">${esc(z.x)||"–"}</td>`:""}<td>${z.note?`<span class="flag">${esc(z.note)}</span>`:""}</td></tr>`).join("")}</tbody>
     </table></div>`;
 }
@@ -963,8 +972,8 @@ function alertBlock(a){
 function detail(p, list, w, warns){
   const groups = {road:"Roads", trail:"Trails", facility:"Facilities and camping", other:"Other alerts"};
   let alertsHtml = "";
-  if (!list) alertsHtml = `<p class="none">Alerts not loaded.</p>`;
-  else if (!list.length) alertsHtml = `<p class="none">No active NPS alerts. Roads and trails are operating normally per NPS.</p>`;
+  if (!list) alertsHtml = `<p class="none">The alerts did not load.</p>`;
+  else if (!list.length) alertsHtml = `<p class="none">NPS has no active alerts for this park. NPS reports normal operation of roads and trails.</p>`;
   else Object.keys(groups).forEach(g => {
     const items = list.filter(a => a.type === g);
     if (items.length) alertsHtml += `<h2>${groups[g]} (${items.length})</h2>` + items.map(alertBlock).join("");
@@ -976,8 +985,8 @@ function detail(p, list, w, warns){
       const day = new Date(t+"T12:00:00").toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"});
       return `<div><b>${day}</b>${Math.round(d.temperature_2m_max[i])}° / ${Math.round(d.temperature_2m_min[i])}°<br>${esc(WMO[d.weather_code[i]]||"—")}<br>Precip ${d.precipitation_probability_max[i] ?? 0}%, ${(d.precipitation_sum[i]||0).toFixed(2)} in</div>`;
     }).join("") + `</div>`;
-    wxHtml += `<p class="none" style="margin-top:8px">Humidity ${w.current.relative_humidity_2m}% · forecast point near the main visitor area; elevation changes temperatures a lot inside large parks.</p>`;
-  } else wxHtml += `<p class="none">Weather not loaded.</p>`;
+    wxHtml += `<p class="none" style="margin-top:8px">Humidity ${w.current.relative_humidity_2m}% · The forecast is for one point near the main visitor area. In large parks, the temperature changes much with elevation.</p>`;
+  } else wxHtml += `<p class="none">The weather did not load.</p>`;
   if (warns && warns.length){
     wxHtml += `<h2 style="margin-top:14px">NWS warnings</h2>` + warns.map(x => `<div class="alert k-danger"><div class="at">${esc(x.event)}</div><div class="ad">${esc(x.headline||"")}</div></div>`).join("");
   }
