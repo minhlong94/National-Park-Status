@@ -66,7 +66,10 @@ button:focus-visible,input:focus-visible,summary:focus-visible{outline:3px solid
 .filters button[aria-pressed="true"]{background:var(--ink);color:var(--paper);border-color:var(--ink)}
 .tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:8px;background:var(--panel)}
 table{width:100%;border-collapse:collapse;min-width:900px}
-.btb{display:flex;width:fit-content;max-width:100%;gap:6px;align-items:baseline;margin-top:6px;padding:3px 8px;border-radius:6px;font-size:12.5px;line-height:1.3;
+.btbs{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.nw{white-space:nowrap}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.btb{display:inline-flex;gap:5px;align-items:baseline;padding:2px 8px;border-radius:6px;font-size:12.5px;line-height:1.3;
   background:color-mix(in srgb, var(--muted) 12%, transparent);border:1px solid var(--line);color:var(--ink)}
 .btb b{font-weight:700}
 .btb.now{background:color-mix(in srgb, var(--open) 28%, transparent);border-color:var(--open)}
@@ -1032,16 +1035,20 @@ window.addEventListener("resize", syncDetailWidth);
 // ---- Best time to visit: banner and filter (R21) ----
 // The months come from bestTime() (stored weather, visits, rain, snow and fall color). The page does not show the score.
 // The star shows only when the banner is about now.
+// Keep each month range on one line ("Apr–Jun"). A line can break only after a comma.
+const rangeHTML = label => label.split(", ").map(r => `<span class="nw">${esc(r)}</span>`).join(", ");
 function bestBanner(id){
-  return visitBanner(id) + fallBanner(id);
+  const html = visitBanner(id) + fallBanner(id);
+  return html ? `<div class="btbs">${html}</div>` : "";
 }
 function visitBanner(id){
   const bt = window.PARK_HISTORY && bestTime(id);
   if (!bt || !bt.best.length) return "";
   const why = bt.reasons.length ? `Why: ${bt.reasons.join(", ")}.` : "";
+  // Short text (R26). The color and the star show if it is now. The title gives the full meaning.
   if (bt.best.includes(new Date().getMonth()))
-    return `<div class="btb now" title="${esc(why)}"><span aria-hidden="true">★</span><span><b>Now is a great time to visit!</b> Best: ${esc(bt.label)}</span></div>`;
-  return `<div class="btb" title="${esc(why)}"><span>Best time to visit: <b>${esc(bt.label)}</b></span></div>`;
+    return `<span class="btb now" title="${esc(`Now is a great time to visit. Best time to visit: ${bt.label}. ${why}`)}"><span aria-hidden="true">★</span><span>Best: <b>${rangeHTML(bt.label)}</b></span><span class="sr">(now is a great time to visit)</span></span>`;
+  return `<span class="btb" title="${esc(`Best time to visit: ${bt.label}. ${why}`)}"><span>Best: <b>${rangeHTML(bt.label)}</b></span></span>`;
 }
 // Best fall color months: the months that have 10 or more days of the usual best color window (mid to dor).
 // If no month has 10 days, the month of the middle of the window.
@@ -1054,10 +1061,10 @@ function fallMonthsOf(f){
 function fallBanner(id){
   const f = window.PARK_FOLIAGE && fallSummary(id);
   if (!f || !f.clear) return "";
-  const label = rangeText(fallMonthsOf(f)), dates = `Usually ${doyText(f.mid)} – ${doyText(f.dor)}`;
+  const label = rangeText(fallMonthsOf(f)), dates = `Best fall color: ${label}. Usually ${doyText(f.mid)} – ${doyText(f.dor)}.`;
   if (todayDoy() >= Math.round(f.mid) && todayDoy() <= Math.round(f.dor))
-    return `<div class="btb fall now" title="${esc(dates)}"><span aria-hidden="true">★</span><span><b>Fall color is at its best now!</b> Best: ${esc(label)}</span></div>`;
-  return `<div class="btb fall" title="${esc(dates)}"><span>Best fall color: <b>${esc(label)}</b></span></div>`;
+    return `<span class="btb fall now" title="${esc(`Fall color is at its best now. ${dates}`)}"><span aria-hidden="true">★</span><span>Fall: <b>${rangeHTML(label)}</b></span><span class="sr">(fall color is at its best now)</span></span>`;
+  return `<span class="btb fall" title="${esc(dates)}"><span>Fall: <b>${rangeHTML(label)}</b></span></span>`;
 }
 function bestFilterMonths(){
   if (state.best === "now") return new Set([new Date().getMonth()]);

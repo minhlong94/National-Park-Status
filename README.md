@@ -18,7 +18,7 @@ This page shows the current conditions of all 63 U.S. national parks. The list s
 
   Put the pointer on a month to see all the values for that month. A table shows the same values.
 - **Fall color**: the usual dates when the leaves change, from satellite data, and reports of colored leaves near the park in this season.
-- **Best time to visit**: a banner under each park name shows the best months, from the weather, the number of visitors, rain and snow. A second banner shows the best months for fall color. The filter shows the parks that are best to visit this month, or in the months you select.
+- **Best time to visit**: short banners under each park name. "Best:" shows the best months, from the weather, the number of visitors, rain and snow. "Fall:" shows the best months for fall color. A star shows when now is a good time. The filter shows the parks that are best to visit this month, or in the months you select.
 - **Fall color map**: a map of the parks with their usual fall color on a date. Move the date slider to see the fall color move across the country. Click a park to open it in the table.
 - **Closure history**: the major full and partial closures from the last 5 years. The list also shows shutdowns of all parks.
 
