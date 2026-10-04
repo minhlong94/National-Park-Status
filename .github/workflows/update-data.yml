@@ -56,4 +56,8 @@ jobs:
           else
             git commit -m "Update park history data"
             git push
+            # GitHub Pages serves the gh-pages branch. Publish the new data from main.
+            if [ "$GITHUB_REF_NAME" = "main" ]; then
+              git push origin HEAD:gh-pages
+            fi
           fi

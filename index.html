@@ -139,7 +139,7 @@ tr.detail[hidden]{display:none}
 .rintr h3{font:600 17px/1.2 "Archivo Narrow",Arial,sans-serif;margin:0 0 6px}
 .rlinks{margin:10px 0 0;font-size:14px}
 .rlinks a{color:var(--info);cursor:pointer}
-.mviz{grid-column:1/-1;border-top:1px solid var(--line);padding-top:14px;position:relative}
+.mviz{grid-column:1/-1;border-top:1px solid var(--line);padding-top:14px;position:sticky;left:18px}
 .mviz h2{margin:0 0 2px}
 .mviz .msub{color:var(--muted);font-size:13px;margin:0 0 10px;max-width:90ch}
 .mviz .mtitle{font-size:13.5px;font-weight:600;margin:12px 0 2px}
@@ -1065,7 +1065,7 @@ function axisY(tks, y, L, W, R, fmt){
     `<text x="${L-6}" y="${y(t)+4}" text-anchor="end" font-size="11" fill="var(--muted)" style="font-variant-numeric:tabular-nums">${fmt(t)}</text>`).join("");
 }
 function axisX(L, band, yText){
-  return MONTHS.map((m,i) => `<text x="${L+band*(i+.5)}" y="${yText}" text-anchor="middle" font-size="11" fill="var(--muted)">${m}</text>`).join("");
+  return MONTHS.map((m,i) => `<text x="${L+band*(i+.5)}" y="${yText}" text-anchor="middle" font-size="11" fill="var(--muted)">${band < 34 ? m[0] : m}</text>`).join(""); // one letter on narrow screens
 }
 function hitLayer(L, band, T, H, focusable, name){
   return MONTHS.map((m,i) => `<rect class="hit" data-m="${i}" x="${L+band*i}" y="${T}" width="${band}" height="${H-T}"${focusable?` tabindex="0" role="img" aria-label="${MONTHS_LONG[i]}: ${name}"`:""}/>`).join("");
@@ -1079,7 +1079,13 @@ function drawMonthly(box, id){
   if (!P){ box.innerHTML = `<h2>Visits and climate by month</h2><p class="none">There is no monthly data for this park.</p>`; return; }
   const years = D.years, yr0 = years[0], yr1 = years[years.length-1];
   const shown = years.filter(y => !hiddenYears.has(y));
-  const W = Math.max(320, box.clientWidth), L = 52, R = 10, band = (W-L-R)/12;
+  // The park table scrolls sideways on small screens. Fit the charts to the visible width.
+  const wrap = box.closest(".tablewrap"), dbox = box.closest(".dbox");
+  if (wrap && dbox){
+    const cs = getComputedStyle(dbox);
+    box.style.maxWidth = Math.max(280, wrap.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight)) + "px";
+  }
+  const W = Math.max(280, box.clientWidth), L = 52, R = 10, band = (W-L-R)/12;
   const colorOf = y => `var(${YEAR_VARS[years.indexOf(y) % YEAR_VARS.length]})`;
   const vis = y => P.visits[y] || [];
 
@@ -1197,16 +1203,15 @@ function showMonthly(id){
     box.innerHTML = `<h2>Visits and climate by month</h2><p class="none">The monthly data did not load. If you opened the file directly, use a local web server (see the README).</p>`;
   });
 }
-const mvizResize = new ResizeObserver(entries => entries.forEach(en => {
-  const box = en.target;
-  if (box.dataset.w && Math.abs(box.clientWidth - box.dataset.w) > 4) drawMonthly(box, box.dataset.mviz);
-}));
+let mvizTimer = 0;
+window.addEventListener("resize", () => { clearTimeout(mvizTimer); mvizTimer = setTimeout(() => {
+  document.querySelectorAll(".mviz[data-w]").forEach(box => { box.style.maxWidth = ""; drawMonthly(box, box.dataset.mviz); });
+}, 150); });
 
 function openMonthly(code){
   const box = document.querySelector(`.mviz[data-mviz="${code}"]`);
   if (!box) return;
   showMonthly(code);
-  mvizResize.observe(box);
 }
 function toggle(code){
   if (state.open.has(code)) state.open.delete(code); else state.open.add(code);

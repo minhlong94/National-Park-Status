@@ -111,8 +111,12 @@ Requirements:
 - Data sources:
   - Visits: NPS Visitor Use Statistics (irmaservices.nps.gov).
   - Weather: Open-Meteo historical weather archive (archive-api.open-meteo.com). The page shows the average of the 3 years for each month.
-- A GitHub Actions workflow gets the data and saves it in `data/park-history.js`.
-- Status: in progress.
+- A GitHub Actions workflow gets the data and saves it in `data/park-history.js`. It runs on day 3 of each month. When it runs on `main`, it also pushes the data to `gh-pages`.
+- Each year has a fixed color. The colors pass the palette check for color vision deficiency.
+- The reader can click a year in the legend to show or hide that year.
+- If almost no snow falls in a park, the page shows a short text instead of the snow chart.
+- On small screens, the charts fit the visible width.
+- Status: done.
 
 ### R10. Use timeouts in the data workflow
 
