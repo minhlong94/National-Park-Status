@@ -29,7 +29,7 @@ Requirements:
 - Sort the parks by the number of visits, with the most visited park first.
 - Show only the 20 most visited parks.
 - Add a "Refresh" button. When the reader clicks it, the page gets new data.
-- Status: partly done. The page shows all 63 parks, not only the top 20. The owner must decide which rule applies.
+- Status: done, with a change from R13. The page shows all 63 parks in pages of 10. The first page shows the 10 most visited parks.
 
 ### R1. Keep the Park conditions board in the repository
 
@@ -174,4 +174,30 @@ Requirements:
 - The script gets the reports for this season only from Aug 15 to Dec 15.
 - The page shows a fall color strip with the same months as the other charts, and a short text.
 - The workflow `.github/workflows/update-foliage.yml` runs each Monday. All data workflows use one queue, so two runs never push at the same time.
+- Status: done.
+
+### R13. Show all parks in pages of 10
+
+Original text from the owner:
+
+> Also do not need to show all 63 parks. Just show the top 20 and make it pages
+
+Then the owner made it more exact:
+
+> No what I mean is show all parks but only show top 10 first and make the rest in pages
+
+The owner also said:
+
+> What I want to refresh is just current park statuses and weather conditions.
+
+The owner chose to keep the weekly refresh of the this-season leaf reports (R12).
+
+Requirements:
+
+- The park table shows all 63 parks.
+- Each page shows 10 parks. The first page shows the 10 most visited parks.
+- The page has "Previous" and "Next" buttons and a button for each page.
+- A new search, filter or sort goes back to page 1.
+- The totals at the top count all parks, not only the parks on the page.
+- "Refresh data" refreshes only the current park statuses and weather conditions. The stored data (monthly visits, monthly weather, usual fall color timing) does not refresh. The scripts only add new months or years.
 - Status: done.

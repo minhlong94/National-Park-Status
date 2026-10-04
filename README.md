@@ -20,7 +20,9 @@ This page shows the current conditions of all 63 U.S. national parks. The list s
 - **Fall color**: the usual dates when the leaves change, from satellite data, and reports of colored leaves near the park in this season.
 - **Closure history**: the major full and partial closures from the last 5 years. The list also shows shutdowns of all parks.
 
-Click **Refresh data** to get the live data again.
+The table shows 10 parks on each page. The first page shows the 10 most visited parks.
+
+Click **Refresh data** to get the current park statuses and weather again. The monthly data and the fall color data are stored in files and do not refresh with this button.
 
 ## Data sources
 

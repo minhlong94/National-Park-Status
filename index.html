@@ -168,6 +168,11 @@ tr.detail[hidden]{display:none}
 .mviz .msrc{font-size:12.5px;color:var(--muted);margin-top:8px}
 .mviz .mfall{font-size:13.5px;margin:2px 0 0;max-width:90ch}
 .mviz .mfall span{color:var(--muted)}
+.pager{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:12px 0 0}
+.pager button{padding:8px 12px;font-weight:500;min-width:40px}
+.pager button[aria-current="page"]{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.pager button:disabled{opacity:.45;cursor:default}
+.pager .pinfo{font-size:13px;color:var(--muted);margin-left:6px}
 footer{margin-top:22px;font-size:13px;color:var(--muted);max-width:90ch}
 footer a{color:var(--info)}
 @media (max-width:640px){.dbox{padding-left:18px}.settings input{min-width:0;width:100%}}
@@ -241,6 +246,7 @@ footer a{color:var(--info)}
       <tbody id="rows"></tbody>
     </table>
   </div>
+  <nav class="pager" id="pager" aria-label="Pages of the park table"></nav>
 
   <section class="roadsec" id="roads" aria-labelledby="rh">
     <h2 id="rh">Seasonal road history</h2>
@@ -670,7 +676,8 @@ const RX = {
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const fmtInt = n => n.toLocaleString("en-US");
-const state = { alerts:{}, wx:{}, nws:{}, filter:"all", sort:"visits", q:"", open:new Set(), loaded:false };
+const PAGE_SIZE = 10; // the first page shows the 10 most visited parks
+const state = { alerts:{}, wx:{}, nws:{}, filter:"all", sort:"visits", q:"", open:new Set(), loaded:false, page:1 };
 
 function getKey(){ try{ return localStorage.getItem("npsKey") || "DEMO_KEY"; }catch(e){ return "DEMO_KEY"; } }
 function setKey(k){ try{ k ? localStorage.setItem("npsKey", k) : localStorage.removeItem("npsKey"); }catch(e){} }
@@ -934,6 +941,15 @@ function matches(p, q){
   const name = p.name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f\u02bb]/g,"");
   return name.includes(q) || p.name.toLowerCase().includes(q) || states.includes(q) || p.code === q || p.id === q;
 }
+function renderPager(pages){
+  const nav = $("pager");
+  if (pages <= 1){ nav.innerHTML = ""; return; }
+  const b = (label, page, extra="") => `<button type="button" data-page="${page}" ${extra}>${label}</button>`;
+  nav.innerHTML = b("Previous", state.page-1, state.page===1 ? "disabled" : "") +
+    Array.from({length:pages}, (_, i) => b(i+1, i+1, `aria-label="Page ${i+1}"` + (i+1===state.page ? ` aria-current="page"` : ""))).join("") +
+    b("Next", state.page+1, state.page===pages ? "disabled" : "") +
+    `<span class="pinfo">Page ${state.page} of ${pages}</span>`;
+}
 function render(){
   const tb = $("rows");
   let tOpen=0,tPart=0,tClosed=0,tRoad=0,tTrail=0,tWx=0;
@@ -953,14 +969,16 @@ function render(){
     if (!seenCodes.has(p.code)){ seenCodes.add(p.code); tRoad += c.road; tTrail += c.trail; }
     tWx += warns.length;
   });
-  view.forEach(({p, list, st, c, w, warns}) => {
-    if (q && !matches(p, q)) return;
-
-    const f = state.filter;
-    const show = f==="all" || (f==="closures" && (st.cls==="partial"||st.cls==="closed")) ||
-      (f==="roads" && c.road) || (f==="trails" && c.trail) || (f==="wx" && warns.length);
-    if (!show) return;
-    shown++;
+  const f = state.filter;
+  const match = view.filter(({p, st, c, warns}) => (!q || matches(p, q)) &&
+    (f==="all" || (f==="closures" && (st.cls==="partial"||st.cls==="closed")) ||
+     (f==="roads" && c.road) || (f==="trails" && c.trail) || (f==="wx" && warns.length)));
+  const pages = Math.max(1, Math.ceil(match.length / PAGE_SIZE));
+  state.page = Math.min(Math.max(1, state.page), pages);
+  const first = (state.page - 1) * PAGE_SIZE;
+  const pageRows = match.slice(first, first + PAGE_SIZE);
+  shown = match.length;
+  pageRows.forEach(({p, list, st, c, w, warns}) => {
 
     let now = `<span class="none">–</span>`, today = `<span class="none">–</span>`;
     if (w && w.current){
@@ -987,7 +1005,8 @@ function render(){
     html.push(`<tr class="detail" data-for="${p.id}" ${isOpen? "": "hidden"}><td colspan="11">${detail(p, list, w, warns)}</td></tr>`);
   });
   tb.innerHTML = html.join("") || `<tr><td colspan="11" class="none" style="padding:18px">No parks match your search and filter.</td></tr>`;
-  $("count").textContent = `Showing ${shown} of ${NP} parks`;
+  $("count").textContent = shown ? `Showing ${first+1}–${first+pageRows.length} of ${shown} parks` + (shown < NP ? ` (${NP} in all)` : "") : `Showing 0 of ${NP} parks`;
+  renderPager(pages);
   state.open.forEach(openMonthly);
   if (state.loaded){
     $("t-open").textContent=tOpen; $("t-partial").textContent=tPart; $("t-closed").textContent=tClosed;
@@ -1318,11 +1337,18 @@ $("rows").addEventListener("click", e => { const gr = e.target.closest("[data-go
 $("rows").addEventListener("keydown", e => { const tr = e.target.closest("tr.park"); if (tr && (e.key==="Enter"||e.key===" ")){ e.preventDefault(); toggle(tr.dataset.code); } });
 document.querySelectorAll("[data-f]").forEach(b => b.addEventListener("click", () => {
   document.querySelectorAll("[data-f]").forEach(x => x.setAttribute("aria-pressed", x===b));
-  state.filter = b.dataset.f; render();
+  state.filter = b.dataset.f; state.page = 1; render();
 }));
 $("refresh").addEventListener("click", refresh);
-$("search").addEventListener("input", e => { state.q = e.target.value; render(); });
-$("sort").addEventListener("change", e => { state.sort = e.target.value; render(); });
+$("search").addEventListener("input", e => { state.q = e.target.value; state.page = 1; render(); });
+$("sort").addEventListener("change", e => { state.sort = e.target.value; state.page = 1; render(); });
+$("pager").addEventListener("click", e => {
+  const btn = e.target.closest("[data-page]");
+  if (!btn || btn.disabled) return;
+  state.page = +btn.dataset.page; render();
+  $("rows").closest(".tablewrap").scrollIntoView({block:"start", behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth"});
+  const cur = $("pager").querySelector('[aria-current="page"]'); if (cur) cur.focus({preventScroll:true});
+});
 $("savekey").addEventListener("click", () => { setKey($("key").value.trim()); $("savekey").textContent = "Saved"; setTimeout(()=>$("savekey").textContent="Save key",1500); refresh(); });
 try{ const k = localStorage.getItem("npsKey"); if (k) $("key").value = k; }catch(e){}
 
