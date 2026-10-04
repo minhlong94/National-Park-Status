@@ -406,3 +406,16 @@ Requirements:
   - The usual dates show when the reader puts the pointer on the banner.
 - The fall color banner uses the fall color. The best time banner uses green.
 - Status: done.
+
+### R25. A different color for a best time that is not this month
+
+Original text from the owner:
+
+> The Best time to Visit, if fall outside current month, should have a differnet color
+
+Requirements:
+
+- If the best months do not include the current month, the "Best time to visit" banner is neutral gray.
+- If they include the current month, the banner ("Now is a great time to visit!") stays green.
+- The fall color banner does not change.
+- Status: done.
