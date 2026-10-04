@@ -217,3 +217,16 @@ Requirements:
 - The totals at the top count all parks, not only the parks on the page.
 - "Refresh data" refreshes only the current park statuses and weather conditions. The stored data (monthly visits, monthly weather, usual fall color timing) does not refresh. The scripts only add new months or years.
 - Status: done.
+
+### R14. Publish each request with a pull request
+
+Original text from the owner:
+
+> Make a PR to publish it. Do after completing each request unless explicitly told not to do so
+
+Requirements:
+
+- After each request is complete, open a pull request from the work branch to `main` and merge it.
+- After the merge, push `main` to `gh-pages`, so the live page shows the change.
+- Do not do this if the owner says not to.
+- Status: done. Continues for each request.
