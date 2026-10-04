@@ -19,7 +19,7 @@ This page shows the current conditions of all 63 U.S. national parks. The list s
   Put the pointer on a month to see all the values for that month. A table shows the same values.
 - **Fall color**: the usual dates when the leaves change, from satellite data, and reports of colored leaves near the park in this season.
 - **Best time to visit**: a score from 0 to 100 for each month. It uses the weather, the number of visitors, rain, snow and fall color. The table shows the best months, and the park details show the reasons and a score strip.
-- **Fall color map**: a map of the parks with their usual fall color on a date. Move the date slider to see the fall color move across the country. Click a park to open it in the table.
+- **Fall color map**: a regional map of the usual fall color stage in the United States on a date, from NASA satellite data. Move the date slider to see the fall color move across the country. A list shows the states at peak color.
 - **Closure history**: the major full and partial closures from the last 5 years. The list also shows shutdowns of all parks.
 
 The table shows 10 parks on each page. The first page shows the 10 most visited parks.
@@ -77,7 +77,9 @@ The script `scripts/fetch_foliage.py` keeps two files:
 - `data/foliage.js`: the usual timing of the fall color. For each park and year, it keeps the day when the greenness starts to drop, the middle of the leaf change and the day when the leaves are off. NASA publishes one year at a time, 1 to 2 years late. The script adds only new years, and it checks the first park first.
 - `data/foliage-now.js`: the reports of colored and falling leaves within 50 km of each park in the last 14 days. The script gets these reports only from Aug 15 to Dec 15.
 
-The workflow `.github/workflows/update-foliage.yml` runs the script each Monday.
+- `data/foliage-grid.js`: the usual fall color dates on a grid of 438 points across the United States, for the regional map. The script `scripts/fetch_foliage_grid.py` collects it in about 1,300 requests over one or two runs. It continues from where the last run stopped. When the grid is complete, it checks for a new NASA year once a week.
+
+The workflow `.github/workflows/update-foliage.yml` runs both scripts each Monday.
 
 ## Run the page on your computer
 

@@ -283,7 +283,7 @@ Requirements:
 - Point to a dot to see its dates. Click a dot or a list item to open the park in the table.
 - The base map is `us-atlas` (Albers USA, with Alaska and Hawaii). The libraries `d3-geo` and `topojson-client` load from the jsDelivr CDN. If they do not load, the list and the table still work.
 - American Samoa and the Virgin Islands are not on the map. They have no clear fall color.
-- Status: done.
+- Status: replaced by R20 (regional map).
 
 ### R18. Fix the this-season leaf reports
 
@@ -309,4 +309,31 @@ Requirements:
 - The columns (alerts, forecast, closure history) go to the next line when there is not enough width.
 - The 3-day forecast shows one row for each day: day, high and low, weather, precipitation.
 - Links in the park details use the link color, so that they are easy to read in dark mode.
+- Status: done.
+
+### R20. Regional fall color map
+
+Original text from the owner:
+
+> I dont need park-specific details. Regional is fine to me, e.g., like one from explorefall
+
+Requirements:
+
+- The fall color map shows regions, not parks. The color fills the whole country, like the ExploreFall map. The park dots and the park list are removed from the map.
+- Data: NASA MODIS land surface phenology (MCD12Q2) on a grid:
+  - 438 points: every 1.5° in the lower 48 states, and every 2° of latitude and 4° of longitude in Alaska (`data/foliage-grid-cells.json`).
+  - For each point: the median day in a 21 km box when greenness starts to drop, the middle of the drop and leaves down, averaged over the last 5 NASA years (`data/foliage-grid.js`).
+- The script `scripts/fetch_foliage_grid.py` collects the grid in about 1,300 requests. It stops after 45 minutes, saves its progress, and the next run continues.
+- The data changes once a year. When the grid is complete, the script checks for a new NASA year at one point in the Great Smoky Mountains. If that point has no data for the new year, the script stops.
+- The page blends the 4 nearest grid points for each pixel and shows a stage for the chosen date:
+  - no change yet
+  - starting
+  - partial
+  - near peak
+  - peak color (from the middle of the drop to 60% of the way to leaves down)
+  - past peak
+  - leaves down
+  - no clear fall color
+- A list shows the states at peak color, near peak and past peak on the date. A table shows the usual dates for each state.
+- The fall color text in each park's details does not change.
 - Status: done.
