@@ -296,3 +296,17 @@ Requirements:
 - The USA-NPN request returned 0 reports, also for 2025. A test of 9 request formats showed the cause: the bounding box parameters. Without them, one week in October 2025 has 9,634 reports of colored and falling leaves.
 - Remove the bounding box from the request.
 - Status: done.
+
+### R19. Fix the park details layout
+
+Original text from the owner (with a screenshot of a cut-off closure history column):
+
+> Broken. Maybe 3 days forecast can be vertical?
+
+Requirements:
+
+- When the park table scrolls sideways (a window narrower than the table), the park details use the visible width and stay in view. No column is cut off.
+- The columns (alerts, forecast, closure history) go to the next line when there is not enough width.
+- The 3-day forecast shows one row for each day: day, high and low, weather, precipitation.
+- Links in the park details use the link color, so that they are easy to read in dark mode.
+- Status: done.
