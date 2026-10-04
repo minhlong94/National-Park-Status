@@ -1,0 +1,64 @@
+name: Update fall foliage data
+
+# Typical fall color timing (NASA MODIS, one new year at a time) and this-season reports
+# (USA-NPN, only from Aug 15 to Dec 15). See scripts/fetch_foliage.py.
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - scripts/fetch_foliage.py
+      - .github/workflows/update-foliage.yml
+  schedule:
+    - cron: "41 7 * * 1"  # 07:41 UTC each Monday
+
+permissions:
+  contents: write
+
+# One queue for all data workflows on a branch, so two runs never push at the same time.
+concurrency:
+  group: data-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        timeout-minutes: 2
+      - uses: actions/setup-python@v5
+        timeout-minutes: 3
+        with:
+          python-version: "3.12"
+      - name: Check the data hosts
+        timeout-minutes: 2
+        continue-on-error: true
+        run: |
+          for url in \
+            "https://modis.ornl.gov/rst/api/v1/MCD12Q2/bands" \
+            "https://services.usanpn.org/npn_portal/phenophases/getPhenophases.json"; do
+            curl -sS -o /dev/null --connect-timeout 15 --max-time 30 \
+              -w "%{http_code} in %{time_total}s (connect %{time_connect}s, TLS %{time_appconnect}s): $url\n" "$url" \
+              || echo "FAILED: $url"
+          done
+      - name: Get the data
+        timeout-minutes: 22  # the script has its own 20-minute limit
+        run: python3 -u scripts/fetch_foliage.py
+      - name: Commit the data if it changed
+        if: ${{ !cancelled() }}
+        timeout-minutes: 2
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898333+github-actions[bot]@users.noreply.github.com"
+          git add data/foliage.js data/foliage-now.js 2>/dev/null || true
+          if git diff --cached --quiet; then
+            echo "No change in the data."
+          else
+            git commit -m "Update fall foliage data"
+            git pull --rebase --quiet origin "$GITHUB_REF_NAME"
+            git push origin "HEAD:$GITHUB_REF_NAME"
+            # GitHub Pages serves the gh-pages branch. Publish the new data from main.
+            if [ "$GITHUB_REF_NAME" = "main" ]; then
+              git push origin HEAD:gh-pages
+            fi
+          fi

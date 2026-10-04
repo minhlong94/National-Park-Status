@@ -1,0 +1,67 @@
+name: Update park history data
+
+# Adds new months of visits (NPS) and weather (Open-Meteo) to data/park-history.js.
+# Old months do not change. The script only requests a month after it ends, and it
+# first checks the first park. If the first park has no data for that month, it stops.
+# Most weekly runs make no request or two requests.
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - scripts/fetch_history.py
+      - .github/workflows/update-data.yml
+  schedule:
+    - cron: "23 7 * * 1"  # 07:23 UTC each Monday. NPS publishes a month some weeks after it ends.
+
+permissions:
+  contents: write
+
+# One queue for all data workflows on a branch, so two runs never push at the same time.
+concurrency:
+  group: data-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        timeout-minutes: 2
+      - uses: actions/setup-python@v5
+        timeout-minutes: 3
+        with:
+          python-version: "3.12"
+      - name: Check the data hosts
+        timeout-minutes: 2
+        continue-on-error: true
+        run: |
+          for url in \
+            "https://irmaservices.nps.gov/v3/rest/stats/visitation?unitCodes=YELL&startMonth=1&startYear=2025&endMonth=1&endYear=2025" \
+            "https://archive-api.open-meteo.com/v1/archive?latitude=44.4&longitude=-110.6&start_date=2025-01-01&end_date=2025-01-02&daily=temperature_2m_max"; do
+            curl -sS -o /dev/null --connect-timeout 15 --max-time 30 \
+              -w "%{http_code} in %{time_total}s (connect %{time_connect}s, TLS %{time_appconnect}s): $url\n" "$url" \
+              || echo "FAILED: $url"
+          done
+      - name: Get the data
+        timeout-minutes: 15  # the script has its own 12-minute limit
+        run: python3 -u scripts/fetch_history.py
+      - name: Commit the data if it changed
+        # Also runs when a source failed, so the good data from the other source is kept.
+        if: ${{ !cancelled() }}
+        timeout-minutes: 2
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898333+github-actions[bot]@users.noreply.github.com"
+          git add data/park-history.js 2>/dev/null || true
+          if git diff --cached --quiet; then
+            echo "No change in the data."
+          else
+            git commit -m "Update park history data"
+            git pull --rebase --quiet origin "$GITHUB_REF_NAME"
+            git push origin "HEAD:$GITHUB_REF_NAME"
+            # GitHub Pages serves the gh-pages branch. Publish the new data from main.
+            if [ "$GITHUB_REF_NAME" = "main" ]; then
+              git push origin HEAD:gh-pages
+            fi
+          fi

@@ -15,6 +15,22 @@ The product is one web page, `index.html`. The page shows the current conditions
 
 ## Requirements
 
+### R0. Original instruction: park status page with weather and refresh
+
+Original text from the owner:
+
+> Pull me every road trail park status of every national park, build a html page on it, along with weather conditions, sorted by most visited parks top 20 only, and make a refresh button that pull new data on demand
+
+Requirements:
+
+- Get the status of the roads, trails and parks for each national park.
+- Make an HTML page that shows this status.
+- Show the weather conditions for each park.
+- Sort the parks by the number of visits, with the most visited park first.
+- Show only the 20 most visited parks.
+- Add a "Refresh" button. When the reader clicks it, the page gets new data.
+- Status: done, with a change from R13. The page shows all 63 parks in pages of 10. The first page shows the 10 most visited parks.
+
 ### R1. Keep the Park conditions board in the repository
 
 - Get the HTML artifact about national park status.
@@ -74,3 +90,143 @@ The product is one web page, `index.html`. The page shows the current conditions
 - Open a pull request from the work branch to `main`.
 - Merge the pull request.
 - Status: done.
+
+### R9. Monthly visits and climate chart for each park
+
+Original text from the owner:
+
+> For each park, add an interactive graph detailing visitors by month when clicked in the past 3 years, vertical bar diff color, along with avg temp low-high, snow, and rain, according to historical data, that can have its separate or same graph depending on your choice so that it works best to the readers
+
+Requirements:
+
+- When the reader clicks a park, show an interactive chart of the visits in each month.
+- Show the last 3 calendar years in the data file (see R11).
+- Use vertical bars. Give each year a different color.
+- Also show these historical monthly values:
+  - the average low and high temperature
+  - snow
+  - rain
+- Design choice: The page shows four separate charts with the same months (January to December). Each chart has one y-axis. When the reader points to a month in one chart, all charts show that month and one tooltip shows all the values for that month.
+- A table view shows the same values.
+- Data sources:
+  - Visits: NPS Visitor Use Statistics (irmaservices.nps.gov).
+  - Weather: Open-Meteo historical weather archive (archive-api.open-meteo.com). The page shows the average of each calendar month over the last 36 months.
+- A GitHub Actions workflow gets the data and saves it in `data/park-history.js`. It runs each Monday (see R11). When it runs on `main`, it also pushes the data to `gh-pages`.
+- Each year has a fixed color. The colors pass the palette check for color vision deficiency.
+- The reader can click a year in the legend to show or hide that year.
+- If almost no snow falls in a park, the page shows a short text instead of the snow chart.
+- On small screens, the charts fit the visible width.
+- Status: done.
+
+### R10. Use timeouts in the data workflow
+
+Original text from the owner:
+
+> Workflow failed. Try again, and make sure to use timeouts
+
+Requirements:
+
+- Each network request has a timeout of 30 seconds for each step (connect, TLS handshake and each read).
+- The script tries each request a maximum of 3 times.
+- The script stops after 10 minutes.
+- If 3 parks fail one after the other, the script stops the requests to that host.
+- The "Get the data" step stops after 15 minutes. The job stops after 20 minutes.
+- If one source fails, the workflow keeps the good data from the other source. The run then shows a failure.
+- Status: done.
+
+### R11. Store the monthly data and add only new months
+
+Original text from the owner:
+
+> Monthly data doesn't change much. Save it in a separate file so that it doesn't need constant refresh. You only need to refresh if future data comes. For example for now store it up to Sep 2026 (if available), refresh only if it's Nov, but attempt to get data for the first park and halt getting data for all parks if the first park returns null data for Oct
+
+Requirements:
+
+- Keep the monthly data in a separate file: `data/park-history.js`.
+- The file keeps one value for each month, from January 2023 to the last month with data (for example, September 2026 if NPS published it).
+- Old months do not change. The script does not get them again.
+- The script requests a month only after the month ends. For example, it requests October 2026 from November 1, 2026.
+- The script first requests the new month for the first park only. If the first park has no visits or no complete weather for that month, the script stops. It does not request data for the other parks.
+- If the first park has data, the script gets the month for all parks and adds it.
+- The page shows the visits for the last 3 calendar years in the file. The weather values are the averages of each calendar month over the last 36 months.
+- The workflow runs each Monday. Most runs make no request or two requests.
+- Status: done.
+
+### R12. Fall foliage data
+
+Original text from the owner:
+
+> Can you also get fall foilage data?
+
+The owner chose "Both" for the type of data.
+
+Requirements:
+
+- **Usual timing.** For each park, show when the fall color usually happens:
+  - when the greenness starts to drop
+  - the middle of the leaf change
+  - when the leaves are off
+- Source: NASA MODIS land surface phenology (MCD12Q2), from the ORNL DAAC MODIS web service. Each value is the median of the pixels in a 3 km box at the park point. The page shows the average of the last 5 years with data.
+- NASA publishes one year at a time, 1 to 2 years late. The file `data/foliage.js` keeps each year. Old years do not change. The script first checks the first park for a new year. If the first park has no data, the script stops.
+- If a park has no clear fall color change, the page tells the reader. Examples: deserts, tropical parks and evergreen parks. A clear change has all of these:
+  - the park is north of 24° N
+  - there are at least 3 years of data
+  - the middle of the greenness drop is from Aug 25 to Nov 30
+  - the change in greenness (EVI amplitude) is 0.15 or more
+- The satellite data measures greenness, not leaf color. The page says that leaf color is usually best from the middle of the greenness drop to the day most leaves are off.
+- The page links to the ExploreFall fall foliage map. Its maps and forecasts are the work of another company, with no public data service. The page does not copy them.
+- If no park has this-season reports (the reports are not entered yet), the page does not show the this-season line.
+- **This season.** Show the reports of "Colored leaves" and "Falling leaves" within 50 km of each park in the last 14 days.
+- Source: USA National Phenology Network (USA-NPN). One request gets the reports for all parks. The file is `data/foliage-now.js`.
+- The script gets the reports for this season only from Aug 15 to Dec 15.
+- The page shows a fall color strip with the same months as the other charts, and a short text.
+- The workflow `.github/workflows/update-foliage.yml` runs each Monday. All data workflows use one queue, so two runs never push at the same time.
+- Status: done.
+
+### R12a. ExploreFall
+
+Original text from the owner:
+
+> Cant you get foliage map from https://www.explorefall.com/?
+
+- ExploreFall has no public data service. Its maps and forecasts are its own work. The page does not copy them. Each park with a clear fall color change has a link to the ExploreFall map.
+- Status: done.
+
+### R13. Show all parks in pages of 10
+
+Original text from the owner:
+
+> Also do not need to show all 63 parks. Just show the top 20 and make it pages
+
+Then the owner made it more exact:
+
+> No what I mean is show all parks but only show top 10 first and make the rest in pages
+
+The owner also said:
+
+> What I want to refresh is just current park statuses and weather conditions.
+
+The owner chose to keep the weekly refresh of the this-season leaf reports (R12).
+
+Requirements:
+
+- The park table shows all 63 parks.
+- Each page shows 10 parks. The first page shows the 10 most visited parks.
+- The page has "Previous" and "Next" buttons and a button for each page.
+- A new search, filter or sort goes back to page 1.
+- The totals at the top count all parks, not only the parks on the page.
+- "Refresh data" refreshes only the current park statuses and weather conditions. The stored data (monthly visits, monthly weather, usual fall color timing) does not refresh. The scripts only add new months or years.
+- Status: done.
+
+### R14. Publish each request with a pull request
+
+Original text from the owner:
+
+> Make a PR to publish it. Do after completing each request unless explicitly told not to do so
+
+Requirements:
+
+- After each request is complete, open a pull request from the work branch to `main` and merge it.
+- After the merge, push `main` to `gh-pages`, so the live page shows the change.
+- Do not do this if the owner says not to.
+- Status: done. Continues for each request.

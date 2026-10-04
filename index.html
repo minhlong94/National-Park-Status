@@ -12,16 +12,19 @@
   --paper:#EEF0EA; --panel:#F8F9F5; --ink:#22313A; --muted:#5E6B66; --line:#CDD3CB;
   --pine:#2F5D4A; --pine-ink:#F3F6F1;
   --open:#3C7A4F; --partial:#B07A12; --closed:#B23A2E; --info:#3E6A8A;
+  --y1:#2a78d6; --y2:#eb6834; --y3:#1baf7a; --temp:#e34948; --rain:#4a3aa7; --snow:#7d8ea3; --fall:#b5651d; --wash:rgba(34,49,58,.06);
   box-sizing:border-box;
   padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
 }
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
   --paper:#161D1A; --panel:#1E2724; --ink:#E4E9E4; --muted:#9AA8A1; --line:#33413B;
   --pine:#3F7A60; --pine-ink:#F3F6F1; --open:#6DB585; --partial:#E0A93A; --closed:#E2695C; --info:#7FA9C8;
+  --y1:#3987e5; --y2:#d95926; --y3:#199e70; --temp:#e66767; --rain:#9085e9; --snow:#a3b3c6; --fall:#d98b3a; --wash:rgba(228,233,228,.07);
 }}
 :root[data-theme="dark"]{
   --paper:#161D1A; --panel:#1E2724; --ink:#E4E9E4; --muted:#9AA8A1; --line:#33413B;
   --pine:#3F7A60; --pine-ink:#F3F6F1; --open:#6DB585; --partial:#E0A93A; --closed:#E2695C; --info:#7FA9C8;
+  --y1:#3987e5; --y2:#d95926; --y3:#199e70; --temp:#e66767; --rain:#9085e9; --snow:#a3b3c6; --fall:#d98b3a; --wash:rgba(228,233,228,.07);
 }
 *,*::before,*::after{box-sizing:inherit}
 html{scroll-padding-top:env(safe-area-inset-top,0px)}
@@ -136,6 +139,40 @@ tr.detail[hidden]{display:none}
 .rintr h3{font:600 17px/1.2 "Archivo Narrow",Arial,sans-serif;margin:0 0 6px}
 .rlinks{margin:10px 0 0;font-size:14px}
 .rlinks a{color:var(--info);cursor:pointer}
+.mviz{grid-column:1/-1;border-top:1px solid var(--line);padding-top:14px;position:sticky;left:18px}
+.mviz h2{margin:0 0 2px}
+.mviz .msub{color:var(--muted);font-size:13px;margin:0 0 10px;max-width:90ch}
+.mviz .mtitle{font-size:13.5px;font-weight:600;margin:12px 0 2px}
+.mviz .mtitle span{font-weight:400;color:var(--muted)}
+.mviz svg{display:block;width:100%;height:auto;overflow:visible}
+.mviz .hit{fill:transparent;cursor:crosshair;outline:none}
+.mviz .hit:focus-visible{stroke:var(--info);stroke-width:2}
+.mlegend{display:flex;gap:8px;flex-wrap:wrap;margin:4px 0 0}
+.mlegend button{padding:6px 10px;font-weight:500;font-size:13px;display:inline-flex;gap:7px;align-items:center}
+.mlegend button i{width:12px;height:12px;border-radius:3px;display:inline-block}
+.mlegend button[aria-pressed="false"]{opacity:.5}
+.mlegend button[aria-pressed="false"] i{background:transparent!important;outline:1.5px solid var(--muted);outline-offset:-1.5px}
+.mtip{position:absolute;pointer-events:none;background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:8px 10px;font-size:13px;box-shadow:0 4px 14px rgba(0,0,0,.12);min-width:170px;z-index:5}
+.mtip[hidden]{display:none}
+.mtip .mth{font-weight:600;margin-bottom:4px}
+.mtip .row{display:grid;grid-template-columns:14px auto 1fr;gap:6px;align-items:center;line-height:1.5}
+.mtip .row b{text-align:right;font-variant-numeric:tabular-nums}
+.mtip .row s{display:block;height:2px;border-radius:1px;text-decoration:none}
+.mtip .row span{color:var(--muted)}
+.mtip hr{border:0;border-top:1px solid var(--line);margin:5px 0}
+.mviz details{margin-top:12px;font-size:14px}
+.mviz details summary{cursor:pointer;color:var(--info)}
+.mviz details .tablewrap{margin-top:8px}
+.mviz details table{min-width:560px}
+.mviz details td,.mviz details th{padding:6px 10px;font-size:13px}
+.mviz .msrc{font-size:12.5px;color:var(--muted);margin-top:8px}
+.mviz .mfall{font-size:13.5px;margin:2px 0 0;max-width:90ch}
+.mviz .mfall span{color:var(--muted)}
+.pager{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:12px 0 0}
+.pager button{padding:8px 12px;font-weight:500;min-width:40px}
+.pager button[aria-current="page"]{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.pager button:disabled{opacity:.45;cursor:default}
+.pager .pinfo{font-size:13px;color:var(--muted);margin-left:6px}
 footer{margin-top:22px;font-size:13px;color:var(--muted);max-width:90ch}
 footer a{color:var(--info)}
 @media (max-width:640px){.dbox{padding-left:18px}.settings input{min-width:0;width:100%}}
@@ -209,6 +246,7 @@ footer a{color:var(--info)}
       <tbody id="rows"></tbody>
     </table>
   </div>
+  <nav class="pager" id="pager" aria-label="Pages of the park table"></nav>
 
   <section class="roadsec" id="roads" aria-labelledby="rh">
     <h2 id="rh">Seasonal road history</h2>
@@ -638,7 +676,8 @@ const RX = {
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const fmtInt = n => n.toLocaleString("en-US");
-const state = { alerts:{}, wx:{}, nws:{}, filter:"all", sort:"visits", q:"", open:new Set(), loaded:false };
+const PAGE_SIZE = 10; // the first page shows the 10 most visited parks
+const state = { alerts:{}, wx:{}, nws:{}, filter:"all", sort:"visits", q:"", open:new Set(), loaded:false, page:1 };
 
 function getKey(){ try{ return localStorage.getItem("npsKey") || "DEMO_KEY"; }catch(e){ return "DEMO_KEY"; } }
 function setKey(k){ try{ k ? localStorage.setItem("npsKey", k) : localStorage.removeItem("npsKey"); }catch(e){} }
@@ -902,6 +941,15 @@ function matches(p, q){
   const name = p.name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f\u02bb]/g,"");
   return name.includes(q) || p.name.toLowerCase().includes(q) || states.includes(q) || p.code === q || p.id === q;
 }
+function renderPager(pages){
+  const nav = $("pager");
+  if (pages <= 1){ nav.innerHTML = ""; return; }
+  const b = (label, page, extra="") => `<button type="button" data-page="${page}" ${extra}>${label}</button>`;
+  nav.innerHTML = b("Previous", state.page-1, state.page===1 ? "disabled" : "") +
+    Array.from({length:pages}, (_, i) => b(i+1, i+1, `aria-label="Page ${i+1}"` + (i+1===state.page ? ` aria-current="page"` : ""))).join("") +
+    b("Next", state.page+1, state.page===pages ? "disabled" : "") +
+    `<span class="pinfo">Page ${state.page} of ${pages}</span>`;
+}
 function render(){
   const tb = $("rows");
   let tOpen=0,tPart=0,tClosed=0,tRoad=0,tTrail=0,tWx=0;
@@ -921,14 +969,16 @@ function render(){
     if (!seenCodes.has(p.code)){ seenCodes.add(p.code); tRoad += c.road; tTrail += c.trail; }
     tWx += warns.length;
   });
-  view.forEach(({p, list, st, c, w, warns}) => {
-    if (q && !matches(p, q)) return;
-
-    const f = state.filter;
-    const show = f==="all" || (f==="closures" && (st.cls==="partial"||st.cls==="closed")) ||
-      (f==="roads" && c.road) || (f==="trails" && c.trail) || (f==="wx" && warns.length);
-    if (!show) return;
-    shown++;
+  const f = state.filter;
+  const match = view.filter(({p, st, c, warns}) => (!q || matches(p, q)) &&
+    (f==="all" || (f==="closures" && (st.cls==="partial"||st.cls==="closed")) ||
+     (f==="roads" && c.road) || (f==="trails" && c.trail) || (f==="wx" && warns.length)));
+  const pages = Math.max(1, Math.ceil(match.length / PAGE_SIZE));
+  state.page = Math.min(Math.max(1, state.page), pages);
+  const first = (state.page - 1) * PAGE_SIZE;
+  const pageRows = match.slice(first, first + PAGE_SIZE);
+  shown = match.length;
+  pageRows.forEach(({p, list, st, c, w, warns}) => {
 
     let now = `<span class="none">–</span>`, today = `<span class="none">–</span>`;
     if (w && w.current){
@@ -955,7 +1005,9 @@ function render(){
     html.push(`<tr class="detail" data-for="${p.id}" ${isOpen? "": "hidden"}><td colspan="11">${detail(p, list, w, warns)}</td></tr>`);
   });
   tb.innerHTML = html.join("") || `<tr><td colspan="11" class="none" style="padding:18px">No parks match your search and filter.</td></tr>`;
-  $("count").textContent = `Showing ${shown} of ${NP} parks`;
+  $("count").textContent = shown ? `Showing ${first+1}–${first+pageRows.length} of ${shown} parks` + (shown < NP ? ` (${NP} in all)` : "") : `Showing 0 of ${NP} parks`;
+  renderPager(pages);
+  state.open.forEach(openMonthly);
   if (state.loaded){
     $("t-open").textContent=tOpen; $("t-partial").textContent=tPart; $("t-closed").textContent=tClosed;
     $("t-road").textContent=tRoad; $("t-trail").textContent=tTrail; $("t-wx").textContent=tWx;
@@ -991,25 +1043,316 @@ function detail(p, list, w, warns){
   if (warns && warns.length){
     wxHtml += `<h2 style="margin-top:14px">NWS warnings</h2>` + warns.map(x => `<div class="alert k-danger"><div class="at">${esc(x.event)}</div><div class="ad">${esc(x.headline||"")}</div></div>`).join("");
   }
-  return `<div class="dbox"><div>${alertsHtml}${p.note?`<p class="am">${esc(p.note)}</p>`:""}${roadLinks(p.id)}${histHTML(p.id)}<p class="am"><a href="https://www.nps.gov/${p.code}/planyourvisit/conditions.htm" target="_blank" rel="noopener">Official ${esc(p.name)} conditions page</a></p></div><div>${wxHtml}</div></div>`;
+  return `<div class="dbox"><div>${alertsHtml}${p.note?`<p class="am">${esc(p.note)}</p>`:""}${roadLinks(p.id)}${histHTML(p.id)}<p class="am"><a href="https://www.nps.gov/${p.code}/planyourvisit/conditions.htm" target="_blank" rel="noopener">Official ${esc(p.name)} conditions page</a></p></div><div>${wxHtml}</div><div class="mviz" data-mviz="${p.id}"></div></div>`;
 }
 
+// ---- Monthly visits and climate (R9) ----
+// Data: data/park-history.js (made by scripts/fetch_history.py). It loads when a reader first opens a park.
+const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const MONTHS_LONG = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+const YEAR_VARS = ["--y1","--y2","--y3"];
+const hiddenYears = new Set(); // years the reader turned off (the same for all parks)
+const dataPromises = {};
+// Load a data file (a script that sets window[name]) the first time a reader opens a park.
+function loadData(src, name){
+  if (window[name]) return Promise.resolve(window[name]);
+  if (!dataPromises[src]) dataPromises[src] = new Promise((resolve, reject) => {
+    const s = document.createElement("script");
+    s.src = src;
+    s.onload = () => window[name] ? resolve(window[name]) : reject(new Error("empty"));
+    s.onerror = () => { delete dataPromises[src]; s.remove(); reject(new Error("load")); };
+    document.head.appendChild(s);
+  });
+  return dataPromises[src];
+}
+const loadHistory = () => loadData("data/park-history.js", "PARK_HISTORY");
+// The fall foliage files are optional. The charts still show if they do not load.
+const loadFoliage = () => Promise.all([
+  loadData("data/foliage.js", "PARK_FOLIAGE").catch(() => null),
+  loadData("data/foliage-now.js", "PARK_FOLIAGE_NOW").catch(() => null)]);
+
+// Fall color. Typical timing: the average of the last 5 years of satellite data (days of the year, Jan 1 = 0).
+const doyDate = d => new Date(Date.UTC(2001, 0, 1) + Math.round(d) * 86400000);
+const doyText = d => doyDate(d).toLocaleDateString("en-US", {month:"short", day:"numeric", timeZone:"UTC"});
+function fallSummary(id){
+  const F = window.PARK_FOLIAGE, R = F && F.parks[id];
+  if (!R) return null;
+  const years = Object.keys(R).map(Number).filter(y => R[y] && R[y].mid != null).sort((a,b) => a-b).slice(-5);
+  const mean = k => { const v = years.map(y => R[y][k]).filter(x => x != null); return v.length ? v.reduce((a,b)=>a+b,0)/v.length : null; };
+  const amps = years.map(y => R[y].amp).filter(x => x != null).sort((a,b)=>a-b);
+  const amp = amps.length ? amps[Math.floor(amps.length/2)] : 0;
+  const out = {years, sen: mean("sen"), mid: mean("mid"), dor: mean("dor"), amp};
+  // A clear fall: outside the tropics, at least 3 years, the middle of the drop from Aug 25 to Nov 30, and a large change in greenness.
+  out.clear = years.length >= 3 && PARK_BY[id].lat >= 24 && out.mid >= 236 && out.mid <= 333 && amp >= 0.15 && out.sen != null && out.dor != null;
+  return out;
+}
+function fallNow(id){
+  const N = window.PARK_FOLIAGE_NOW;
+  if (!N) return null;
+  const age = (Date.now() - Date.parse(N.to + "T12:00:00Z")) / 86400000;
+  if (age > 21) return {stale: true};
+  if (!Object.keys(N.parks || {}).length) return null; // no reports for any park: the reports are probably not entered yet
+  return {from: N.from, to: N.to, km: N.km, rec: N.parks[id] || null};
+}
+const compact = n => n >= 1e6 ? (n/1e6).toFixed(n >= 1e7 ? 0 : 1).replace(/\.0$/,"") + "M" : n >= 1e3 ? Math.round(n/1e3) + "K" : String(Math.round(n));
+function niceStep(range, count){
+  const raw = range / Math.max(1, count), mag = Math.pow(10, Math.floor(Math.log10(raw))), f = raw / mag;
+  return (f <= 1 ? 1 : f <= 2 ? 2 : f <= 2.5 ? 2.5 : f <= 5 ? 5 : 10) * mag;
+}
+function ticks(lo, hi, count){
+  const step = niceStep(hi - lo || 1, count), a = Math.floor(lo/step)*step, b = Math.ceil(hi/step)*step, out = [];
+  for (let v = a; v <= b + step/2; v += step) out.push(+v.toFixed(6));
+  return out;
+}
+// Column path: 4px rounded data end, square at the baseline. For a floating range, round both ends.
+function colPath(x, yTop, w, yBase, both){
+  const h = yBase - yTop; if (h <= 0.5) return "";
+  const r = Math.min(4, w/2, both ? h/2 : h);
+  if (both) return `M${x},${yTop+r}a${r},${r} 0 0 1 ${r},${-r}h${w-2*r}a${r},${r} 0 0 1 ${r},${r}v${h-2*r}a${r},${r} 0 0 1 ${-r},${r}h${-(w-2*r)}a${r},${r} 0 0 1 ${-r},${-r}z`;
+  return `M${x},${yBase}v${-(h-r)}a${r},${r} 0 0 1 ${r},${-r}h${w-2*r}a${r},${r} 0 0 1 ${r},${r}v${h-r}z`;
+}
+function axisY(tks, y, L, W, R, fmt){
+  return tks.map(t => `<line x1="${L}" x2="${W-R}" y1="${y(t)}" y2="${y(t)}" stroke="var(--line)" stroke-width="1"/>` +
+    `<text x="${L-6}" y="${y(t)+4}" text-anchor="end" font-size="11" fill="var(--muted)" style="font-variant-numeric:tabular-nums">${fmt(t)}</text>`).join("");
+}
+function axisX(L, band, yText){
+  return MONTHS.map((m,i) => `<text x="${L+band*(i+.5)}" y="${yText}" text-anchor="middle" font-size="11" fill="var(--muted)">${band < 34 ? m[0] : m}</text>`).join(""); // one letter on narrow screens
+}
+function hitLayer(L, band, T, H, focusable, name){
+  return MONTHS.map((m,i) => `<rect class="hit" data-m="${i}" x="${L+band*i}" y="${T}" width="${band}" height="${H-T}"${focusable?` tabindex="0" role="img" aria-label="${MONTHS_LONG[i]}: ${name}"`:""}/>`).join("");
+}
+function washLayer(L, band, T, H){
+  return `<rect class="wash" x="0" y="${T}" width="${band}" height="${H-T}" fill="var(--wash)" visibility="hidden"/>`;
+}
+
+// The data file has one value per month from D.first to D.last. Visits: the last 3 calendar years.
+// Weather: the average of each calendar month over the last 36 months.
+function deriveHistory(D, id){
+  const R = D && D.parks[id];
+  if (!R) return null;
+  const [fy, fm] = D.first.split("-").map(Number), [ly, lm] = D.last.split("-").map(Number);
+  const idx = (y, m) => (y - fy) * 12 + (m - fm); // m is 1–12
+  const at = (arr, y, m) => { const k = idx(y, m); return k >= 0 && k < arr.length ? arr[k] : null; };
+  const years = [ly-2, ly-1, ly].filter(y => y >= fy);
+  const visits = {};
+  years.forEach(y => visits[y] = MONTHS.map((_, i) => at(R.v, y, i+1)));
+  // The last 3 values of each calendar month, from the newest month back
+  const avg = (arr, m) => { const vals = []; for (let y = ly; y >= fy && vals.length < 3; y--){ const v = at(arr, y, m); if (v != null) vals.push(v); } return vals.length ? vals.reduce((a,b)=>a+b,0)/vals.length : null; };
+  const wx = {};
+  ["hi","lo","rain","snow"].forEach(key => wx[key] = MONTHS.map((_, i) => { const v = avg(R[key], i+1); return v == null ? null : +v.toFixed(key === "rain" ? 2 : 1); }));
+  const label = k => { const t = (fy * 12 + fm - 1) + k; return `${MONTHS[t % 12]} ${Math.floor(t / 12)}`; };
+  const lastK = idx(ly, lm);
+  return {years, visits, wx, lastLabel: label(lastK), lastMonth: lm, wxSpan: `${label(Math.max(0, lastK - 35))} to ${label(lastK)}`};
+}
+
+function drawMonthly(box, id){
+  const D = window.PARK_HISTORY, H = deriveHistory(D, id);
+  if (!H){ box.innerHTML = `<h2>Visits and climate by month</h2><p class="none">There is no monthly data for this park.</p>`; return; }
+  const P = {visits: H.visits, wx: H.wx};
+  const years = H.years, yr0 = years[0], yr1 = years[years.length-1];
+  const shown = years.filter(y => !hiddenYears.has(y));
+  // The park table scrolls sideways on small screens. Fit the charts to the visible width.
+  const wrap = box.closest(".tablewrap"), dbox = box.closest(".dbox");
+  if (wrap && dbox){
+    const cs = getComputedStyle(dbox);
+    box.style.maxWidth = Math.max(280, wrap.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight)) + "px";
+  }
+  const W = Math.max(280, box.clientWidth), L = 52, R = 10, band = (W-L-R)/12;
+  const colorOf = y => `var(${YEAR_VARS[years.indexOf(y) % YEAR_VARS.length]})`;
+  const vis = y => P.visits[y] || [];
+
+  // 1. Visits: grouped columns, one color per year
+  const H1 = 230, T1 = 18, B1 = 22, base1 = H1-B1;
+  const vmax = Math.max(1, ...shown.flatMap(y => vis(y).filter(v => v != null)));
+  const vt = ticks(0, vmax, 4), y1 = v => base1 - v/vt[vt.length-1]*(base1-T1);
+  const gap = 2, bw = Math.max(3, Math.min(24, (band*0.78 - gap*(shown.length-1)) / Math.max(1, shown.length)));
+  let g1 = axisY(vt, y1, L, W, R, compact) + axisX(L, band, H1-6) + washLayer(L, band, T1-8, base1);
+  let peak = null;
+  MONTHS.forEach((m,i) => {
+    const groupW = shown.length*bw + (shown.length-1)*gap, x0 = L + band*i + (band-groupW)/2;
+    shown.forEach((y,k) => {
+      const v = vis(y)[i]; if (v == null) return;
+      g1 += `<path d="${colPath(x0 + k*(bw+gap), y1(v), bw, base1)}" fill="${colorOf(y)}"/>`;
+      if (y === shown[shown.length-1] && (!peak || v > peak.v)) peak = {v, x: x0 + k*(bw+gap) + bw/2};
+    });
+  });
+  if (peak) g1 += `<text x="${peak.x}" y="${y1(peak.v)-5}" text-anchor="middle" font-size="11" font-weight="600" fill="var(--ink)">${compact(peak.v)}</text>`;
+  g1 += `<line x1="${L}" x2="${W-R}" y1="${base1}" y2="${base1}" stroke="var(--muted)" stroke-width="1"/>`;
+  g1 += hitLayer(L, band, T1-8, base1, true, "visits");
+
+  // 2. Temperature: floating column from the average daily low to the average daily high
+  const H2 = 160, T2 = 10, B2 = 22, base2 = H2-B2, lo = P.wx.lo, hi = P.wx.hi;
+  const tv = [...lo, ...hi].filter(v => v != null);
+  const tt = ticks(Math.min(...tv), Math.max(...tv), 4), y2 = v => base2 - (v-tt[0])/(tt[tt.length-1]-tt[0])*(base2-T2);
+  const tw = Math.min(24, band*0.45);
+  let g2 = axisY(tt, y2, L, W, R, v => v + "°") + axisX(L, band, H2-6) + washLayer(L, band, T2-6, base2);
+  MONTHS.forEach((m,i) => { if (lo[i] != null && hi[i] != null) g2 += `<path d="${colPath(L+band*(i+.5)-tw/2, y2(hi[i]), tw, y2(lo[i]), true)}" fill="var(--temp)"/>`; });
+  g2 += hitLayer(L, band, T2-6, base2, false);
+
+  // 3 and 4. Rain and snow: columns of the average monthly total
+  function amountChart(vals, color){
+    const H = 120, T = 10, B = 22, base = H-B;
+    const at = ticks(0, Math.max(0.1, ...vals.filter(v => v != null)), 3), y = v => base - v/at[at.length-1]*(base-T);
+    const w = Math.min(24, band*0.45);
+    let g = axisY(at, y, L, W, R, v => String(v)) + axisX(L, band, H-6) + washLayer(L, band, T-6, base);
+    vals.forEach((v,i) => { if (v) g += `<path d="${colPath(L+band*(i+.5)-w/2, y(v), w, base)}" fill="var(${color})"/>`; });
+    g += `<line x1="${L}" x2="${W-R}" y1="${base}" y2="${base}" stroke="var(--muted)" stroke-width="1"/>` + hitLayer(L, band, T-6, base, false);
+    return `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}">${g}</svg>`;
+  }
+  const snowTotal = P.wx.snow.reduce((s,v) => s + (v||0), 0);
+
+  // Fall color strip: the same months as the charts
+  const fall = fallSummary(id), now = fallNow(id);
+  const xDoy = d => { const dt = doyDate(d), m = dt.getUTCMonth(), dim = new Date(Date.UTC(2001, m+1, 0)).getUTCDate(); return L + band*(m + (dt.getUTCDate()-1)/dim); };
+  let fallHtml = "";
+  if (fall){
+    const span = fall.years.length ? (fall.years[0] === fall.years[fall.years.length-1] ? `${fall.years[0]}` : `${fall.years[0]}–${fall.years[fall.years.length-1]}`) : "";
+    let text;
+    if (fall.clear){
+      const HS = 58, yb = 30;
+      let g = MONTHS.map((m,i) => `<line x1="${L+band*i}" x2="${L+band*i}" y1="${yb-14}" y2="${yb+8}" stroke="var(--line)" stroke-width="1"/>`).join("") + axisX(L, band, HS-4) + washLayer(L, band, 4, yb+10);
+      const x1 = xDoy(fall.sen), x2 = xDoy(fall.dor), xm = xDoy(fall.mid);
+      // Light part: greenness starts to drop. Full color: the second half of the drop, when leaf color is usually best.
+      g += `<rect x="${x1}" y="${yb-6}" width="${Math.max(4, xm-x1)}" height="12" rx="4" fill="var(--fall)" opacity=".35"/>`;
+      g += `<rect x="${xm}" y="${yb-6}" width="${Math.max(4, x2-xm)}" height="12" rx="4" fill="var(--fall)"/>`;
+      g += `<text x="${(xm+x2)/2}" y="${yb-12}" text-anchor="middle" font-size="11" font-weight="600" fill="var(--ink)">${doyText(fall.mid)} – ${doyText(fall.dor)}</text>`;
+      g += hitLayer(L, band, 4, yb+10, false);
+      fallHtml += `<div class="mtitle">Fall color <span>usual timing from satellite, ${span}</span></div><svg viewBox="0 0 ${W} ${HS}" width="${W}" height="${HS}" aria-hidden="true">${g}</svg>`;
+      text = `Leaf color is usually best from about <b>${doyText(fall.mid)}</b> to <b>${doyText(fall.dor)}</b>. <span>Satellite data: greenness starts to drop about ${doyText(fall.sen)}. Half of the drop is complete about ${doyText(fall.mid)}. Most leaves are off about ${doyText(fall.dor)}. The dates are for one point in the park. Higher and lower areas change at different times.</span>`;
+    } else {
+      fallHtml += `<div class="mtitle">Fall color <span>usual timing from satellite${span ? ", " + span : ""}</span></div>`;
+      text = `At the forecast point of this park, the satellite data shows no clear fall color change. Other areas of the park can have fall color.`;
+    }
+    fallHtml += `<p class="mfall">${text}</p>`;
+  }
+  if (now && !now.stale){
+    const r = now.rec, range = `${fmtD(now.from)} to ${fmtD(now.to)}`;
+    const part = (k, name) => r && r[k][1] ? `${name} in ${r[k][0]} of ${r[k][1]} reports` : "";
+    const msg = r ? [part("colored","colored leaves"), part("falling","falling leaves")].filter(Boolean).join(", ") + ` from ${r.sites} ${r.sites === 1 ? "site" : "sites"}` : `no reports`;
+    if (!fall) fallHtml += `<div class="mtitle">Fall color</div>`;
+    fallHtml += `<p class="mfall"><span>This season, ${range}, within ${now.km} km of the park:</span> ${esc(msg)}.</p>`;
+  } else if (fall && fall.clear && now && now.stale){
+    fallHtml += `<p class="mfall"><span>Reports for this season start on Aug 15.</span></p>`;
+  }
+  if (fall && fall.clear) fallHtml += `<p class="mfall"><a href="https://www.explorefall.com/" target="_blank" rel="noopener">Fall foliage map and forecast on ExploreFall</a> <span>(other website)</span></p>`;
+  const span = (yr0 === yr1 ? `${yr0}` : `${yr0}–${yr1}`) + (H.lastMonth < 12 ? ` (${yr1} to ${MONTHS[H.lastMonth-1]})` : "");
+
+  box.innerHTML = `
+    <h2>Visits and climate by month</h2>
+    <p class="msub">The four charts use the same months. Put the pointer on a month, or use Tab on the visits chart, to see all the values for that month. The weather values are the averages of each month from ${H.wxSpan}.</p>
+    <div class="mtitle">Recreation visits <span>by month, ${span}</span></div>
+    <div class="mlegend" role="group" aria-label="Show or hide years">${years.map(y => `<button type="button" data-year="${y}" aria-pressed="${!hiddenYears.has(y)}"><i style="background:${colorOf(y)}"></i>${y}</button>`).join("")}</div>
+    <svg viewBox="0 0 ${W} ${H1}" width="${W}" height="${H1}" role="group" aria-label="Recreation visits by month">${g1}</svg>
+    ${fallHtml}
+    <div class="mtitle">Temperature <span>average daily low to high, °F, last 3 years</span></div>
+    <svg viewBox="0 0 ${W} ${H2}" width="${W}" height="${H2}" aria-hidden="true">${g2}</svg>
+    <div class="mtitle">Rain <span>average monthly total, inches, last 3 years</span></div>
+    ${amountChart(P.wx.rain, "--rain")}
+    <div class="mtitle">Snow <span>average monthly total, inches of snow, last 3 years</span></div>
+    ${snowTotal >= 0.1 ? amountChart(P.wx.snow, "--snow") : `<p class="none">Almost no snow falls here in an average year.</p>`}
+    <div class="mtip" hidden></div>
+    <details><summary>Show the values as a table</summary><div class="tablewrap"><table>
+      <thead><tr><th>Month</th>${years.map(y => `<th class="num">Visits ${y}</th>`).join("")}<th class="num">Low °F</th><th class="num">High °F</th><th class="num">Rain in</th><th class="num">Snow in</th></tr></thead>
+      <tbody>${MONTHS.map((m,i) => `<tr><td>${m}</td>${years.map(y => `<td class="num">${vis(y)[i] == null ? "–" : fmtInt(vis(y)[i])}</td>`).join("")}<td class="num">${lo[i] ?? "–"}</td><td class="num">${hi[i] ?? "–"}</td><td class="num">${P.wx.rain[i] ?? "–"}</td><td class="num">${P.wx.snow[i] ?? "–"}</td></tr>`).join("")}</tbody>
+    </table></div></details>
+    <p class="msrc">Sources: NPS Visitor Use Statistics (recreation visits). Open-Meteo historical weather (ERA5 model) at the forecast point of the park. Data to ${esc(H.lastLabel)}.${fall ? " Fall color: NASA MODIS land surface phenology (MCD12Q2), 3 km box at the same point." : ""}${now && !now.stale ? " This season: USA National Phenology Network." : ""}</p>`;
+
+  // Shared hover: one month, all four charts, one tooltip
+  const tip = box.querySelector(".mtip");
+  function row(color, label, value){
+    const r = document.createElement("div"); r.className = "row";
+    const k = document.createElement("s"); k.style.background = color;
+    const l = document.createElement("span"); l.textContent = label;
+    const v = document.createElement("b"); v.textContent = value;
+    r.append(k, l, v); return r;
+  }
+  function show(i, evt){
+    box.querySelectorAll(".wash").forEach(w => { w.setAttribute("x", L + band*i); w.setAttribute("visibility", "visible"); });
+    tip.replaceChildren();
+    const h = document.createElement("div"); h.className = "mth"; h.textContent = MONTHS_LONG[i]; tip.append(h);
+    years.slice().reverse().forEach(y => { if (!hiddenYears.has(y)) tip.append(row(colorOf(y), `Visits ${y}`, vis(y)[i] == null ? "No data yet" : fmtInt(vis(y)[i]))); });
+    tip.append(document.createElement("hr"));
+    tip.append(row("var(--temp)", "Low to high", lo[i] == null ? "–" : `${Math.round(lo[i])}° to ${Math.round(hi[i])}°F`));
+    tip.append(row("var(--rain)", "Rain", P.wx.rain[i] == null ? "–" : `${P.wx.rain[i].toFixed(2)} in`));
+    tip.append(row("var(--snow)", "Snow", P.wx.snow[i] == null ? "–" : `${P.wx.snow[i].toFixed(1)} in`));
+    if (fall && fall.clear){
+      const m0 = doyDate(fall.sen).getUTCMonth(), m1 = doyDate(fall.dor).getUTCMonth();
+      const mm = doyDate(fall.mid).getUTCMonth();
+      if (i >= m0 && i <= m1) tip.append(row("var(--fall)", "Fall color", i >= mm ? "usually best" : "greenness drops"));
+    }
+    tip.hidden = false;
+    const bx = box.getBoundingClientRect(), tw = tip.offsetWidth, th = tip.offsetHeight;
+    let x, y;
+    if (evt && evt.clientX != null){ x = evt.clientX - bx.left + 14; y = evt.clientY - bx.top + 14; }
+    else { const r = evt.target.getBoundingClientRect(); x = r.right - bx.left + 6; y = r.top - bx.top; }
+    if (x + tw > bx.width) x = Math.max(0, x - tw - 28);
+    if (y + th > bx.height) y = Math.max(0, bx.height - th);
+    tip.style.left = x + "px"; tip.style.top = y + "px";
+  }
+  function hide(){ tip.hidden = true; box.querySelectorAll(".wash").forEach(w => w.setAttribute("visibility", "hidden")); }
+  box.querySelectorAll(".hit").forEach(h => {
+    const i = +h.dataset.m;
+    h.addEventListener("pointermove", e => show(i, e));
+    h.addEventListener("pointerleave", hide);
+    h.addEventListener("focus", e => show(i, e));
+    h.addEventListener("blur", hide);
+  });
+  box.querySelectorAll("[data-year]").forEach(b => b.addEventListener("click", e => {
+    e.stopPropagation();
+    const y = +b.dataset.year;
+    if (hiddenYears.has(y)) hiddenYears.delete(y);
+    else if (years.length - hiddenYears.size > 1) hiddenYears.add(y); // keep at least one year
+    drawMonthly(box, id);
+    const again = box.querySelector(`[data-year="${y}"]`); if (again) again.focus();
+  }));
+  box.dataset.w = W;
+}
+function showMonthly(id){
+  const box = document.querySelector(`.mviz[data-mviz="${id}"]`);
+  if (!box) return;
+  if (window.PARK_HISTORY && "PARK_FOLIAGE" in window){ drawMonthly(box, id); return; }
+  if (!window.PARK_HISTORY) box.innerHTML = `<h2>Visits and climate by month</h2><p class="none">Loading the monthly data…</p>`;
+  Promise.all([loadHistory(), loadFoliage()]).then(() => {
+    if (!("PARK_FOLIAGE" in window)) window.PARK_FOLIAGE = null; // tried once: do not wait for it again
+    drawMonthly(box, id);
+  }).catch(() => {
+    box.innerHTML = `<h2>Visits and climate by month</h2><p class="none">The monthly data did not load. If you opened the file directly, use a local web server (see the README).</p>`;
+  });
+}
+let mvizTimer = 0;
+window.addEventListener("resize", () => { clearTimeout(mvizTimer); mvizTimer = setTimeout(() => {
+  document.querySelectorAll(".mviz[data-w]").forEach(box => { box.style.maxWidth = ""; drawMonthly(box, box.dataset.mviz); });
+}, 150); });
+
+function openMonthly(code){
+  const box = document.querySelector(`.mviz[data-mviz="${code}"]`);
+  if (!box) return;
+  showMonthly(code);
+}
 function toggle(code){
   if (state.open.has(code)) state.open.delete(code); else state.open.add(code);
   const row = document.querySelector(`tr.park[data-code="${code}"]`);
   const det = document.querySelector(`tr.detail[data-for="${code}"]`);
   if (row && det){ det.hidden = !state.open.has(code); row.setAttribute("aria-expanded", state.open.has(code)); }
+  if (state.open.has(code)) openMonthly(code);
 }
 
 $("rows").addEventListener("click", e => { const gr = e.target.closest("[data-goroad]"); if (gr){ e.stopPropagation(); showRoad(gr.dataset.goroad); return; } const tr = e.target.closest("tr.park"); if (tr && !e.target.closest("a")) toggle(tr.dataset.code); });
 $("rows").addEventListener("keydown", e => { const tr = e.target.closest("tr.park"); if (tr && (e.key==="Enter"||e.key===" ")){ e.preventDefault(); toggle(tr.dataset.code); } });
 document.querySelectorAll("[data-f]").forEach(b => b.addEventListener("click", () => {
   document.querySelectorAll("[data-f]").forEach(x => x.setAttribute("aria-pressed", x===b));
-  state.filter = b.dataset.f; render();
+  state.filter = b.dataset.f; state.page = 1; render();
 }));
 $("refresh").addEventListener("click", refresh);
-$("search").addEventListener("input", e => { state.q = e.target.value; render(); });
-$("sort").addEventListener("change", e => { state.sort = e.target.value; render(); });
+$("search").addEventListener("input", e => { state.q = e.target.value; state.page = 1; render(); });
+$("sort").addEventListener("change", e => { state.sort = e.target.value; state.page = 1; render(); });
+$("pager").addEventListener("click", e => {
+  const btn = e.target.closest("[data-page]");
+  if (!btn || btn.disabled) return;
+  state.page = +btn.dataset.page; render();
+  $("rows").closest(".tablewrap").scrollIntoView({block:"start", behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth"});
+  const cur = $("pager").querySelector('[aria-current="page"]'); if (cur) cur.focus({preventScroll:true});
+});
 $("savekey").addEventListener("click", () => { setKey($("key").value.trim()); $("savekey").textContent = "Saved"; setTimeout(()=>$("savekey").textContent="Save key",1500); refresh(); });
 try{ const k = localStorage.getItem("npsKey"); if (k) $("key").value = k; }catch(e){}
 
