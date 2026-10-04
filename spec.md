@@ -419,3 +419,19 @@ Requirements:
 - If they include the current month, the banner ("Now is a great time to visit!") stays green.
 - The fall color banner does not change.
 - Status: done.
+
+### R26. Short banners
+
+Original text from the owner:
+
+> Make banners short like Best: Oct-Nov, Fall: Oct-Dec.
+
+Requirements:
+
+- The best time banner shows "Best:" and the months. The fall color banner shows "Fall:" and the months.
+- The color and the star show if it is now:
+  - "Best:" is gray when the best months do not include this month, and green with a star when they do.
+  - "Fall:" uses the fall color, with a star when today is in the usual best color window.
+- The full meaning shows when the reader puts the pointer on the banner. Screen readers also get it.
+- The banners are on one line when there is space. A month range does not break across two lines.
+- Status: done.
