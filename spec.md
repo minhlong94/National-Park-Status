@@ -503,3 +503,26 @@ Requirements:
 - The label of the current month is bold, so the highlight does not use color only.
 - The band is lighter than the gray band that shows the month under the pointer. Both can show at the same time.
 - Status: done.
+
+### R31. Live road status and road work pages
+
+Original text from the owner:
+
+> in Glacier, Two Medicine road is closed. Discuss (chat) with me on how to best capture it and similar information
+>
+> Seems to show as red line on this page: https://www.nps.gov/glac/planyourvisit/directions.htm
+>
+> I found https://www.nps.gov/glac/planyourvisit/projectwork.htm. Does it have data for other ones as well
+>
+> ok
+
+Requirements:
+
+- Some parks publish the status of each road in a live map database. The NPS alerts do not always include these closures.
+- Glacier: on "Refresh data", the page reads the closed roads and the roads with construction from the park road map database (`carto.nps.gov/user/glaclive`, table `glac_road_nds`).
+- In the park details, a "Live road status" list shows each road, its status (Closed or Construction), its reasons and its usual season. Closed roads are first. A link opens the park road status map.
+- The number of closed roads is added to the Roads count of the park. If the NPS alerts show no closures but a road is closed, the park status is "Partial closures".
+- The page saves the road status in the browser with the other data (R29). If the request fails, the page keeps the saved road status.
+- The code keeps the live sources in one list (`LIVE_ROADS`), so more parks can be added later. Only Glacier has such a source now.
+- Some parks have a page about road construction and project work. These pages are text only, so the page shows a link to them in the park details. Now: Glacier, Yosemite, Grand Teton, Arches, Sequoia and Kings Canyon.
+- Status: done.

@@ -20,12 +20,14 @@ This page shows the current conditions of all 63 U.S. national parks. The list s
 - **Fall color**: the usual dates when the leaves change, from satellite data, and reports of colored leaves near the park in this season.
 - **Best time to visit**: short banners under each park name. "Best:" shows the best months, from the weather, the number of visitors, rain and snow. "Fall:" shows the best months for fall color. A star shows when now is a good time. The filter shows the parks that are best to visit this month, or in the months you select.
 - **Fall color map**: a map of the parks with their usual fall color on a date. Move the date slider to see the fall color move across the country. Click a park to open it in the table.
+- **Live road status (Glacier)**: the closed roads and the roads with construction, from the park road map. The NPS alerts do not always include these closures. The closed roads are added to the Roads count. Other parks do not publish this data now.
+- **Road work pages**: a link to the road construction and project work page of the park, if the park has one.
 - **Nearby airports**: 2 to 4 airports with scheduled flights near each park, with the IATA code and the straight-line distance.
 - **Closure history**: the major full and partial closures from the last 5 years. The list also shows shutdowns of all parks.
 
 The table shows 10 parks on each page. The first page shows the 10 most visited parks.
 
-The page saves the last park statuses, weather and warnings in your browser. When you open the page again, it shows the saved data and the time of that data. Click **Refresh data** to get new data. On your first visit, the page gets the data one time. The monthly data and the fall color data are stored in files and do not refresh with this button.
+The page saves the last park statuses, live road status, weather and warnings in your browser. When you open the page again, it shows the saved data and the time of that data. Click **Refresh data** to get new data. On your first visit, the page gets the data one time. The monthly data and the fall color data are stored in files and do not refresh with this button.
 
 ## Data sources
 
@@ -33,6 +35,7 @@ The page saves the last park statuses, weather and warnings in your browser. Whe
 | --- | --- |
 | Park alerts and closures | [NPS API](https://www.nps.gov/subjects/developer/) (`developer.nps.gov`) |
 | Current weather and forecast | [Open-Meteo](https://open-meteo.com/) |
+| Live road status (Glacier) | [Glacier road status map](https://www.nps.gov/glac/planyourvisit/directions.htm) (`carto.nps.gov/user/glaclive`) |
 | Weather warnings | [National Weather Service](https://www.weather.gov/documentation/services-web-api) (`api.weather.gov`) |
 | Visits (ranking) | NPS Visitor Use Statistics, calendar year 2025 |
 | Monthly visits | [NPS Visitor Use Statistics](https://irma.nps.gov/Stats/) (`irmaservices.nps.gov`) |

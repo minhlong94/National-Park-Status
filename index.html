@@ -253,6 +253,7 @@ footer a{color:var(--info)}
     <span><i class="dot" id="d-nps"></i><b>NPS alerts</b> <span id="s-nps">waiting</span></span>
     <span><i class="dot" id="d-wx"></i><b>Weather</b> <span id="s-wx">waiting</span></span>
     <span><i class="dot" id="d-nws"></i><b>NWS warnings</b> <span id="s-nws">waiting</span></span>
+    <span><i class="dot" id="d-roads"></i><b>Live road status</b> <span id="s-roads">waiting</span></span>
   </div>
 
   <details class="settings" id="settings">
@@ -775,7 +776,7 @@ function shortNum(n){
   return String(Math.round(n));
 }
 const PAGE_SIZE = 10; // the first page shows the 10 most visited parks
-const state = { alerts:{}, wx:{}, nws:{}, filter:"all", sort:"visits", q:"", open:new Set(), loaded:false, page:1, best:"any", bestMonths:new Set() };
+const state = { alerts:{}, wx:{}, nws:{}, roads:{}, filter:"all", sort:"visits", q:"", open:new Set(), loaded:false, page:1, best:"any", bestMonths:new Set() };
 
 function getKey(){ try{ return localStorage.getItem("npsKey") || "DEMO_KEY"; }catch(e){ return "DEMO_KEY"; } }
 function setKey(k){ try{ k ? localStorage.setItem("npsKey", k) : localStorage.removeItem("npsKey"); }catch(e){} }
@@ -845,6 +846,69 @@ async function loadWeather(){
   setSrc("wx","ok",`${NP} parks`);
 }
 
+// ---- Live road status (R31) ----
+// Some parks publish the status of each road in a live map database. The page reads it on "Refresh data".
+// To add a park, add one entry. Each source has a query that returns rows with: rdname, status, reason, seasdesc.
+const LIVE_ROADS = {
+  glac: {
+    sql: "https://carto.nps.gov/user/glaclive/api/v2/sql",
+    q: "SELECT rdname, status, reason, seasdesc FROM glac_road_nds WHERE status IN ('closed','construction')",
+    map: "https://www.nps.gov/glac/planyourvisit/directions.htm",
+  },
+};
+// Pages where parks describe road construction and project work. These are links only (no data).
+const ROAD_WORK = {
+  glac: "https://www.nps.gov/glac/planyourvisit/projectwork.htm",
+  yose: "https://www.nps.gov/yose/planyourvisit/roadwork.htm",
+  grte: "https://www.nps.gov/grte/planyourvisit/road-construction.htm",
+  arch: "https://www.nps.gov/arch/planyourvisit/construction.htm",
+  seki: "https://www.nps.gov/seki/planyourvisit/road-construction.htm",
+};
+async function loadRoads(){
+  setSrc("roads","busy","loading…");
+  const out = {}; let ok = 0;
+  await Promise.all(Object.entries(LIVE_ROADS).map(async ([code, src]) => {
+    try{
+      const ctl = new AbortController(); const tm = setTimeout(() => ctl.abort(), 20000);
+      const res = await fetch(`${src.sql}?q=${encodeURIComponent(src.q)}`, {cache:"no-store", signal:ctl.signal});
+      clearTimeout(tm);
+      if (!res.ok) throw new Error(res.status);
+      const j = await res.json();
+      // One road has many segments. Keep one entry for each road, with all its reasons.
+      const by = {};
+      (j.rows || []).forEach(r => {
+        const name = (r.rdname || "Unnamed road").trim();
+        const e = by[name] || (by[name] = {name, closed:false, reasons:[], season:r.seasdesc || ""});
+        if (r.status === "closed") e.closed = true;
+        const why = (r.reason || "").trim();
+        if (why && !e.reasons.includes(why)) e.reasons.push(why);
+      });
+      out[code] = Object.values(by).sort((a,b) => (b.closed - a.closed) || a.name.localeCompare(b.name));
+      ok++;
+    }catch(e){ /* keep the saved data of this park */ }
+  }));
+  const n = Object.keys(LIVE_ROADS).length;
+  if (ok === 0) throw new Error("Road status unreachable");
+  state.roads = Object.assign({}, state.roads, out);
+  const closed = Object.values(out).reduce((t, l) => t + l.filter(r => r.closed).length, 0);
+  setSrc("roads", ok === n ? "ok" : "err", `${closed} roads closed`);
+}
+const liveClosed = code => ((state.roads || {})[code] || []).filter(r => r.closed).length;
+function liveRoadsHTML(code){
+  const src = LIVE_ROADS[code];
+  if (!src) return "";
+  const list = (state.roads || {})[code];
+  let h = `<h2>Live road status${list ? ` (${list.filter(r => r.closed).length} closed)` : ""}</h2>`;
+  if (!list) h += `<p class="none">The live road status did not load.</p>`;
+  else if (!list.length) h += `<p class="none">The park road map shows no closed roads.</p>`;
+  else h += list.map(r => `<div class="alert ${r.closed ? "k-closure" : "k-caution"}"><div class="at">${esc(r.name)}: ${r.closed ? "Closed" : "Construction"}</div>
+    ${r.reasons.length ? `<div class="ad">${esc(r.reasons.join("; "))}</div>` : ""}${r.season ? `<div class="am">Usual season: ${esc(r.season)}</div>` : ""}</div>`).join("");
+  return h + `<p class="am"><a href="${esc(src.map)}" target="_blank" rel="noopener">Park road status map</a></p>`;
+}
+function roadWorkLink(code){
+  return ROAD_WORK[code] ? `<p class="am"><a href="${esc(ROAD_WORK[code])}" target="_blank" rel="noopener">Road construction and project work</a></p>` : "";
+}
+
 async function loadNWS(){
   setSrc("nws","busy","loading…");
   const out = {}; let ok = 0, i = 0;
@@ -881,21 +945,20 @@ function slimAlerts(by){
   return out;
 }
 function saveCache(){
-  const data = {nps: state.alerts, wx: state.wx, nws: state.nws};
+  const data = {nps: state.alerts, wx: state.wx, nws: state.nws, roads: state.roads};
   const c = {sources: {}};
-  ["nps", "wx", "nws"].forEach(k => { if (cacheTime[k]) c.sources[k] = {t: cacheTime[k], data: k === "nps" ? slimAlerts(data.nps) : data[k]}; });
+  ["nps", "wx", "nws", "roads"].forEach(k => { if (cacheTime[k]) c.sources[k] = {t: cacheTime[k], data: k === "nps" ? slimAlerts(data.nps) : data[k]}; });
   try { localStorage.setItem(CACHE_KEY, JSON.stringify(c)); } catch(e){ /* full or blocked storage: the page still works */ }
 }
 function restoreCache(){
   let c = null;
   try { c = JSON.parse(localStorage.getItem(CACHE_KEY) || "null"); } catch(e){ c = null; }
   if (!c || !c.sources || !Object.keys(c.sources).length) return false;
-  const label = {nps: "alerts", wx: "parks", nws: "parks"};
-  ["nps", "wx", "nws"].forEach(k => {
+  ["nps", "wx", "nws", "roads"].forEach(k => {
     const src = c.sources[k];
     if (!src) return;
     cacheTime[k] = src.t;
-    if (k === "nps") state.alerts = src.data; else if (k === "wx") state.wx = src.data; else state.nws = src.data;
+    if (k === "nps") state.alerts = src.data; else if (k === "wx") state.wx = src.data; else if (k === "nws") state.nws = src.data; else state.roads = src.data;
     setSrc(k, "ok", `saved ${fmtTime(src.t)}`);
   });
   state.loaded = true;
@@ -909,9 +972,9 @@ async function refresh(){
   const btn = $("refresh");
   btn.disabled = true; btn.textContent = "Refreshing…";
   const errs = [];
-  const results = await Promise.allSettled([loadNPS(), loadWeather(), loadNWS()]);
+  const results = await Promise.allSettled([loadNPS(), loadWeather(), loadNWS(), loadRoads()]);
   const now = Date.now();
-  ["nps","wx","nws"].forEach((k,i) => {
+  ["nps","wx","nws","roads"].forEach((k,i) => {
     if (results[i].status === "fulfilled") cacheTime[k] = now;
     else if (cacheTime[k]){
       // Keep the saved data of this source and tell the reader its time.
@@ -1185,7 +1248,11 @@ function render(){
   const q = state.q.trim().toLowerCase();
   const view = PARKS.map(p => {
     const list = state.loaded ? state.alerts[p.code] : null;
-    return {p, list, st:parkStatus(list), c:counts(list), w:state.wx[p.id], warns:(state.nws[p.id]||[])};
+    const c = counts(list), lc = liveClosed(p.code);
+    c.road += lc;
+    let st = parkStatus(list);
+    if (list && lc && st.cls === "open") st = {cls:"partial", label:"Partial closures"};
+    return {p, list, st, c, w:state.wx[p.id], warns:(state.nws[p.id]||[])};
   });
   if (state.sort === "name") view.sort((a,b)=>a.p.name.localeCompare(b.p.name));
   else if (state.sort === "closures") view.sort((a,b)=>((b.list||[]).filter(x=>x.isClosure).length-(a.list||[]).filter(x=>x.isClosure).length) || a.p.r-b.p.r);
@@ -1255,7 +1322,7 @@ function detail(p, list, w, warns){
   const groups = {road:"Roads", trail:"Trails", facility:"Facilities and camping", other:"Other alerts"};
   let alertsHtml = "";
   if (!list) alertsHtml = `<p class="none">The alerts did not load.</p>`;
-  else if (!list.length) alertsHtml = `<p class="none">NPS has no active alerts for this park. NPS reports normal operation of roads and trails.</p>`;
+  else if (!list.length) alertsHtml = `<p class="none">NPS has no active alerts for this park.${LIVE_ROADS[p.code] ? "" : " NPS reports normal operation of roads and trails."}</p>`;
   else Object.keys(groups).forEach(g => {
     const items = list.filter(a => a.type === g);
     if (items.length) alertsHtml += `<h2>${groups[g]} (${items.length})</h2>` + items.map(alertBlock).join("");
@@ -1273,7 +1340,7 @@ function detail(p, list, w, warns){
   if (warns && warns.length){
     wxHtml += `<h2 style="margin-top:14px">NWS warnings</h2>` + warns.map(x => `<div class="alert k-danger"><div class="at">${esc(x.event)}</div><div class="ad">${esc(x.headline||"")}</div></div>`).join("");
   }
-  return `<div class="dbox"><div>${alertsHtml}${p.note?`<p class="am">${esc(p.note)}</p>`:""}${roadLinks(p.id)}<p class="am"><a href="https://www.nps.gov/${p.code}/planyourvisit/conditions.htm" target="_blank" rel="noopener">Official ${esc(p.name)} conditions page</a></p></div><div>${wxHtml}</div><div>${histHTML(p.id)}</div><div class="mviz" data-mviz="${p.id}"></div></div>`;
+  return `<div class="dbox"><div>${liveRoadsHTML(p.code)}${alertsHtml}${roadWorkLink(p.code)}${p.note?`<p class="am">${esc(p.note)}</p>`:""}${roadLinks(p.id)}<p class="am"><a href="https://www.nps.gov/${p.code}/planyourvisit/conditions.htm" target="_blank" rel="noopener">Official ${esc(p.name)} conditions page</a></p></div><div>${wxHtml}</div><div>${histHTML(p.id)}</div><div class="mviz" data-mviz="${p.id}"></div></div>`;
 }
 
 // ---- Monthly visits and climate (R9) ----
