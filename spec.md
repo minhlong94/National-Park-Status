@@ -389,3 +389,20 @@ Requirements:
   - Numbers under 1,000 do not change.
 - This applies to the "2025 visits" column, the visits in the monthly tooltip, the monthly values table and the chart axis.
 - Status: done.
+
+### R24. Separate banners for the best time and the best fall color
+
+Original text from the owner (with a screenshot of the banners):
+
+> No star for non-current month. Take fall foliage off the best time calculation, and add a banner for best fall foliage month separately along best time to visit
+
+Requirements:
+
+- The star (★) shows only on a banner that is about now. A "Best time to visit" banner for other months has no star.
+- The best time to visit does not use fall color now. It uses only weather comfort (45%), fewer visitors (25%), little rain (15%) and little snow (15%).
+- Parks with a clear fall color change get a second banner:
+  - "Best fall color:" and the months. A month counts if it has 10 or more days of the usual best color window (the middle of the greenness drop to leaves off). If no month has 10 days, the page uses the month of the middle of the window.
+  - If today is in the window: "Fall color is at its best now!" with a star.
+  - The usual dates show when the reader puts the pointer on the banner.
+- The fall color banner uses the fall color. The best time banner uses green.
+- Status: done.
