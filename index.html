@@ -861,9 +861,48 @@ async function loadNWS(){
     }
   }
   await Promise.all(Array.from({length:8}, worker));
+  if (ok === 0) throw new Error("NWS unreachable"); // keep the saved warnings
   state.nws = out;
-  if (ok === 0) throw new Error("NWS unreachable");
   setSrc("nws", ok === NP ? "ok" : "err", ok === NP ? `${NP} parks` : `${ok} of ${NP} parks`);
+}
+
+// ---- Saved data in the browser (R29) ----
+// The page keeps the last park statuses, weather and warnings in localStorage.
+// It shows the saved data when it opens, and gets new data only when the reader clicks "Refresh data".
+// On the first visit (no saved data), it gets the data one time.
+const CACHE_KEY = "parkStatusCache.v1";
+const cacheTime = {};          // source -> time of its data (ms)
+const fmtTime = t => new Date(t).toLocaleString("en-US", {month:"short", day:"numeric", hour:"numeric", minute:"2-digit"});
+function slimAlerts(by){
+  const out = {};
+  Object.entries(by).forEach(([code, list]) => out[code] = list.map(a => ({
+    title: a.title, description: (a.description || "").slice(0, 600), category: a.category, url: a.url,
+    lastIndexedDate: a.lastIndexedDate, type: a.type, kind: a.kind, isClosure: a.isClosure, fullClose: a.fullClose})));
+  return out;
+}
+function saveCache(){
+  const data = {nps: state.alerts, wx: state.wx, nws: state.nws};
+  const c = {sources: {}};
+  ["nps", "wx", "nws"].forEach(k => { if (cacheTime[k]) c.sources[k] = {t: cacheTime[k], data: k === "nps" ? slimAlerts(data.nps) : data[k]}; });
+  try { localStorage.setItem(CACHE_KEY, JSON.stringify(c)); } catch(e){ /* full or blocked storage: the page still works */ }
+}
+function restoreCache(){
+  let c = null;
+  try { c = JSON.parse(localStorage.getItem(CACHE_KEY) || "null"); } catch(e){ c = null; }
+  if (!c || !c.sources || !Object.keys(c.sources).length) return false;
+  const label = {nps: "alerts", wx: "parks", nws: "parks"};
+  ["nps", "wx", "nws"].forEach(k => {
+    const src = c.sources[k];
+    if (!src) return;
+    cacheTime[k] = src.t;
+    if (k === "nps") state.alerts = src.data; else if (k === "wx") state.wx = src.data; else state.nws = src.data;
+    setSrc(k, "ok", `saved ${fmtTime(src.t)}`);
+  });
+  state.loaded = true;
+  const oldest = Math.min(...Object.values(cacheTime));
+  $("stamp").textContent = `Saved data from ${fmtTime(oldest)}`;
+  $("stamp").title = "The page shows the data from your last refresh. Click Refresh data to get new data.";
+  return true;
 }
 
 async function refresh(){
@@ -871,8 +910,14 @@ async function refresh(){
   btn.disabled = true; btn.textContent = "Refreshing…";
   const errs = [];
   const results = await Promise.allSettled([loadNPS(), loadWeather(), loadNWS()]);
+  const now = Date.now();
   ["nps","wx","nws"].forEach((k,i) => {
-    if (results[i].status === "rejected"){
+    if (results[i].status === "fulfilled") cacheTime[k] = now;
+    else if (cacheTime[k]){
+      // Keep the saved data of this source and tell the reader its time.
+      setSrc(k, "err", `failed, showing saved ${fmtTime(cacheTime[k])}`);
+      errs.push(results[i].reason && results[i].reason.message || "failed");
+    } else if (results[i].status === "rejected"){
       const msg = results[i].reason && results[i].reason.message || "failed";
       setSrc(k,"err", msg.length > 60 ? "failed" : msg);
       errs.push(msg);
@@ -886,8 +931,10 @@ async function refresh(){
       (errs.some(e => /fetch|network/i.test(e)) ? " If all sources fail, open this file in Chrome, Safari, Edge or Firefox. Some viewers block requests to other sites." : "");
   } else banner.hidden = true;
   state.loaded = true;
-  $("stamp").textContent = "Updated " + new Date().toLocaleString("en-US",{month:"short",day:"numeric",hour:"numeric",minute:"2-digit"});
+  $("stamp").textContent = "Updated " + fmtTime(now);
+  $("stamp").title = "";
   btn.disabled = false; btn.textContent = "Refresh data";
+  saveCache();
   render();
 }
 
@@ -1750,7 +1797,7 @@ initBestFilter();
 renderRoads();
 renderHistory();
 render();
-refresh();
+if (!restoreCache()) refresh(); // saved data first; new data only on "Refresh data"
 // The "Best time" column uses the stored monthly and fall color data. Load it once. It does not refresh.
 Promise.all([loadHistory(), loadFoliage(), loadData("data/airports.js", "PARK_AIRPORTS").catch(() => null)]).then(() => {
   if (!("PARK_FOLIAGE" in window)) window.PARK_FOLIAGE = null;

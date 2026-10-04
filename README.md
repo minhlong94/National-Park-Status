@@ -25,7 +25,7 @@ This page shows the current conditions of all 63 U.S. national parks. The list s
 
 The table shows 10 parks on each page. The first page shows the 10 most visited parks.
 
-Click **Refresh data** to get the current park statuses and weather again. The monthly data and the fall color data are stored in files and do not refresh with this button.
+The page saves the last park statuses, weather and warnings in your browser. When you open the page again, it shows the saved data and the time of that data. Click **Refresh data** to get new data. On your first visit, the page gets the data one time. The monthly data and the fall color data are stored in files and do not refresh with this button.
 
 ## Data sources
 
