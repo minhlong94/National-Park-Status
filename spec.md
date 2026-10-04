@@ -113,3 +113,19 @@ Requirements:
   - Weather: Open-Meteo historical weather archive (archive-api.open-meteo.com). The page shows the average of the 3 years for each month.
 - A GitHub Actions workflow gets the data and saves it in `data/park-history.js`.
 - Status: in progress.
+
+### R10. Use timeouts in the data workflow
+
+Original text from the owner:
+
+> Workflow failed. Try again, and make sure to use timeouts
+
+Requirements:
+
+- Each network request has a timeout of 30 seconds for each step (connect, TLS handshake and each read).
+- The script tries each request a maximum of 3 times.
+- The script stops after 10 minutes.
+- If 3 parks fail one after the other, the script stops the requests to that host.
+- The "Get the data" step stops after 15 minutes. The job stops after 20 minutes.
+- If one source fails, the workflow keeps the good data from the other source. The run then shows a failure.
+- Status: done.

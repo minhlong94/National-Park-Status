@@ -21,19 +21,36 @@ concurrency:
 jobs:
   update:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
+        timeout-minutes: 2
       - uses: actions/setup-python@v5
+        timeout-minutes: 3
         with:
           python-version: "3.12"
+      - name: Check the data hosts
+        timeout-minutes: 2
+        continue-on-error: true
+        run: |
+          for url in \
+            "https://irmaservices.nps.gov/v3/rest/stats/visitation?unitCodes=YELL&startMonth=1&startYear=2025&endMonth=1&endYear=2025" \
+            "https://archive-api.open-meteo.com/v1/archive?latitude=44.4&longitude=-110.6&start_date=2025-01-01&end_date=2025-01-02&daily=temperature_2m_max"; do
+            curl -sS -o /dev/null --connect-timeout 15 --max-time 30 \
+              -w "%{http_code} in %{time_total}s (connect %{time_connect}s, TLS %{time_appconnect}s): $url\n" "$url" \
+              || echo "FAILED: $url"
+          done
       - name: Get the data
-        run: python3 scripts/fetch_history.py
+        timeout-minutes: 15
+        run: python3 -u scripts/fetch_history.py
       - name: Commit the data if it changed
+        # Also runs when a source failed, so the good data from the other source is kept.
+        if: ${{ !cancelled() }}
+        timeout-minutes: 2
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898333+github-actions[bot]@users.noreply.github.com"
-          git add data/park-history.js
+          git add data/park-history.js 2>/dev/null || true
           if git diff --cached --quiet; then
             echo "No change in the data."
           else
