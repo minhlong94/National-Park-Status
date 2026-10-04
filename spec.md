@@ -373,3 +373,19 @@ Requirements:
 - Each park gets the wide box only once. The file `data/foliage.js` lists these parks in `wide`. New NASA years use the wide box for them.
 - The park details tell the reader when a park uses the 21 km box.
 - Status: done.
+
+### R23. Short numbers for visits
+
+Original text from the owner:
+
+> Shorten the visits count and big numbers to 400K or 4M. No need to show exact numbers
+
+Requirements:
+
+- Show big numbers in a short form, not exact. Examples: 11.5M, 4.8M, 4M, 400K, 15K, 7.8K.
+  - From 1 million: millions with one decimal (no decimal if it is 0, or from 100 million).
+  - From 10,000: whole thousands.
+  - From 1,000: thousands with one decimal.
+  - Numbers under 1,000 do not change.
+- This applies to the "2025 visits" column, the visits in the monthly tooltip, the monthly values table and the chart axis.
+- Status: done.
