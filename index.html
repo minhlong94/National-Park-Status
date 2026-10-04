@@ -12,19 +12,19 @@
   --paper:#EEF0EA; --panel:#F8F9F5; --ink:#22313A; --muted:#5E6B66; --line:#CDD3CB;
   --pine:#2F5D4A; --pine-ink:#F3F6F1;
   --open:#3C7A4F; --partial:#B07A12; --closed:#B23A2E; --info:#3E6A8A;
-  --y1:#2a78d6; --y2:#eb6834; --y3:#1baf7a; --temp:#e34948; --rain:#4a3aa7; --snow:#7d8ea3; --fall:#b5651d; --wash:rgba(34,49,58,.06);
+  --y1:#2a78d6; --y2:#eb6834; --y3:#1baf7a; --temp:#e34948; --rain:#4a3aa7; --snow:#7d8ea3; --fall:#b5651d; --score-ink:#F3F6F1; --wash:rgba(34,49,58,.06);
   box-sizing:border-box;
   padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
 }
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
   --paper:#161D1A; --panel:#1E2724; --ink:#E4E9E4; --muted:#9AA8A1; --line:#33413B;
   --pine:#3F7A60; --pine-ink:#F3F6F1; --open:#6DB585; --partial:#E0A93A; --closed:#E2695C; --info:#7FA9C8;
-  --y1:#3987e5; --y2:#d95926; --y3:#199e70; --temp:#e66767; --rain:#9085e9; --snow:#a3b3c6; --fall:#d98b3a; --wash:rgba(228,233,228,.07);
+  --y1:#3987e5; --y2:#d95926; --y3:#199e70; --temp:#e66767; --rain:#9085e9; --snow:#a3b3c6; --fall:#d98b3a; --score-ink:#161D1A; --wash:rgba(228,233,228,.07);
 }}
 :root[data-theme="dark"]{
   --paper:#161D1A; --panel:#1E2724; --ink:#E4E9E4; --muted:#9AA8A1; --line:#33413B;
   --pine:#3F7A60; --pine-ink:#F3F6F1; --open:#6DB585; --partial:#E0A93A; --closed:#E2695C; --info:#7FA9C8;
-  --y1:#3987e5; --y2:#d95926; --y3:#199e70; --temp:#e66767; --rain:#9085e9; --snow:#a3b3c6; --fall:#d98b3a; --wash:rgba(228,233,228,.07);
+  --y1:#3987e5; --y2:#d95926; --y3:#199e70; --temp:#e66767; --rain:#9085e9; --snow:#a3b3c6; --fall:#d98b3a; --score-ink:#161D1A; --wash:rgba(228,233,228,.07);
 }
 *,*::before,*::after{box-sizing:inherit}
 html{scroll-padding-top:env(safe-area-inset-top,0px)}
@@ -65,7 +65,8 @@ button:focus-visible,input:focus-visible,summary:focus-visible{outline:3px solid
 .filters button{padding:8px 12px;font-weight:500}
 .filters button[aria-pressed="true"]{background:var(--ink);color:var(--paper);border-color:var(--ink)}
 .tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:8px;background:var(--panel)}
-table{width:100%;border-collapse:collapse;min-width:900px}
+table{width:100%;border-collapse:collapse;min-width:980px}
+td.besttime{font-weight:600;min-width:8ch;max-width:11ch}
 th{text-align:left;font-size:13px;font-weight:600;color:var(--muted);padding:10px 12px;border-bottom:1px solid var(--line);white-space:nowrap}
 th.num,td.num{text-align:right;font-variant-numeric:tabular-nums}
 td{padding:12px;border-bottom:1px solid var(--line);vertical-align:top}
@@ -84,7 +85,7 @@ tr.park:hover td{background:color-mix(in srgb,var(--pine) 6%,transparent)}
 .warn{color:var(--closed);font-size:12.5px;font-weight:600;display:block;margin-top:4px;white-space:normal;max-width:24ch}
 tr.detail td{background:var(--paper);padding:0}
 tr.detail[hidden]{display:none}
-.dbox{padding:16px 18px 20px 64px;display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:18px}
+.dbox{padding:16px 18px 20px 64px;display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:22px}
 .dbox h2{font-size:17px;margin:0 0 8px;font-weight:600}
 .alert{border-left:4px solid var(--line);padding:6px 0 6px 10px;margin:0 0 10px}
 .alert.k-closure{border-color:var(--closed)}.alert.k-danger{border-color:var(--closed)}.alert.k-caution{border-color:var(--partial)}.alert.k-info{border-color:var(--info)}
@@ -225,6 +226,7 @@ footer a{color:var(--info)}
       <option value="name">Name A–Z</option>
       <option value="closures">Most closures now</option>
       <option value="temp">Warmest now</option>
+      <option value="bestnow">Best to visit this month</option>
     </select></label>
     <span class="count" id="count"></span>
   </div>
@@ -241,7 +243,7 @@ footer a{color:var(--info)}
       <thead><tr>
         <th>#</th><th>Park</th><th class="num">2025 visits</th><th>Status</th>
         <th class="num">Roads</th><th class="num">Trails</th><th class="num">Facilities</th><th class="num">Other</th>
-        <th class="num">Past closures</th><th>Weather now</th><th>Today</th>
+        <th class="num">Past closures</th><th>Best time</th><th>Weather now</th><th>Today</th>
       </tr></thead>
       <tbody id="rows"></tbody>
     </table>
@@ -828,7 +830,7 @@ function roadLinks(code){
   return `<p class="rlinks">Seasonal road history: ${rs.map(r=>`<a data-goroad="${r.id}" tabindex="0">${esc(r.name)}</a>`).join(", ")}</p>`;
 }
 function histHTML(code){
-  return `<h2 style="margin-top:16px">Closure history</h2><ul class="hist">` + histList(code).map(e =>
+  return `<h2>Closure history</h2><ul class="hist">` + histList(code).map(e =>
     `<li><div class="hd"><b>${esc(startText(e))}</b>${e.end ? "to " + esc(fmtD(e.end)) : ""}${durText(e)!=="–" ? `<br>${durText(e)} days` : ""}</div>
      <div><div class="ht"><span class="tag ${e.scope}">${SCOPE[e.scope]}</span>${esc(e.title)}${e.park==="*" ? " (all parks)" : ""}</div><div class="hn">${esc(e.note)}</div></div></li>`).join("") + `</ul>`;
 }
@@ -961,6 +963,7 @@ function render(){
   });
   if (state.sort === "name") view.sort((a,b)=>a.p.name.localeCompare(b.p.name));
   else if (state.sort === "closures") view.sort((a,b)=>((b.list||[]).filter(x=>x.isClosure).length-(a.list||[]).filter(x=>x.isClosure).length) || a.p.r-b.p.r);
+  else if (state.sort === "bestnow" && window.PARK_HISTORY){ const m = new Date().getMonth(); const sc = p => { const b = bestTime(p.id); return b ? b.scores[m] : -1; }; view.sort((a,b) => sc(b.p) - sc(a.p) || a.p.r - b.p.r); }
   else if (state.sort === "temp") view.sort((a,b)=>((b.w&&b.w.current?b.w.current.temperature_2m:-999)-(a.w&&a.w.current?a.w.current.temperature_2m:-999)));
   let shown = 0;
   const seenCodes = new Set();
@@ -1001,10 +1004,11 @@ function render(){
       <td><span class="chip ${st.cls}">${st.label}</span></td>
       ${cell(c.road)}${cell(c.trail)}${cell(c.facility)}${cell(c.other)}
       <td class="num"><span class="cnt ${(HISTORY[p.id]||[]).length?"":"zero"}">${(HISTORY[p.id]||[]).length}</span></td>
+      <td class="besttime">${(() => { const bt = window.PARK_HISTORY && bestTime(p.id); return bt ? esc(bt.label) : `<span class="none">–</span>`; })()}</td>
       <td>${now}</td><td>${today}</td></tr>`);
-    html.push(`<tr class="detail" data-for="${p.id}" ${isOpen? "": "hidden"}><td colspan="11">${detail(p, list, w, warns)}</td></tr>`);
+    html.push(`<tr class="detail" data-for="${p.id}" ${isOpen? "": "hidden"}><td colspan="12">${detail(p, list, w, warns)}</td></tr>`);
   });
-  tb.innerHTML = html.join("") || `<tr><td colspan="11" class="none" style="padding:18px">No parks match your search and filter.</td></tr>`;
+  tb.innerHTML = html.join("") || `<tr><td colspan="12" class="none" style="padding:18px">No parks match your search and filter.</td></tr>`;
   $("count").textContent = shown ? `Showing ${first+1}–${first+pageRows.length} of ${shown} parks` + (shown < NP ? ` (${NP} in all)` : "") : `Showing 0 of ${NP} parks`;
   renderPager(pages);
   state.open.forEach(openMonthly);
@@ -1043,7 +1047,7 @@ function detail(p, list, w, warns){
   if (warns && warns.length){
     wxHtml += `<h2 style="margin-top:14px">NWS warnings</h2>` + warns.map(x => `<div class="alert k-danger"><div class="at">${esc(x.event)}</div><div class="ad">${esc(x.headline||"")}</div></div>`).join("");
   }
-  return `<div class="dbox"><div>${alertsHtml}${p.note?`<p class="am">${esc(p.note)}</p>`:""}${roadLinks(p.id)}${histHTML(p.id)}<p class="am"><a href="https://www.nps.gov/${p.code}/planyourvisit/conditions.htm" target="_blank" rel="noopener">Official ${esc(p.name)} conditions page</a></p></div><div>${wxHtml}</div><div class="mviz" data-mviz="${p.id}"></div></div>`;
+  return `<div class="dbox"><div>${alertsHtml}${p.note?`<p class="am">${esc(p.note)}</p>`:""}${roadLinks(p.id)}<p class="am"><a href="https://www.nps.gov/${p.code}/planyourvisit/conditions.htm" target="_blank" rel="noopener">Official ${esc(p.name)} conditions page</a></p></div><div>${wxHtml}</div><div>${histHTML(p.id)}</div><div class="mviz" data-mviz="${p.id}"></div></div>`;
 }
 
 // ---- Monthly visits and climate (R9) ----
@@ -1145,6 +1149,86 @@ function deriveHistory(D, id){
   return {years, visits, wx, lastLabel: label(lastK), lastMonth: lm, wxSpan: `${label(Math.max(0, lastK - 35))} to ${label(lastK)}`};
 }
 
+// ---- Best time to visit (R15) ----
+// A score from 0 to 100 for each month, from the stored data only:
+//   weather comfort 45%, fewer visitors 25%, little rain 15%, little snow 15%, plus 10 for fall color.
+// A month with less than 5% of the visits of the busiest month probably has limited access. Its score is cut to 30%.
+const bestCache = {};
+function rangeText(months){
+  if (!months.length) return "";
+  if (months.length === 12) return "All year";
+  const set = new Set(months), groups = [];
+  // Start a group at a month whose previous month is not in the set (wraps from Dec to Jan).
+  months.slice().sort((a,b)=>a-b).forEach(m => {
+    if (set.has((m+11)%12)) return;
+    let end = m; while (set.has((end+1)%12)) end = (end+1)%12;
+    groups.push(end === m ? MONTHS[m] : `${MONTHS[m]}–${MONTHS[end]}`);
+  });
+  return groups.join(", ");
+}
+function bestTime(id){
+  if (bestCache[id]) return bestCache[id];
+  const H = deriveHistory(window.PARK_HISTORY, id);
+  if (!H) return null;
+  const fall = fallSummary(id);
+  const vavg = MONTHS.map((_, i) => { const v = H.years.map(y => H.visits[y][i]).filter(x => x != null); return v.length ? v.reduce((a,b)=>a+b,0)/v.length : null; });
+  const vmax = Math.max(1, ...vavg.filter(v => v != null));
+  const fallMonths = new Set();
+  if (fall && fall.clear){ for (let m = doyDate(fall.mid).getUTCMonth(); m <= doyDate(fall.dor).getUTCMonth(); m++) fallMonths.add(m); }
+  const comfort = hi => hi == null ? 0.5 : hi < 35 ? 0 : hi < 60 ? (hi-35)/25 : hi <= 80 ? 1 : hi < 100 ? (100-hi)/20 : 0;
+  const parts = MONTHS.map((_, i) => {
+    const c = vavg[i] == null ? null : vavg[i] / vmax, rain = H.wx.rain[i], snow = H.wx.snow[i];
+    let sc = 0.45*comfort(H.wx.hi[i]) + 0.25*(c == null ? 0.5 : 1-c) + 0.15*(1 - Math.min(1, (rain||0)/6)) + 0.15*(1 - Math.min(1, (snow||0)/12)) + (fallMonths.has(i) ? 0.1 : 0);
+    const limited = c != null && c < 0.05;
+    if (limited) sc *= 0.3;
+    return {score: Math.round(Math.min(1, sc)*100), crowd: c, limited};
+  });
+  const scores = parts.map(p => p.score), top = Math.max(...scores);
+  // Up to 2 windows of neighbor months. A window starts at a month near the top score (within 4 points)
+  // and grows to a neighbor month while that month is within 8 points of the top. A window has at most 3 months.
+  const picked = new Set();
+  let seeds = 0;
+  scores.map((v,i) => [v,i]).sort((a,b) => b[0]-a[0]).forEach(([v, i]) => {
+    if (picked.has(i) || v < top - 4 || seeds >= 2) return;
+    seeds++;
+    const win = [i];
+    for (let grew = true; grew && win.length < 3;){
+      grew = false;
+      const prev = (win[0]+11)%12, next = (win[win.length-1]+1)%12;
+      const cand = [prev, next].filter(m => !picked.has(m) && !win.includes(m) && scores[m] >= top - 8).sort((a,b) => scores[b]-scores[a]);
+      if (cand.length){ if (cand[0] === prev) win.unshift(prev); else win.push(next); grew = true; }
+    }
+    win.forEach(m => picked.add(m));
+  });
+  const best = [...picked].sort((a,b)=>a-b);
+  // Reasons, from the values of the best months
+  const avg = a => a.reduce((x,y)=>x+y,0)/a.length;
+  const his = best.map(i => H.wx.hi[i]).filter(v => v != null), reasons = [];
+  if (his.length){
+    const a = Math.round(Math.min(...his)), b = Math.round(Math.max(...his));
+    reasons.push(a === b ? `average highs of ${a}°F` : `average highs of ${a}–${b}°F`);
+  }
+  const cb = best.map(i => parts[i].crowd).filter(v => v != null);
+  if (cb.length){
+    const share = avg(cb);
+    reasons.push(share >= 0.85 ? "it is also the busiest time of the year" : `about ${Math.round(share*100)}% of the visitors of the busiest month`);
+  }
+  if (best.some(i => fallMonths.has(i))) reasons.push("fall color");
+  const rb = best.map(i => H.wx.rain[i]).filter(v => v != null), sb = best.map(i => H.wx.snow[i]).filter(v => v != null);
+  if (rb.length && avg(rb) > 4) reasons.push(`rain is frequent (about ${Math.round(avg(rb))} in a month)`);
+  if (sb.length && Math.max(...sb) >= 2) reasons.push("snow is possible");
+  const limited = parts.map((p,i) => p.limited ? i : -1).filter(i => i >= 0);
+  // Seasonal roads of this park: the usual open dates in the last 10 years
+  const minYear = new Date().getFullYear() - ROAD_YEARS + 1;
+  const roads = ROADS.filter(r => r.park === id).map(r => {
+    const rows = parseRoad(r).filter(z => z.y >= minYear && z.od !== null);
+    if (!rows.length) return null;
+    const st = roadStats(rows);
+    return `${r.name} is usually open from about ${doyLabel(st.avgO)}` + (st.avgC !== null ? ` to ${doyLabel(st.avgC % 365)}` : "");
+  }).filter(Boolean);
+  return bestCache[id] = {scores, best, label: rangeText(best), reasons, limited, limitedText: rangeText(limited), roads, fallMonths};
+}
+
 function drawMonthly(box, id){
   const D = window.PARK_HISTORY, H = deriveHistory(D, id);
   if (!H){ box.innerHTML = `<h2>Visits and climate by month</h2><p class="none">There is no monthly data for this park.</p>`; return; }
@@ -1201,6 +1285,27 @@ function drawMonthly(box, id){
   }
   const snowTotal = P.wx.snow.reduce((s,v) => s + (v||0), 0);
 
+  // Best time to visit: a score strip with the same months as the charts
+  const BT = bestTime(id);
+  let bestHtml = "";
+  if (BT){
+    const HB = 50, yb = 8, hb = 22;
+    let g = washLayer(L, band, 2, yb+hb+2);
+    BT.scores.forEach((v,i) => {
+      const x = L + band*i + 1, isBest = BT.best.includes(i);
+      g += `<rect x="${x}" y="${yb}" width="${band-2}" height="${hb}" rx="4" fill="color-mix(in srgb, var(--open) ${Math.round(8 + v*0.92)}%, var(--panel))"/>`;
+      g += `<text x="${x + (band-2)/2}" y="${yb+hb/2+4}" text-anchor="middle" font-size="11" font-weight="${isBest ? 700 : 400}" fill="${v >= 60 ? "var(--score-ink)" : "var(--ink)"}">${isBest ? (band >= 34 ? "Best" : "★") : (band >= 34 ? v : "")}</text>`;
+    });
+    g += axisX(L, band, HB-4) + hitLayer(L, band, 2, yb+hb+2, false);
+    const reason = BT.reasons.length ? ` <span>Why: ${esc(BT.reasons.join(", "))}.</span>` : "";
+    bestHtml = `<div class="mtitle">Best time to visit <span>score from 0 to 100 for each month</span></div>
+      <p class="mfall"><b>${esc(BT.label)}</b>.${reason}</p>
+      ${BT.limitedText ? `<p class="mfall"><span>${esc(BT.limitedText)}: very few visitors. Access is often limited in these months.</span></p>` : ""}
+      ${BT.roads.map(t => `<p class="mfall"><span>${esc(t)} (last ${ROAD_YEARS} years).</span></p>`).join("")}
+      <svg viewBox="0 0 ${W} ${HB}" width="${W}" height="${HB}" aria-hidden="true">${g}</svg>
+      <p class="mfall"><span>The score uses the weather at one point in the park, the number of visitors, rain, snow and fall color. It does not include events, wildlife seasons or road openings.</span></p>`;
+  }
+
   // Fall color strip: the same months as the charts
   const fall = fallSummary(id), now = fallNow(id);
   const xDoy = d => { const dt = doyDate(d), m = dt.getUTCMonth(), dim = new Date(Date.UTC(2001, m+1, 0)).getUTCDate(); return L + band*(m + (dt.getUTCDate()-1)/dim); };
@@ -1239,7 +1344,7 @@ function drawMonthly(box, id){
 
   box.innerHTML = `
     <h2>Visits and climate by month</h2>
-    <p class="msub">The four charts use the same months. Put the pointer on a month, or use Tab on the visits chart, to see all the values for that month. The weather values are the averages of each month from ${H.wxSpan}.</p>
+    <p class="msub">All the charts use the same months. Put the pointer on a month, or use Tab on the visits chart, to see all the values for that month. The weather values are the averages of each month from ${H.wxSpan}.</p>
     <div class="mtitle">Recreation visits <span>by month, ${span}</span></div>
     <div class="mlegend" role="group" aria-label="Show or hide years">${years.map(y => `<button type="button" data-year="${y}" aria-pressed="${!hiddenYears.has(y)}"><i style="background:${colorOf(y)}"></i>${y}</button>`).join("")}</div>
     <svg viewBox="0 0 ${W} ${H1}" width="${W}" height="${H1}" role="group" aria-label="Recreation visits by month">${g1}</svg>
@@ -1250,10 +1355,11 @@ function drawMonthly(box, id){
     ${amountChart(P.wx.rain, "--rain")}
     <div class="mtitle">Snow <span>average monthly total, inches of snow, last 3 years</span></div>
     ${snowTotal >= 0.1 ? amountChart(P.wx.snow, "--snow") : `<p class="none">Almost no snow falls here in an average year.</p>`}
+    ${bestHtml}
     <div class="mtip" hidden></div>
     <details><summary>Show the values as a table</summary><div class="tablewrap"><table>
-      <thead><tr><th>Month</th>${years.map(y => `<th class="num">Visits ${y}</th>`).join("")}<th class="num">Low °F</th><th class="num">High °F</th><th class="num">Rain in</th><th class="num">Snow in</th></tr></thead>
-      <tbody>${MONTHS.map((m,i) => `<tr><td>${m}</td>${years.map(y => `<td class="num">${vis(y)[i] == null ? "–" : fmtInt(vis(y)[i])}</td>`).join("")}<td class="num">${lo[i] ?? "–"}</td><td class="num">${hi[i] ?? "–"}</td><td class="num">${P.wx.rain[i] ?? "–"}</td><td class="num">${P.wx.snow[i] ?? "–"}</td></tr>`).join("")}</tbody>
+      <thead><tr><th>Month</th>${years.map(y => `<th class="num">Visits ${y}</th>`).join("")}<th class="num">Low °F</th><th class="num">High °F</th><th class="num">Rain in</th><th class="num">Snow in</th>${BT ? `<th class="num">Visit score</th>` : ""}</tr></thead>
+      <tbody>${MONTHS.map((m,i) => `<tr><td>${m}</td>${years.map(y => `<td class="num">${vis(y)[i] == null ? "–" : fmtInt(vis(y)[i])}</td>`).join("")}<td class="num">${lo[i] ?? "–"}</td><td class="num">${hi[i] ?? "–"}</td><td class="num">${P.wx.rain[i] ?? "–"}</td><td class="num">${P.wx.snow[i] ?? "–"}</td>${BT ? `<td class="num">${BT.scores[i]}</td>` : ""}</tr>`).join("")}</tbody>
     </table></div></details>
     <p class="msrc">Sources: NPS Visitor Use Statistics (recreation visits). Open-Meteo historical weather (ERA5 model) at the forecast point of the park. Data to ${esc(H.lastLabel)}.${fall ? " Fall color: NASA MODIS land surface phenology (MCD12Q2), 3 km box at the same point." : ""}${now && !now.stale ? " This season: USA National Phenology Network." : ""}</p>`;
 
@@ -1270,6 +1376,7 @@ function drawMonthly(box, id){
     box.querySelectorAll(".wash").forEach(w => { w.setAttribute("x", L + band*i); w.setAttribute("visibility", "visible"); });
     tip.replaceChildren();
     const h = document.createElement("div"); h.className = "mth"; h.textContent = MONTHS_LONG[i]; tip.append(h);
+    if (BT) tip.append(row("var(--open)", BT.best.includes(i) ? "Visit score (best)" : "Visit score", `${BT.scores[i]} of 100`));
     years.slice().reverse().forEach(y => { if (!hiddenYears.has(y)) tip.append(row(colorOf(y), `Visits ${y}`, vis(y)[i] == null ? "No data yet" : fmtInt(vis(y)[i]))); });
     tip.append(document.createElement("hr"));
     tip.append(row("var(--temp)", "Low to high", lo[i] == null ? "–" : `${Math.round(lo[i])}° to ${Math.round(hi[i])}°F`));
@@ -1364,6 +1471,8 @@ renderRoads();
 renderHistory();
 render();
 refresh();
+// The "Best time" column uses the stored monthly and fall color data. Load it once. It does not refresh.
+Promise.all([loadHistory(), loadFoliage()]).then(() => { if (!("PARK_FOLIAGE" in window)) window.PARK_FOLIAGE = null; render(); }).catch(() => {});
 </script>
 </body>
 </html>
