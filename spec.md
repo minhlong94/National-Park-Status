@@ -151,3 +151,27 @@ Requirements:
 - The page shows the visits for the last 3 calendar years in the file. The weather values are the averages of each calendar month over the last 36 months.
 - The workflow runs each Monday. Most runs make no request or two requests.
 - Status: done.
+
+### R12. Fall foliage data
+
+Original text from the owner:
+
+> Can you also get fall foilage data?
+
+The owner chose "Both" for the type of data.
+
+Requirements:
+
+- **Usual timing.** For each park, show when the fall color usually happens:
+  - when the greenness starts to drop
+  - the middle of the leaf change
+  - when the leaves are off
+- Source: NASA MODIS land surface phenology (MCD12Q2), from the ORNL DAAC MODIS web service. Each value is the median of the pixels in a 3 km box at the park point. The page shows the average of the last 5 years with data.
+- NASA publishes one year at a time, 1 to 2 years late. The file `data/foliage.js` keeps each year. Old years do not change. The script first checks the first park for a new year. If the first park has no data, the script stops.
+- If a park has no clear fall color change, the page tells the reader. Examples: deserts, tropical parks and evergreen parks.
+- **This season.** Show the reports of "Colored leaves" and "Falling leaves" within 50 km of each park in the last 14 days.
+- Source: USA National Phenology Network (USA-NPN). One request gets the reports for all parks. The file is `data/foliage-now.js`.
+- The script gets the reports for this season only from Aug 15 to Dec 15.
+- The page shows a fall color strip with the same months as the other charts, and a short text.
+- The workflow `.github/workflows/update-foliage.yml` runs each Monday. All data workflows use one queue, so two runs never push at the same time.
+- Status: done.

@@ -17,6 +17,7 @@ This page shows the current conditions of all 63 U.S. national parks. The list s
   - the average monthly snow
 
   Put the pointer on a month to see all the values for that month. A table shows the same values.
+- **Fall color**: the usual dates when the leaves change, from satellite data, and reports of colored leaves near the park in this season.
 - **Closure history**: the major full and partial closures from the last 5 years. The list also shows shutdowns of all parks.
 
 Click **Refresh data** to get the live data again.
@@ -31,6 +32,8 @@ Click **Refresh data** to get the live data again.
 | Visits (ranking) | NPS Visitor Use Statistics, calendar year 2025 |
 | Monthly visits | [NPS Visitor Use Statistics](https://irma.nps.gov/Stats/) (`irmaservices.nps.gov`) |
 | Monthly climate | [Open-Meteo historical weather](https://open-meteo.com/en/docs/historical-weather-api) (`archive-api.open-meteo.com`) |
+| Fall color, usual timing | [NASA MODIS land surface phenology (MCD12Q2)](https://lpdaac.usgs.gov/products/mcd12q2v061/), from the [ORNL DAAC MODIS web service](https://modis.ornl.gov/data/modis_webservice.html) |
+| Fall color, this season | [USA National Phenology Network](https://www.usanpn.org/) (`services.usanpn.org`) |
 
 If you do not give a key, the page uses the shared NPS `DEMO_KEY`. This key allows approximately 30 requests per hour from each IP address.
 
@@ -62,6 +65,15 @@ The workflow `.github/workflows/update-data.yml` runs the script and commits the
 - each Monday
 - when the script or the workflow changes
 - when you start it from the **Actions** tab
+
+## Fall foliage data
+
+The script `scripts/fetch_foliage.py` keeps two files:
+
+- `data/foliage.js`: the usual timing of the fall color. For each park and year, it keeps the day when the greenness starts to drop, the middle of the leaf change and the day when the leaves are off. NASA publishes one year at a time, 1 to 2 years late. The script adds only new years, and it checks the first park first.
+- `data/foliage-now.js`: the reports of colored and falling leaves within 50 km of each park in the last 14 days. The script gets these reports only from Aug 15 to Dec 15.
+
+The workflow `.github/workflows/update-foliage.yml` runs the script each Monday.
 
 ## Run the page on your computer
 
