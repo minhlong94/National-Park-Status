@@ -1542,7 +1542,7 @@ function deriveHistory(D, id){
 
 // ---- Best time to visit (R15) ----
 // A score from 0 to 100 for each month, from the stored data only:
-//   weather comfort 45%, many visitors 25% (R33), little rain 15%, little snow 15%. Fall color is not part of it (R24).
+//   weather comfort 45%, visitors 25% (a balance, R34), little rain 15%, little snow 15%. Fall color is not part of it (R24).
 // A month with less than 5% of the visits of the busiest month probably has limited access. Its score is cut to 30%.
 const bestCache = {};
 function rangeText(months){
@@ -1557,6 +1557,13 @@ function rangeText(months){
   });
   return groups.join(", ");
 }
+// Visitor part of the score (R34): a balance. Few visitors usually have a reason (closed roads, heat, snow),
+// and the busiest months are crowded. The best is the shoulder season: 55% to 80% of the visits of the busiest month.
+function crowdScore(c){
+  if (c < 0.55) return Math.max(0, (c - 0.05) / 0.5);   // 5% -> 0, 55% -> 1
+  if (c <= 0.8) return 1;                                  // shoulder season
+  return 1 - (c - 0.8) / 0.2 * 0.25;                       // busiest month -> 0.75
+}
 function bestTime(id){
   if (bestCache[id]) return bestCache[id];
   const H = deriveHistory(window.PARK_HISTORY, id);
@@ -1567,8 +1574,7 @@ function bestTime(id){
   const comfort = hi => hi == null ? 0.5 : hi < 35 ? 0 : hi < 60 ? (hi-35)/25 : hi <= 80 ? 1 : hi < 100 ? (100-hi)/20 : 0;
   const parts = MONTHS.map((_, i) => {
     const c = vavg[i] == null ? null : vavg[i] / vmax, rain = H.wx.rain[i], snow = H.wx.snow[i];
-    // Many visitors count for a month (R33): people come at the best times, for example for the fall color.
-    let sc = 0.45*comfort(H.wx.hi[i]) + 0.25*(c == null ? 0.5 : c) + 0.15*(1 - Math.min(1, (rain||0)/6)) + 0.15*(1 - Math.min(1, (snow||0)/12));
+    let sc = 0.45*comfort(H.wx.hi[i]) + 0.25*(c == null ? 0.5 : crowdScore(c)) + 0.15*(1 - Math.min(1, (rain||0)/6)) + 0.15*(1 - Math.min(1, (snow||0)/12));
     const limited = c != null && c < 0.05;
     if (limited) sc *= 0.3;
     return {score: Math.round(Math.min(1, sc)*100), crowd: c, limited};
