@@ -24,6 +24,7 @@ from pathlib import Path
 
 from shapely.geometry import shape, Point
 from shapely.ops import unary_union
+from shapely.validation import make_valid
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import fetch_history as fh  # noqa: E402  (load_parks)
@@ -60,7 +61,8 @@ def park_shape(p):
         j = get(f"{BOUNDS_URL}?{q}")
         feats = j.get("features") or []
         if feats:
-            g = unary_union([shape(f["geometry"]) for f in feats if f.get("geometry")]).buffer(0)
+            g = unary_union([make_valid(shape(f["geometry"])) for f in feats if f.get("geometry")])
+            g = unary_union([x for x in getattr(g, "geoms", [g]) if x.geom_type in ("Polygon", "MultiPolygon")])
             print(f"{p['id']}: {code} {feats[0]['properties'].get('UNIT_NAME')}", flush=True)
             return g
     print(f"{p['id']}: NO BOUNDARY, uses a 5 km box at the park point", flush=True)
@@ -88,7 +90,7 @@ def zones_for(area, kind):
     for f in j.get("features") or []:
         if f.get("geometry"):
             try:
-                out.append((f["properties"]["id"], shape(f["geometry"]).buffer(0)))
+                out.append((f["properties"]["id"], make_valid(shape(f["geometry"]))))
             except Exception:  # noqa: BLE001
                 pass
     return out
