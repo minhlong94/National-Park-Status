@@ -103,6 +103,9 @@ tr.park:hover td{background:color-mix(in srgb,var(--pine) 6%,transparent)}
 .wx{white-space:nowrap}
 .wx .t{font:700 20px/1 "Archivo Narrow",Arial,sans-serif}
 .wx small{display:block;color:var(--muted);font-size:12.5px;margin-top:3px}
+.flood{display:inline-block;margin-top:6px;padding:2px 7px;border-radius:6px;font-size:12px;font-weight:700;line-height:1.3;white-space:normal;max-width:18ch}
+.flood.f2{background:var(--closed);color:#fff}
+.flood.f1{background:color-mix(in srgb, var(--partial) 18%, transparent);border:1px solid var(--partial);color:var(--ink)}
 .warn{color:var(--closed);font-size:12.5px;font-weight:600;display:block;margin-top:4px;white-space:normal;max-width:24ch}
 tr.detail td{background:var(--paper);padding:0}
 tr.detail[hidden]{display:none}
@@ -292,6 +295,7 @@ footer a{color:var(--info)}
     <button data-f="roads" aria-pressed="false">Road issues</button>
     <button data-f="trails" aria-pressed="false">Trail issues</button>
     <button data-f="wx" aria-pressed="false">Weather warnings</button>
+    <button data-f="flood" aria-pressed="false">Flood alerts</button>
   </div>
   <div class="bestbar" role="group" aria-label="Filter by the best time to visit">
     <span class="lbl">Best time to visit:</span>
@@ -909,22 +913,98 @@ function roadWorkLink(code){
   return ROAD_WORK[code] ? `<p class="am"><a href="${esc(ROAD_WORK[code])}" target="_blank" rel="noopener">Road construction and project work</a></p>` : "";
 }
 
+// ---- NWS alerts for the whole park (R32) ----
+// data/park-bounds.js has a simple outline of each park and the NWS zones that touch it.
+// The page gets the active alerts one time for each state, then keeps the alerts that touch the park:
+// - an alert with a polygon (for example a Flash Flood Warning): the polygon touches the park outline
+// - an alert without a polygon (for example a Flood Watch): one of its zones touches the park
+// If the outline file does not load, the page uses one point for each park (the old method).
+const nwsItem = f => {
+  const pr = f.properties, it = {event:pr.event, headline:pr.headline, severity:pr.severity, ends:pr.ends || pr.expires};
+  if (floodLevel(pr.event)) it.desc = (pr.description || "").replace(/\s+/g, " ").slice(0, 500);
+  return it;
+};
+// Flood alerts: 2 = warning or emergency (red), 1 = watch, advisory or statement (orange), 0 = not a flood alert.
+function floodLevel(ev){ return !/flood/i.test(ev || "") ? 0 : /warning|emergency/i.test(ev) ? 2 : 1; }
+const byFlood = (a, b) => floodLevel(b.event) - floodLevel(a.event);
+function inRing(r, x, y){
+  let c = false;
+  for (let i = 0, j = r.length - 1; i < r.length; j = i++){
+    const [xi, yi] = r[i], [xj, yj] = r[j];
+    if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) c = !c;
+  }
+  return c;
+}
+function segsCross(a, b, c, d){
+  const o = (p, q, r) => Math.sign((q[0]-p[0])*(r[1]-p[1]) - (q[1]-p[1])*(r[0]-p[0]));
+  return o(a,b,c) !== o(a,b,d) && o(c,d,a) !== o(c,d,b);
+}
+function ringsTouch(A, B){ // A, B: lists of rings [[lon,lat],...]
+  for (const ra of A) for (const rb of B){
+    if (inRing(rb, ra[0][0], ra[0][1]) || inRing(ra, rb[0][0], rb[0][1])) return true;
+    for (let i = 1; i < ra.length; i++) for (let j = 1; j < rb.length; j++)
+      if (segsCross(ra[i-1], ra[i], rb[j-1], rb[j])) return true;
+  }
+  return false;
+}
+function geoRings(g){
+  if (!g) return null;
+  if (g.type === "Polygon") return [g.coordinates[0]];
+  if (g.type === "MultiPolygon") return g.coordinates.map(p => p[0]);
+  return null;
+}
+function ringBox(rings){
+  const b = [Infinity, Infinity, -Infinity, -Infinity];
+  rings.forEach(r => r.forEach(([x, y]) => { b[0] = Math.min(b[0], x); b[1] = Math.min(b[1], y); b[2] = Math.max(b[2], x); b[3] = Math.max(b[3], y); }));
+  return b;
+}
+async function nwsPoint(p){
+  const res = await fetch(`https://api.weather.gov/alerts/active?point=${p.lat},${p.lon}`, {headers:{Accept:"application/geo+json"}, cache:"no-store"});
+  if (!res.ok) throw new Error(res.status);
+  const j = await res.json();
+  return (j.features||[]).map(nwsItem).sort(byFlood);
+}
 async function loadNWS(){
   setSrc("nws","busy","loading…");
-  const out = {}; let ok = 0, i = 0;
-  async function worker(){
-    while (i < PARKS.length){
-      const p = PARKS[i++];
+  const B = await loadData("data/park-bounds.js", "PARK_BOUNDS").catch(() => null);
+  const bounds = id => B && B.parks[id] && B.parks[id].z.length ? B.parks[id] : null;
+  // 1. The active alerts of each state or territory that has a park (about 30 requests).
+  const areas = [...new Set(PARKS.flatMap(p => bounds(p.id) ? bounds(p.id).z.map(z => z.slice(0, 2)) : []))];
+  const byArea = {};
+  let ai = 0;
+  async function areaWorker(){
+    while (ai < areas.length){
+      const a = areas[ai++];
       try{
-        const res = await fetch(`https://api.weather.gov/alerts/active?point=${p.lat},${p.lon}`, {headers:{Accept:"application/geo+json"}, cache:"no-store"});
+        const res = await fetch(`https://api.weather.gov/alerts/active?area=${a}`, {headers:{Accept:"application/geo+json"}, cache:"no-store"});
         if (!res.ok) throw new Error(res.status);
-        const j = await res.json();
-        out[p.id] = (j.features||[]).map(f => ({event:f.properties.event, headline:f.properties.headline, severity:f.properties.severity, ends:f.properties.ends || f.properties.expires}));
-        ok++;
-      }catch(e){ out[p.id] = null; }
+        byArea[a] = ((await res.json()).features || []).map(f => Object.assign(f, {rings: geoRings(f.geometry)}));
+      }catch(e){ byArea[a] = null; }
     }
   }
-  await Promise.all(Array.from({length:8}, worker));
+  await Promise.all(Array.from({length:6}, areaWorker));
+  // 2. Keep the alerts that touch each park. Parks without an outline use one point.
+  const out = {}; let ok = 0;
+  const pointParks = [];
+  PARKS.forEach(p => {
+    const b = bounds(p.id);
+    if (!b){ pointParks.push(p); return; }
+    const zs = new Set(b.z), parkAreas = [...new Set(b.z.map(z => z.slice(0, 2)))];
+    if (parkAreas.some(a => !byArea[a])){ out[p.id] = null; return; }
+    const seen = new Set(), list = [];
+    parkAreas.forEach(a => byArea[a].forEach(f => {
+      if (seen.has(f.id)) return;
+      let hit;
+      if (f.rings){
+        f.box = f.box || ringBox(f.rings);
+        hit = f.box[0] <= b.b[2] && f.box[2] >= b.b[0] && f.box[1] <= b.b[3] && f.box[3] >= b.b[1] && ringsTouch(f.rings, b.p);
+      } else hit = ((f.properties.geocode || {}).UGC || []).some(z => zs.has(z));
+      if (hit){ seen.add(f.id); list.push(nwsItem(f)); }
+    }));
+    out[p.id] = list.sort(byFlood);
+    ok++;
+  });
+  await Promise.all(pointParks.map(async p => { try{ out[p.id] = await nwsPoint(p); ok++; }catch(e){ out[p.id] = null; } }));
   if (ok === 0) throw new Error("NWS unreachable"); // keep the saved warnings
   state.nws = out;
   setSrc("nws", ok === NP ? "ok" : "err", ok === NP ? `${NP} parks` : `${ok} of ${NP} parks`);
@@ -1268,7 +1348,7 @@ function render(){
   const bestSet = bestFilterMonths();
   const match = view.filter(({p, st, c, warns}) => (!q || matches(p, q)) && bestMatch(p.id, bestSet) &&
     (f==="all" || (f==="closures" && (st.cls==="partial"||st.cls==="closed")) ||
-     (f==="roads" && c.road) || (f==="trails" && c.trail) || (f==="wx" && warns.length)));
+     (f==="roads" && c.road) || (f==="trails" && c.trail) || (f==="wx" && warns.length) || (f==="flood" && warns.some(x => floodLevel(x.event)))));
   const pages = Math.max(1, Math.ceil(match.length / PAGE_SIZE));
   state.page = Math.min(Math.max(1, state.page), pages);
   const first = (state.page - 1) * PAGE_SIZE;
@@ -1294,7 +1374,7 @@ function render(){
       <td class="rank">${p.r}</td>
       <td><div class="pname">${esc(p.name)}</div><div class="pstate">${esc(p.st)}</div>${bestBanner(p.id)}${airportLine(p.id)}</td>
       <td class="num">${shortNum(p.v)}</td>
-      <td><span class="chip ${st.cls}">${st.label}</span></td>
+      <td><span class="chip ${st.cls}">${st.label}</span>${floodBadge(warns)}</td>
       ${cell(c.road)}${cell(c.trail)}${cell(c.facility)}${cell(c.other)}
       <td>${now}</td><td>${today}</td></tr>`);
     html.push(`<tr class="detail" data-for="${p.id}" ${isOpen? "": "hidden"}><td colspan="10">${detail(p, list, w, warns)}</td></tr>`);
@@ -1308,6 +1388,19 @@ function render(){
     $("t-open").textContent=tOpen; $("t-partial").textContent=tPart; $("t-closed").textContent=tClosed;
     $("t-road").textContent=tRoad; $("t-trail").textContent=tTrail; $("t-wx").textContent=tWx;
   }
+}
+
+function floodBadge(warns){
+  const f = (warns || []).find(x => floodLevel(x.event));
+  return f ? `<span class="flood f${floodLevel(f.event)}" title="${esc(f.headline || f.event)}"><span aria-hidden="true">⚠</span> ${esc(f.event)}</span>` : "";
+}
+function floodHTML(warns){
+  const fl = (warns || []).filter(x => floodLevel(x.event));
+  if (!fl.length) return "";
+  return `<h2>Flood alerts (${fl.length})</h2>` + fl.map(x => `<div class="alert ${floodLevel(x.event) > 1 ? "k-danger" : "k-caution"}"><div class="at">${esc(x.event)}</div>
+    <div class="ad">${esc(x.headline || "")}</div>${x.desc ? `<div class="ad">${esc(x.desc)}${x.desc.length >= 500 ? "…" : ""}</div>` : ""}
+    ${x.ends ? `<div class="am">Until ${esc(fmtTime(Date.parse(x.ends)))} · National Weather Service</div>` : ""}</div>`).join("") +
+    `<p class="none">Flash floods can come from rain far away. Stay out of slot canyons and narrow washes when a flood alert is active.</p>`;
 }
 
 function alertBlock(a){
@@ -1337,10 +1430,11 @@ function detail(p, list, w, warns){
     wxHtml += `<p class="none" style="margin-top:8px">Humidity ${w.current.relative_humidity_2m}% · The forecast is for one point near the main visitor area. In large parks, the temperature changes much with elevation.</p>`;
   } else wxHtml += `<p class="none">The weather did not load.</p>`;
   wxHtml += airportList(p.id);
-  if (warns && warns.length){
-    wxHtml += `<h2 style="margin-top:14px">NWS warnings</h2>` + warns.map(x => `<div class="alert k-danger"><div class="at">${esc(x.event)}</div><div class="ad">${esc(x.headline||"")}</div></div>`).join("");
+  const other = (warns || []).filter(x => !floodLevel(x.event)); // flood alerts show in the first column
+  if (other.length){
+    wxHtml += `<h2 style="margin-top:14px">NWS warnings</h2>` + other.map(x => `<div class="alert k-danger"><div class="at">${esc(x.event)}</div><div class="ad">${esc(x.headline||"")}</div></div>`).join("");
   }
-  return `<div class="dbox"><div>${liveRoadsHTML(p.code)}${alertsHtml}${roadWorkLink(p.code)}${p.note?`<p class="am">${esc(p.note)}</p>`:""}${roadLinks(p.id)}<p class="am"><a href="https://www.nps.gov/${p.code}/planyourvisit/conditions.htm" target="_blank" rel="noopener">Official ${esc(p.name)} conditions page</a></p></div><div>${wxHtml}</div><div>${histHTML(p.id)}</div><div class="mviz" data-mviz="${p.id}"></div></div>`;
+  return `<div class="dbox"><div>${floodHTML(warns)}${liveRoadsHTML(p.code)}${alertsHtml}${roadWorkLink(p.code)}${p.note?`<p class="am">${esc(p.note)}</p>`:""}${roadLinks(p.id)}<p class="am"><a href="https://www.nps.gov/${p.code}/planyourvisit/conditions.htm" target="_blank" rel="noopener">Official ${esc(p.name)} conditions page</a></p></div><div>${wxHtml}</div><div>${histHTML(p.id)}</div><div class="mviz" data-mviz="${p.id}"></div></div>`;
 }
 
 // ---- Monthly visits and climate (R9) ----
