@@ -3,18 +3,18 @@
 
 The page uses this file to find the NWS alerts for the whole park, not only for one point (R32):
 - An alert with a polygon (for example a Flash Flood Warning) applies if the polygon touches the park outline.
-- An alert without a polygon (for example a Flood Watch) applies if one of its zones touches the park.
+- An alert without a polygon (for example a Flood Watch) applies if one of its zones covers a part of the park.
+  The script finds these zones from points on a grid inside the park outline.
 
 Sources:
 - Park outlines: NPS Land Resources Division boundary service (ArcGIS).
-- NWS forecast zones and county zones: api.weather.gov.
+- NWS forecast, county and fire weather zones: api.weather.gov.
 
 Park boundaries and NWS zones change very little, so no schedule runs this script.
 The workflow .github/workflows/build-bounds.yml runs it when the script changes, or from the Actions tab.
 Requires shapely (pip install shapely).
 """
 import json
-import re
 import sys
 import time
 import urllib.parse
@@ -37,7 +37,6 @@ NWS = "https://api.weather.gov"
 UA = {"User-Agent": "National-Park-Status (https://github.com/minhlong94/National-Park-Status)",
       "Accept": "application/geo+json"}
 MAX_POINTS = 300          # the most outline points for one park
-MIN_SHARE = 0.002         # a zone must cover this part of the park (or 2 km2), so a zone that only touches the edge is left out
 # Unit codes in the boundary data that are not the same as the park code in index.html
 UNIT_CODES = {"seki": ["SEQU", "SEKI"], "kica": ["KICA", "SEKI"]}
 
@@ -83,53 +82,47 @@ def simplify(g):
         tol *= 1.6
 
 
-def zones_for(area, kind):
-    """All NWS zones of one type in one state or territory, with their shapes."""
-    j = get(f"{NWS}/zones?type={kind}&area={area}&include_geometry=true", timeout=120)
-    out = []
-    for f in j.get("features") or []:
-        if f.get("geometry"):
-            try:
-                out.append((f["properties"]["id"], make_valid(shape(f["geometry"]))))
-            except Exception:  # noqa: BLE001
-                pass
-    return out
+def sample_points(g, target=36):
+    """Points inside the park on a grid, about `target` of them, and one point that is surely inside."""
+    w, so, e, n = g.bounds
+    pts = [g.representative_point()]
+    k = 4
+    while True:
+        xs = [w + (e - w) * (i + 0.5) / k for i in range(k)]
+        ys = [so + (n - so) * (j + 0.5) / k for j in range(k)]
+        inside = [Point(x, y) for x in xs for y in ys if g.contains(Point(x, y))]
+        if len(inside) >= target or k >= 40:
+            break
+        k += 2
+    step = max(1, len(inside) // target)
+    return pts + inside[::step]
+
+
+def zones_at(pt):
+    """The NWS forecast, county and fire zones at one point."""
+    j = get(f"{NWS}/zones?point={pt.y:.4f},{pt.x:.4f}")
+    return {f["properties"]["id"] for f in j.get("features") or []
+            if f["properties"].get("type") in ("public", "forecast", "county", "fire")}
 
 
 def main():
     parks = fh.load_parks()
     shapes = {p["id"]: park_shape(p) for p in parks}
-    # The states and territories of each park, from the "st" value in index.html (for example "WY / MT / ID").
-    html = (ROOT / "index.html").read_text(encoding="utf-8")
-    st = {}
-    for m in re.finditer(r'code:"(\w+)",(?: id:"(\w+)",)? name:"[^"]+", st:"([^"]+)"', html):
-        st[m.group(2) or m.group(1)] = [{"USVI": "VI"}.get(x.strip(), x.strip()) for x in m.group(3).split("/")]
-    areas = sorted({a for p in parks for a in st.get(p["id"], [])})
-    print("areas:", areas, flush=True)
-    zones = {}
-    for a in areas:
-        for kind in ("forecast", "county"):
-            try:
-                zones.setdefault(a, []).extend(zones_for(a, kind))
-            except RuntimeError as e:
-                print("  zones failed:", a, kind, e, flush=True)
-        print(f"zones {a}: {len(zones.get(a, []))}", flush=True)
     out = {}
     for p in parks:
         g = shapes[p["id"]]
         b = g.bounds
-        hit = []
-        for a, zs in zones.items():
-            for zid, zg in zs:
-                if not zg.intersects(g):
-                    continue
-                share = zg.intersection(g).area
-                if share >= min(g.area * MIN_SHARE, 0.0002) or zg.contains(g.representative_point()):
-                    hit.append(zid)
-        hit = sorted(set(hit))
+        hit = set()
+        for pt in sample_points(g):
+            try:
+                hit |= zones_at(pt)
+            except RuntimeError as e:
+                print("  zones failed:", p["id"], e, flush=True)
+            time.sleep(0.1)
+        hit = sorted(hit)
         out[p["id"]] = {"b": [round(b[0], 3), round(b[1], 3), round(b[2], 3), round(b[3], 3)],
                         "p": simplify(g), "z": hit}
-        print(f"  {p['id']}: {sum(len(r) for r in out[p['id']]['p'])} points, {len(hit)} zones", flush=True)
+        print(f"  {p['id']}: {sum(len(r) for r in out[p['id']]['p'])} points, {len(hit)} zones {hit[:12]}", flush=True)
     data = {"source": "NPS Land Resources Division park boundaries; NWS forecast and county zones (api.weather.gov)",
             "built": dt.date.today().isoformat(), "parks": out}
     OUT.write_text("// Generated by scripts/build_bounds.py. Do not edit by hand.\n"
