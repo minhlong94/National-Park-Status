@@ -242,7 +242,7 @@ Requirements:
 
 - For each park and each month, calculate a visit score from 0 to 100. Use only the stored data:
   - weather comfort (45%): the average daily high. 60–80°F is best.
-  - fewer visitors (25%): the visits of the month compared with the busiest month.
+  - many visitors (25%): the visits of the month compared with the busiest month. Changed by R33: before R33, fewer visitors gave a higher score.
   - little rain (15%) and little snow (15%).
   - fall color: add 10 in the months when leaf color is usually best.
 - If a month has less than 5% of the visits of the busiest month, access is probably limited. Its score is cut to 30%.
@@ -399,7 +399,7 @@ Original text from the owner (with a screenshot of the banners):
 Requirements:
 
 - The star (★) shows only on a banner that is about now. A "Best time to visit" banner for other months has no star.
-- The best time to visit does not use fall color now. It uses only weather comfort (45%), fewer visitors (25%), little rain (15%) and little snow (15%).
+- The best time to visit does not use fall color now. It uses only weather comfort (45%), many visitors (25%, changed by R33), little rain (15%) and little snow (15%).
 - Parks with a clear fall color change get a second banner:
   - "Best fall color:" and the months. A month counts if it has 10 or more days of the usual best color window (the middle of the greenness drop to leaves off). If no month has 10 days, the page uses the month of the middle of the window.
   - If today is in the window: "Fall color is at its best now!" with a star.
@@ -548,4 +548,18 @@ Requirements:
   - A "Flood alerts" filter shows only the parks with a flood alert.
   - The park details show the flood alerts first, with the text from NWS, the end time and a safety note.
 - The script `scripts/build_bounds.py` makes the outline file. The workflow `.github/workflows/build-bounds.yml` runs it when the script changes, or from the Actions tab. Park boundaries and NWS zones change very little, so no schedule runs it.
+- Status: done.
+
+### R33. Many visitors count for the best time to visit
+
+Original text from the owner:
+
+> For the best time to visit, I think taken into account vistors count positively is also a good consideration, for example GSMNP peaks in October and there's a reason for that - fall foliage
+
+Requirements:
+
+- In the best time to visit, a month with more visitors gets a higher score. People come at the best times, for example for the fall color in Great Smoky Mountains in October.
+- The weights do not change: weather comfort 45%, visitors 25%, little rain 15%, little snow 15%.
+- A month with less than 5% of the visits of the busiest month still gets a low score, because access is probably limited.
+- If most visitors come in the best months, the reason text says "most visitors come at this time".
 - Status: done.
