@@ -1542,7 +1542,7 @@ function deriveHistory(D, id){
 
 // ---- Best time to visit (R15) ----
 // A score from 0 to 100 for each month, from the stored data only:
-//   weather comfort 45%, fewer visitors 25%, little rain 15%, little snow 15%. Fall color is not part of it (R24).
+//   weather comfort 45%, many visitors 25% (R33), little rain 15%, little snow 15%. Fall color is not part of it (R24).
 // A month with less than 5% of the visits of the busiest month probably has limited access. Its score is cut to 30%.
 const bestCache = {};
 function rangeText(months){
@@ -1567,7 +1567,8 @@ function bestTime(id){
   const comfort = hi => hi == null ? 0.5 : hi < 35 ? 0 : hi < 60 ? (hi-35)/25 : hi <= 80 ? 1 : hi < 100 ? (100-hi)/20 : 0;
   const parts = MONTHS.map((_, i) => {
     const c = vavg[i] == null ? null : vavg[i] / vmax, rain = H.wx.rain[i], snow = H.wx.snow[i];
-    let sc = 0.45*comfort(H.wx.hi[i]) + 0.25*(c == null ? 0.5 : 1-c) + 0.15*(1 - Math.min(1, (rain||0)/6)) + 0.15*(1 - Math.min(1, (snow||0)/12));
+    // Many visitors count for a month (R33): people come at the best times, for example for the fall color.
+    let sc = 0.45*comfort(H.wx.hi[i]) + 0.25*(c == null ? 0.5 : c) + 0.15*(1 - Math.min(1, (rain||0)/6)) + 0.15*(1 - Math.min(1, (snow||0)/12));
     const limited = c != null && c < 0.05;
     if (limited) sc *= 0.3;
     return {score: Math.round(Math.min(1, sc)*100), crowd: c, limited};
@@ -1600,7 +1601,7 @@ function bestTime(id){
   const cb = best.map(i => parts[i].crowd).filter(v => v != null);
   if (cb.length){
     const share = avg(cb);
-    reasons.push(share >= 0.85 ? "it is also the busiest time of the year" : `about ${Math.round(share*100)}% of the visitors of the busiest month`);
+    reasons.push(share >= 0.85 ? "most visitors come at this time" : `about ${Math.round(share*100)}% of the visitors of the busiest month`);
   }
   const rb = best.map(i => H.wx.rain[i]).filter(v => v != null), sb = best.map(i => H.wx.snow[i]).filter(v => v != null);
   if (rb.length && avg(rb) > 4) reasons.push(`rain is frequent (about ${Math.round(avg(rb))} in or ${toMm(avg(rb))} mm a month)`);
