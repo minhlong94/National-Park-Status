@@ -242,7 +242,7 @@ Requirements:
 
 - For each park and each month, calculate a visit score from 0 to 100. Use only the stored data:
   - weather comfort (45%): the average daily high. 60–80°F is best.
-  - many visitors (25%): the visits of the month compared with the busiest month. Changed by R33: before R33, fewer visitors gave a higher score.
+  - visitors (25%): the visits of the month compared with the busiest month. Changed by R33 and R34: now a balance (see R34).
   - little rain (15%) and little snow (15%).
   - fall color: add 10 in the months when leaf color is usually best.
 - If a month has less than 5% of the visits of the busiest month, access is probably limited. Its score is cut to 30%.
@@ -399,7 +399,7 @@ Original text from the owner (with a screenshot of the banners):
 Requirements:
 
 - The star (★) shows only on a banner that is about now. A "Best time to visit" banner for other months has no star.
-- The best time to visit does not use fall color now. It uses only weather comfort (45%), many visitors (25%, changed by R33), little rain (15%) and little snow (15%).
+- The best time to visit does not use fall color now. It uses only weather comfort (45%), visitors (25%, a balance, see R34), little rain (15%) and little snow (15%).
 - Parks with a clear fall color change get a second banner:
   - "Best fall color:" and the months. A month counts if it has 10 or more days of the usual best color window (the middle of the greenness drop to leaves off). If no month has 10 days, the page uses the month of the middle of the window.
   - If today is in the window: "Fall color is at its best now!" with a star.
@@ -562,4 +562,22 @@ Requirements:
 - The weights do not change: weather comfort 45%, visitors 25%, little rain 15%, little snow 15%.
 - A month with less than 5% of the visits of the busiest month still gets a low score, because access is probably limited.
 - If most visitors come in the best months, the reason text says "most visitors come at this time".
+- Status: changed by R34. The visitor part is now a balance.
+
+### R34. A balance for visitors in the best time to visit
+
+Original text from the owner:
+
+> Chat - I think it should be a balance calculation, e.g. I dont want to go where it's too crowded, but if it's few then there's a reason not to visit
+>
+> A
+
+Requirements:
+
+- The visitor part of the best-time score (25%) is a balance:
+  - Less than 5% of the visits of the busiest month: the visitor part is 0, and the month score is cut (access is probably limited).
+  - From 5% to 55%: the visitor part increases. Few visitors usually have a reason, for example closed roads, heat or snow.
+  - From 55% to 80% (the shoulder season): the visitor part is full.
+  - From 80% to 100%: the visitor part decreases a little, to 75% for the busiest month, because of the crowds.
+- Fall color stays separate (option A). The "Fall:" banner shows the fall color months. The "Best:" banner does not use fall color.
 - Status: done.
