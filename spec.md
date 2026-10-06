@@ -526,3 +526,26 @@ Requirements:
 - The code keeps the live sources in one list (`LIVE_ROADS`), so more parks can be added later. Only Glacier has such a source now.
 - Some parks have a page about road construction and project work. These pages are text only, so the page shows a link to them in the park details. Now: Glacier, Yosemite, Grand Teton, Arches, Sequoia and Kings Canyon.
 - Status: done.
+
+### R32. Flood alerts for the whole park
+
+Original text from the owner:
+
+> Chat - is it possible to have flash flood warnings for parks?
+>
+> Ok do it
+
+Requirements:
+
+- The page finds the NWS alerts for the whole park, not only for one point.
+  - The file `data/park-bounds.js` keeps a simple outline of each park (from the NPS boundary data) and the NWS zones inside the park.
+  - On "Refresh data", the page gets the active alerts one time for each state or territory that has a park.
+  - An alert with a polygon (for example a Flash Flood Warning) applies if the polygon touches the park outline.
+  - An alert without a polygon (for example a Flood Watch) applies if one of its zones is in the park.
+  - If the outline file does not load, or a park has no zones, the page uses one point for that park.
+- Flood alerts are easy to see:
+  - The park row shows the strongest flood alert under the status. A warning or emergency is red. A watch, advisory or statement is orange.
+  - A "Flood alerts" filter shows only the parks with a flood alert.
+  - The park details show the flood alerts first, with the text from NWS, the end time and a safety note.
+- The script `scripts/build_bounds.py` makes the outline file. The workflow `.github/workflows/build-bounds.yml` runs it when the script changes, or from the Actions tab. Park boundaries and NWS zones change very little, so no schedule runs it.
+- Status: done.

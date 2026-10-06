@@ -1,0 +1,52 @@
+name: Build park outlines and NWS zones
+
+# Park outlines and the NWS zones that touch each park (R32). They change very little,
+# so this runs only when the script changes or from the Actions tab. See scripts/build_bounds.py.
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - scripts/build_bounds.py
+      - .github/workflows/build-bounds.yml
+
+permissions:
+  contents: write
+
+# One queue for all data workflows on a branch, so two runs never push at the same time.
+concurrency:
+  group: data-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        timeout-minutes: 2
+      - uses: actions/setup-python@v5
+        timeout-minutes: 3
+        with:
+          python-version: "3.12"
+      - name: Install shapely
+        timeout-minutes: 3
+        run: pip install --quiet shapely
+      - name: Build the file
+        timeout-minutes: 20
+        run: python3 -u scripts/build_bounds.py
+      - name: Commit the file if it changed
+        timeout-minutes: 2
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898333+github-actions[bot]@users.noreply.github.com"
+          git add data/park-bounds.js
+          if git diff --cached --quiet; then
+            echo "No change in the data."
+          else
+            git commit -m "Update park outlines and NWS zones"
+            git pull --rebase --quiet origin "$GITHUB_REF_NAME"
+            git push origin "HEAD:$GITHUB_REF_NAME"
+            if [ "$GITHUB_REF_NAME" = "main" ]; then
+              git push origin HEAD:gh-pages
+            fi
+          fi

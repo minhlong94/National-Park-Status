@@ -20,6 +20,7 @@ This page shows the current conditions of all 63 U.S. national parks. The list s
 - **Fall color**: the usual dates when the leaves change, from satellite data, and reports of colored leaves near the park in this season.
 - **Best time to visit**: short banners under each park name. "Best:" shows the best months, from the weather, the number of visitors, rain and snow. "Fall:" shows the best months for fall color. A star shows when now is a good time. The filter shows the parks that are best to visit this month, or in the months you select.
 - **Fall color map**: a map of the parks with their usual fall color on a date. Move the date slider to see the fall color move across the country. Click a park to open it in the table.
+- **Flood alerts**: the page finds the NWS alerts for the whole park area, not only for one point. A flash flood warning shows in red under the park status, and a flood watch or advisory shows in orange. The **Flood alerts** filter shows only the parks with a flood alert. The park details show the alert text first.
 - **Live road status (Glacier)**: the closed roads and the roads with construction, from the park road map. The NPS alerts do not always include these closures. The closed roads are added to the Roads count. Other parks do not publish this data now.
 - **Road work pages**: a link to the road construction and project work page of the park, if the park has one.
 - **Nearby airports**: 2 to 4 airports with scheduled flights near each park, with the IATA code and the straight-line distance.
@@ -36,6 +37,7 @@ The page saves the last park statuses, live road status, weather and warnings in
 | Park alerts and closures | [NPS API](https://www.nps.gov/subjects/developer/) (`developer.nps.gov`) |
 | Current weather and forecast | [Open-Meteo](https://open-meteo.com/) |
 | Live road status (Glacier) | [Glacier road status map](https://www.nps.gov/glac/planyourvisit/directions.htm) (`carto.nps.gov/user/glaclive`) |
+| Park outlines (for the alert area) | [NPS park boundaries](https://www.nps.gov/subjects/gisandmapping/index.htm) (ArcGIS service of the NPS Land Resources Division) |
 | Weather warnings | [National Weather Service](https://www.weather.gov/documentation/services-web-api) (`api.weather.gov`) |
 | Visits (ranking) | NPS Visitor Use Statistics, calendar year 2025 |
 | Monthly visits | [NPS Visitor Use Statistics](https://irma.nps.gov/Stats/) (`irmaservices.nps.gov`) |
@@ -83,6 +85,10 @@ The script `scripts/fetch_foliage.py` keeps two files:
 - `data/foliage-now.js`: the reports of colored and falling leaves within 50 km of each park in the last 14 days. The script gets these reports only from Aug 15 to Dec 15.
 
 The workflow `.github/workflows/update-foliage.yml` runs the script each Monday.
+
+## Park outline data
+
+The file `data/park-bounds.js` keeps a simple outline of each park and the NWS zones inside the park. The page uses it to find the weather alerts for the whole park. The script `scripts/build_bounds.py` makes it. The workflow `.github/workflows/build-bounds.yml` runs the script when the script changes, or when you start it from the **Actions** tab. Park boundaries and NWS zones change very little, so no schedule runs it.
 
 ## Airport data
 
