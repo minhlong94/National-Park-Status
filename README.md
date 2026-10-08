@@ -24,7 +24,7 @@ This page shows the current conditions of all 63 U.S. national parks. The list s
 - **Live road status (Glacier)**: the closed roads and the roads with construction, from the park road map. The NPS alerts do not always include these closures. The closed roads are added to the Roads count. Other parks do not publish this data now.
 - **Road work pages**: a link to the road construction and project work page of the park, if the park has one.
 - **Nearby airports**: 2 to 4 airports with scheduled flights near each park, with the IATA code and the straight-line distance.
-- **Seasonal closures**: the campgrounds and visitor centers that are closed for the season now, and the seasonal closures in the next 12 months, from the NPS data. For Yosemite, the usual open dates of each campground and trail in the last 10 years.
+- **Campgrounds and visitor centers**: a separate section after the seasonal road history. Select a park to see the campgrounds and visitor centers that are closed for the season now, and the seasonal closures in the next 12 months, from the NPS data. For Yosemite, it also shows the usual open dates of each campground and trail in the last 10 years. The park details have a link to this section.
 - **Closure history**: the major full and partial closures from the last 5 years. The list also shows shutdowns of all parks.
 
 The table shows 10 parks on each page. The first page shows the 10 most visited parks.

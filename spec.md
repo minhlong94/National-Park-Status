@@ -598,4 +598,19 @@ Requirements:
 - For parks with a seasonal dates page with history datasets (now: Yosemite), the section shows the usual open dates of each campground and trail. The usual dates are the median of the last 10 years. Each row also shows the last season and the years that it did not open.
 - The seasonal road history has Mariposa Grove Road (Yosemite), from the Yosemite roads dataset.
 - The script `scripts/fetch_seasonal.py` makes `data/seasonal.js`. The workflow `.github/workflows/update-seasonal.yml` runs it each Monday. It uses the `NPS_API_KEY` secret if it exists, or DEMO_KEY.
+- Status: changed by R36. The closures are now in a separate section of the page.
+
+### R36. A separate section for campgrounds and visitor centers
+
+Original text from the owner:
+
+> Put Campground and VCs in a totally separate section, after seasonal road and before fall foliage
+
+Requirements:
+
+- The seasonal closures of campgrounds and visitor centers (R35) are in a separate section of the page: "Campgrounds and visitor centers".
+- The order of the sections is: seasonal road history, campgrounds and visitor centers, fall color map, closure history. The fall color map moved below the new section.
+- A "Park" list selects the park. Each park in the list shows the number of closures now.
+- The section shows "Closed for the season now" and "Next closures" side by side (one column on a phone), and for Yosemite the usual open dates.
+- The park details do not show the closures. They show one line with the number of closures and a link to the section, with the park selected.
 - Status: done.

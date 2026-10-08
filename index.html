@@ -129,21 +129,27 @@ tr.detail[hidden]{display:none}
 .fc .fp{grid-column:2/-1;color:var(--muted)}
 .banner{border:1px solid var(--closed);color:var(--closed);border-radius:8px;padding:10px 14px;margin:14px 0;font-size:14px}
 .banner[hidden]{display:none}
-.seasonal{margin-bottom:18px;padding-bottom:12px;border-bottom:1px solid var(--line)}
-.seasonal .sh{font-size:14px;margin:10px 0 4px;font-weight:600}
+.campsec{margin-top:34px}
+.campsec h2{font-size:26px;margin:0 0 4px;font-weight:700}
+.campsec>p{color:var(--muted);margin:0 0 14px;max-width:75ch}
+.campsec h3{font-size:16px;margin:14px 0 6px;font-weight:600}
+.cctl{display:flex;gap:8px;align-items:center;margin:0 0 6px}
+.cctl select{flex:0 1 auto;min-width:0;width:auto;font:inherit;padding:7px 10px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--ink);max-width:100%}
+.cgrid{display:grid;grid-template-columns:1fr 1fr;gap:24px}
+.cgrid .slist{max-height:420px;overflow:auto}
+@media (max-width:720px){.cgrid{grid-template-columns:1fr;gap:4px}}
 .slist{list-style:none;margin:0;padding:0}
 .slist li{padding:5px 0;border-top:1px solid var(--line);font-size:14px;line-height:1.35}
 .slist li:first-child{border-top:0}
 .slist b{display:block;font-weight:600}
 .slist .sd{color:var(--muted);font-size:13px}
 .sk{display:inline-block;font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.03em;margin-right:6px}
-.smore summary{cursor:pointer;color:var(--info);font-size:13px;margin:4px 0}
-.stab{min-width:0;font-size:13px}
+.stab{min-width:560px;font-size:14px}
 .stab td,.stab th{padding:4px 6px}
 .stab{width:100%}
 .stab .sk{display:block;margin:0}
-.stab small{display:block;color:var(--muted);font-size:12px}
-.stab td.dur{white-space:nowrap;vertical-align:top}
+.stab td{vertical-align:top}
+.stab td.dur{white-space:nowrap}
 .hist{list-style:none;margin:0;padding:0}
 .hist li{display:grid;grid-template-columns:118px 1fr;gap:10px;padding:8px 0;border-top:1px solid var(--line)}
 .hist li:first-child{border-top:0}
@@ -332,6 +338,20 @@ footer a{color:var(--info)}
   </div>
   <nav class="pager" id="pager" aria-label="Pages of the park table"></nav>
 
+  <section class="roadsec" id="roads" aria-labelledby="rh">
+    <h2 id="rh">Seasonal road history</h2>
+    <p>This section shows the opening and closing dates of the large park roads that snow closes each winter. It shows only the last 10 years, with the newest year first. Each bar is one season. The bottom of the bar is the day the road opened. The top of the bar is the day the road closed for winter.</p>
+    <div class="rtabs" role="group" aria-label="Choose a road" id="rtabs"></div>
+    <div id="rbody"></div>
+  </section>
+
+  <section class="campsec" id="camps" aria-labelledby="ch">
+    <h2 id="ch">Campgrounds and visitor centers</h2>
+    <p>Seasonal closures of campgrounds and visitor centers: the closures now and the closures in the next 12 months. The data comes from NPS and is updated each week. Closures shorter than 7 days are not shown. For Yosemite, the section also shows the usual open dates of the last 10 years.</p>
+    <div class="cctl"><label for="cpark">Park</label> <select id="cpark"></select></div>
+    <div id="cbody"><p class="none">Loading…</p></div>
+  </section>
+
   <section class="fallsec" id="fallmap" aria-labelledby="fh">
     <h2 id="fh">Fall color map</h2>
     <p>The usual fall color of each park on a date, from NASA satellite data (the average of the last 5 years with data). Move the slider to change the date. Click a park to open it in the table.</p>
@@ -350,13 +370,6 @@ footer a{color:var(--info)}
       <thead><tr><th>Park</th><th>Greenness starts to drop</th><th>Leaf color usually best</th></tr></thead>
       <tbody id="frows"></tbody>
     </table></div></details>
-  </section>
-
-  <section class="roadsec" id="roads" aria-labelledby="rh">
-    <h2 id="rh">Seasonal road history</h2>
-    <p>This section shows the opening and closing dates of the large park roads that snow closes each winter. It shows only the last 10 years, with the newest year first. Each bar is one season. The bottom of the bar is the day the road opened. The top of the bar is the day the road closed for winter.</p>
-    <div class="rtabs" role="group" aria-label="Choose a road" id="rtabs"></div>
-    <div id="rbody"></div>
   </section>
 
   <section class="histsec" aria-labelledby="hh">
@@ -1145,32 +1158,52 @@ function roadLinks(code){
 }
 // ---- Seasonal closures (R35): data/seasonal.js, from the NPS API and park seasonal pages ----
 const isoDay = d => d.toISOString().slice(0, 10);
-const fmtIso = s => fmtD(s);
 const KIND_LABEL = {"campground": "Campground", "visitor center": "Visitor center", "trail": "Trail", "facility": "Facility"};
-function seasonalHTML(code){
-  const S = window.PARK_SEASONAL && PARK_SEASONAL.parks[code];
-  if (!S) return "";
+function seasonalLists(S){
   const today = isoDay(new Date());
   const cl = (S.closures || []).filter(c => c.to >= today);
-  const now = cl.filter(c => c.from <= today), next = cl.filter(c => c.from > today);
-  const item = (c, txt) => `<li><span class="sk">${esc(KIND_LABEL[c.k] || c.k)}</span><b>${esc(c.n)}</b><span class="sd">${txt}</span></li>`;
-  const list = (arr, fn, max) => arr.length <= max ? `<ul class="slist">${arr.map(fn).join("")}</ul>` :
-    `<ul class="slist">${arr.slice(0, max).map(fn).join("")}</ul><details class="smore"><summary>${arr.length - max} more</summary><ul class="slist">${arr.slice(max).map(fn).join("")}</ul></details>`;
-  let h = `<h2>Seasonal closures</h2>`;
-  if (now.length) h += `<h3 class="sh">Closed now (${now.length})</h3>` + list(now, c => item(c, `Closed until ${esc(fmtIso(c.to))}`), 4);
-  if (next.length) h += `<h3 class="sh">Next closures (${next.length})</h3>` + list(next, c => item(c, `Closes ${esc(fmtIso(c.from))}, until ${esc(fmtIso(c.to))}`), 4);
-  if (!now.length && !next.length) h += `<p class="none">NPS lists no seasonal closures of campgrounds or visitor centers in the next 12 months.</p>`;
-  if (S.history && S.history.length){
-    const lab = d => d == null ? "–" : doyLabel(d % 365);
-    const md = x => esc(fmtD(x).replace(/, \d{4}$/, ""));
-    h += `<h3 class="sh">Usual open dates (last 10 years)</h3><table class="stab"><thead><tr><th>Campground or trail</th><th>Usually open</th></tr></thead><tbody>` +
-      S.history.map(x => `<tr><td><span class="sk">${esc(KIND_LABEL[x.k] || x.k)}</span>${esc(x.n)}
-        <small>${x.last[0]}: ${md(x.last[1])}${x.last[2] ? " – " + md(x.last[2]) : ", no closing date yet"}${x.noOpen.length ? `. Did not open: ${x.noOpen.join(", ")}` : ""}</small></td>
-        <td class="dur">${lab(x.o)} – ${lab(x.c)}</td></tr>`).join("") + `</tbody></table>`;
-  }
-  h += `<p class="none" style="margin-top:8px">Source: NPS campground and visitor center data${S.page ? `, and the <a href="${esc(S.page)}" target="_blank" rel="noopener">park seasonal dates page</a>` : ""}. Updated each week. The dates can change with the weather.</p>`;
-  return `<div class="seasonal">${h}</div>`;
+  return {now: cl.filter(c => c.from <= today), next: cl.filter(c => c.from > today)};
 }
+// Park details: a short line with a link to the section
+function campLink(code){
+  const S = window.PARK_SEASONAL && PARK_SEASONAL.parks[code];
+  if (!S) return "";
+  const {now, next} = seasonalLists(S);
+  const t = [now.length ? `${now.length} closed for the season now` : "", next.length ? `${next.length} closing in the next 12 months` : ""].filter(Boolean).join(", ");
+  return `<p class="rlinks">Campgrounds and visitor centers: <a data-gocamp="${code}" tabindex="0">${t || (S.history ? "usual open dates" : "no seasonal closures")}</a></p>`;
+}
+let campSel = null;
+function campParks(){
+  const P = window.PARK_SEASONAL ? PARK_SEASONAL.parks : {};
+  const seen = new Set();
+  return PARKS.filter(p => P[p.code] && !seen.has(p.code) && seen.add(p.code))
+    .map(p => ({code: p.code, name: p.code === "seki" ? "Sequoia and Kings Canyon" : p.name}));
+}
+function renderCamps(){
+  if (!window.PARK_SEASONAL){ $("cbody").innerHTML = `<p class="none">The seasonal data did not load.</p>`; return; }
+  const parks = campParks();
+  if (!campSel || !PARK_SEASONAL.parks[campSel]) campSel = parks[0] && parks[0].code;
+  $("cpark").innerHTML = parks.map(p => { const n = seasonalLists(PARK_SEASONAL.parks[p.code]).now.length;
+    return `<option value="${p.code}" ${p.code === campSel ? "selected" : ""}>${esc(p.name)}${n ? ` (${n} closed now)` : ""}</option>`; }).join("");
+  const S = PARK_SEASONAL.parks[campSel];
+  const {now, next} = seasonalLists(S);
+  const item = (c, txt) => `<li><span class="sk">${esc(KIND_LABEL[c.k] || c.k)}</span><b>${esc(c.n)}</b><span class="sd">${txt}</span></li>`;
+  const col = (title, arr, fn, empty) => `<div><h3>${title} (${arr.length})</h3>${arr.length ? `<ul class="slist">${arr.map(fn).join("")}</ul>` : `<p class="none">${empty}</p>`}</div>`;
+  let h = `<div class="cgrid">` +
+    col("Closed for the season now", now, c => item(c, `Closed until ${esc(fmtD(c.to))}`), "Nothing is closed for the season now.") +
+    col("Next closures", next, c => item(c, `Closes ${esc(fmtD(c.from))}, until ${esc(fmtD(c.to))}`), "NPS lists no seasonal closures in the next 12 months.") + `</div>`;
+  if (S.history && S.history.length){
+    const lab = d => d == null ? "–" : doyLabel(d % 365), md = x => esc(fmtD(x).replace(/, \d{4}$/, ""));
+    h += `<h3>Usual open dates (last 10 years)</h3><div class="tablewrap"><table class="stab"><thead><tr><th>Campground or trail</th><th>Usually open</th><th>Last season</th><th>Did not open</th></tr></thead><tbody>` +
+      S.history.map(x => `<tr><td><span class="sk">${esc(KIND_LABEL[x.k] || x.k)}</span>${esc(x.n)}</td><td class="dur">${lab(x.o)} – ${lab(x.c)}</td>
+        <td class="dur">${x.last[0]}: ${md(x.last[1])}${x.last[2] ? " – " + md(x.last[2]) : ", no closing date yet"}</td><td>${x.noOpen.join(", ") || "–"}</td></tr>`).join("") +
+      `</tbody></table></div>`;
+  }
+  h += `<p class="none" style="margin-top:8px">Source: NPS campground and visitor center data${S.page ? `, and the <a href="${esc(S.page)}" target="_blank" rel="noopener">park seasonal dates page</a>` : ""}. Data from ${esc(fmtD(PARK_SEASONAL.built))}. The dates can change with the weather.</p>`;
+  $("cbody").innerHTML = h;
+}
+$("cpark").addEventListener("change", e => { campSel = e.target.value; renderCamps(); });
+function showCamp(code){ campSel = code; renderCamps(); $("camps").scrollIntoView({behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth"}); }
 
 function histHTML(code){
   return `<h2>Closure history</h2><ul class="hist">` + histList(code).map(e =>
@@ -1491,7 +1524,7 @@ function detail(p, list, w, warns){
   if (other.length){
     wxHtml += `<h2 style="margin-top:14px">NWS warnings</h2>` + other.map(x => `<div class="alert k-danger"><div class="at">${esc(x.event)}</div><div class="ad">${esc(x.headline||"")}</div></div>`).join("");
   }
-  return `<div class="dbox"><div>${floodHTML(warns)}${liveRoadsHTML(p.code)}${alertsHtml}${roadWorkLink(p.code)}${p.note?`<p class="am">${esc(p.note)}</p>`:""}${roadLinks(p.id)}<p class="am"><a href="https://www.nps.gov/${p.code}/planyourvisit/conditions.htm" target="_blank" rel="noopener">Official ${esc(p.name)} conditions page</a></p></div><div>${wxHtml}</div><div>${seasonalHTML(p.code)}${histHTML(p.id)}</div><div class="mviz" data-mviz="${p.id}"></div></div>`;
+  return `<div class="dbox"><div>${floodHTML(warns)}${liveRoadsHTML(p.code)}${alertsHtml}${roadWorkLink(p.code)}${p.note?`<p class="am">${esc(p.note)}</p>`:""}${roadLinks(p.id)}${campLink(p.code)}<p class="am"><a href="https://www.nps.gov/${p.code}/planyourvisit/conditions.htm" target="_blank" rel="noopener">Official ${esc(p.name)} conditions page</a></p></div><div>${wxHtml}</div><div>${histHTML(p.id)}</div><div class="mviz" data-mviz="${p.id}"></div></div>`;
 }
 
 // ---- Monthly visits and climate (R9) ----
@@ -1869,7 +1902,8 @@ function toggle(code){
   if (state.open.has(code)) openMonthly(code);
 }
 
-$("rows").addEventListener("click", e => { const gr = e.target.closest("[data-goroad]"); if (gr){ e.stopPropagation(); showRoad(gr.dataset.goroad); return; } const tr = e.target.closest("tr.park"); if (tr && !e.target.closest("a")) toggle(tr.dataset.code); });
+$("rows").addEventListener("click", e => { const gr = e.target.closest("[data-goroad]"); if (gr){ e.stopPropagation(); showRoad(gr.dataset.goroad); return; }
+  const gc = e.target.closest("[data-gocamp]"); if (gc){ e.stopPropagation(); showCamp(gc.dataset.gocamp); return; } const tr = e.target.closest("tr.park"); if (tr && !e.target.closest("a")) toggle(tr.dataset.code); });
 $("rows").addEventListener("keydown", e => { const tr = e.target.closest("tr.park"); if (tr && (e.key==="Enter"||e.key===" ")){ e.preventDefault(); toggle(tr.dataset.code); } });
 document.querySelectorAll("[data-f]").forEach(b => b.addEventListener("click", () => {
   document.querySelectorAll("[data-f]").forEach(x => x.setAttribute("aria-pressed", x===b));
@@ -2032,6 +2066,7 @@ Promise.all([loadHistory(), loadFoliage(), loadData("data/airports.js", "PARK_AI
              loadData("data/seasonal.js", "PARK_SEASONAL").catch(() => null)]).then(() => {
   if (!("PARK_FOLIAGE" in window)) window.PARK_FOLIAGE = null;
   render();
+  renderCamps();
   if (window.PARK_FOLIAGE) initFallMap(); else $("fmapbox").innerHTML = `<p class="none" style="padding:12px">The fall color data did not load.</p>`;
 }).catch(() => {});
 </script>
