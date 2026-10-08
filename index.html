@@ -136,6 +136,30 @@ tr.detail[hidden]{display:none}
 .cctl{display:flex;gap:8px;align-items:center;margin:0 0 6px}
 .cctl select{flex:0 1 auto;min-width:0;width:auto;font:inherit;padding:7px 10px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--ink);max-width:100%}
 .cgrid{display:grid;grid-template-columns:1fr 1fr;gap:24px}
+.csum{margin:8px 0 6px;font-size:15px}
+.clegend{display:flex;gap:16px;flex-wrap:wrap;font-size:13px;color:var(--muted);margin:4px 0 8px}
+.clegend span{display:inline-flex;align-items:center;gap:6px}
+.clegend .cseg{position:static;display:inline-block;width:22px;height:12px}
+.clegend .ctoday{position:static;display:inline-block;width:2px;height:14px}
+.cal{border:1px solid var(--line);border-radius:10px;background:var(--panel);padding:6px 10px 8px;max-height:720px;overflow:auto}
+.crow{display:grid;grid-template-columns:minmax(150px,240px) 1fr;gap:12px;align-items:center;padding:5px 0;border-top:1px solid var(--line)}
+.crow.chead{border-top:0;position:sticky;top:-6px;background:var(--panel);z-index:1;padding:4px 0}
+.cname{font-size:13.5px;line-height:1.25;font-weight:600}
+.cname .sk{display:block;margin:0}
+.cname small{display:block;font-weight:400;color:var(--muted);font-size:12px}
+.ctrack{position:relative;height:18px;background:repeating-linear-gradient(90deg,transparent 0,transparent calc(100%/12 - 1px),var(--line) calc(100%/12 - 1px),var(--line) calc(100%/12))}
+.chead .ctrack{height:16px;background:none}
+.chead .ctrack em{font-style:normal}
+.chead .ctrack span{position:absolute;top:0;font-size:12px;color:var(--muted);white-space:nowrap;padding-left:3px;border-left:1px solid var(--line)}
+.cseg{position:absolute;top:2px;bottom:2px;border-radius:4px;box-shadow:0 0 0 1px var(--panel)}
+.cseg.open{background:var(--open)}
+.cseg.closed{background:repeating-linear-gradient(135deg,var(--muted) 0 2px,transparent 2px 6px),color-mix(in srgb, var(--muted) 22%, var(--panel));opacity:.9}
+.cseg:focus-visible{outline:2px solid var(--ink);outline-offset:1px}
+.ctoday{position:absolute;top:-3px;bottom:-3px;width:2px;background:var(--ink);border-radius:1px;pointer-events:none}
+.ctip{position:absolute;z-index:50;max-width:280px;background:var(--ink);color:var(--paper);font-size:13px;padding:6px 9px;border-radius:6px;pointer-events:none;line-height:1.3}
+.clist{margin-top:12px}
+.clist summary{cursor:pointer;color:var(--info);font-size:14px}
+@media (max-width:720px){.crow{grid-template-columns:1fr;gap:4px}.chead .cname{display:none}.chead .ctrack span{font-size:10.5px;padding-left:2px}.chead .ctrack em{display:none}}
 .cgrid .slist{max-height:420px;overflow:auto}
 @media (max-width:720px){.cgrid{grid-template-columns:1fr;gap:4px}}
 .slist{list-style:none;margin:0;padding:0}
@@ -1179,6 +1203,45 @@ function campParks(){
   return PARKS.filter(p => P[p.code] && !seen.has(p.code) && seen.add(p.code))
     .map(p => ({code: p.code, name: p.code === "seki" ? "Sequoia and Kings Canyon" : p.name}));
 }
+// ---- Calendar of the next 12 months (R37): one row for each campground or visitor center ----
+// Green = open, gray with lines = closed for the season. A dark line shows today.
+const DAY = 86400000;
+function calRange(){
+  const t = new Date(), a = Date.UTC(t.getFullYear(), t.getMonth(), 1);
+  const b = Date.UTC(t.getFullYear() + 1, t.getMonth(), 1);
+  return {a, b, today: Date.UTC(t.getFullYear(), t.getMonth(), t.getDate())};
+}
+const isoMs = s => Date.parse(s + "T00:00:00Z");
+const pct = (x, R) => ((Math.min(Math.max(x, R.a), R.b) - R.a) / (R.b - R.a) * 100).toFixed(3);
+const msLabel = ms => new Date(ms).toLocaleDateString("en-US", {month:"short", day:"numeric", year:"numeric", timeZone:"UTC"});
+function calHead(R){
+  let h = "";
+  for (let m = 0; m < 12; m++){
+    const d = new Date(R.a); d.setUTCMonth(d.getUTCMonth() + m);
+    const x = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1);
+    const lab = d.toLocaleDateString("en-US", {month:"short", timeZone:"UTC"}) + (d.getUTCMonth() === 0 || m === 0 ? `<em> ’${String(d.getUTCFullYear()).slice(2)}</em>` : "");
+    h += `<span style="left:${pct(x, R)}%">${lab}</span>`;
+  }
+  return `<div class="crow chead"><div class="cname"></div><div class="ctrack">${h}</div></div>`;
+}
+// closed: list of [startMs, endMs] (end = last closed day). Everything else in the range is open.
+function calRow(kind, name, closed, R, note, words = ["open", "closed for the season"]){
+  // keep the real dates (x0, y0) for the tooltip; draw only the part inside the range
+  closed = closed.map(([x, y]) => [Math.max(x, R.a), Math.min(y + DAY, R.b), x, y]).filter(([x, y]) => y > x).sort((u, v) => u[0] - v[0]);
+  const segs = []; let cur = R.a;
+  closed.forEach(([x, y, x0, y0]) => { if (x > cur) segs.push(["open", cur, x]); segs.push(["closed", Math.max(x, cur), y, x0, y0]); cur = Math.max(cur, y); });
+  if (cur < R.b) segs.push(["open", cur, R.b]);
+  const bars = segs.map(([st, x, y, x0, y0]) => {
+    const tip = st === "open" ? `${name}: ${words[0]}, ${msLabel(x)} to ${msLabel(y - DAY)}` :
+      `${name}: ${words[1]}, ${x0 < R.a - 300 * DAY ? "" : msLabel(x0) + " "}to ${msLabel(Math.min(y0, R.b + 300 * DAY))}`;
+    return `<span class="cseg ${st}" style="left:${pct(x, R)}%;width:${(pct(y, R) - pct(x, R)).toFixed(3)}%" data-tip="${esc(tip)}" aria-label="${esc(tip)}" tabindex="0"></span>`;
+  }).join("");
+  return `<div class="crow"><div class="cname"><span class="sk">${esc(kind)}</span>${esc(name)}${note ? `<small>${esc(note)}</small>` : ""}</div>
+    <div class="ctrack">${bars}<i class="ctoday" style="left:${pct(R.today, R)}%"></i></div></div>`;
+}
+function calLegend(extra){
+  return `<div class="clegend"><span><i class="cseg open"></i>Open</span><span><i class="cseg closed"></i>${extra || "Closed for the season"}</span><span><i class="ctoday"></i>Today</span></div>`;
+}
 function renderCamps(){
   if (!window.PARK_SEASONAL){ $("cbody").innerHTML = `<p class="none">The seasonal data did not load.</p>`; return; }
   const parks = campParks();
@@ -1187,21 +1250,60 @@ function renderCamps(){
     return `<option value="${p.code}" ${p.code === campSel ? "selected" : ""}>${esc(p.name)}${n ? ` (${n} closed now)` : ""}</option>`; }).join("");
   const S = PARK_SEASONAL.parks[campSel];
   const {now, next} = seasonalLists(S);
-  const item = (c, txt) => `<li><span class="sk">${esc(KIND_LABEL[c.k] || c.k)}</span><b>${esc(c.n)}</b><span class="sd">${txt}</span></li>`;
-  const col = (title, arr, fn, empty) => `<div><h3>${title} (${arr.length})</h3>${arr.length ? `<ul class="slist">${arr.map(fn).join("")}</ul>` : `<p class="none">${empty}</p>`}</div>`;
-  let h = `<div class="cgrid">` +
-    col("Closed for the season now", now, c => item(c, `Closed until ${esc(fmtD(c.to))}`), "Nothing is closed for the season now.") +
-    col("Next closures", next, c => item(c, `Closes ${esc(fmtD(c.from))}, until ${esc(fmtD(c.to))}`), "NPS lists no seasonal closures in the next 12 months.") + `</div>`;
+  const R = calRange();
+  // One row for each place. Places closed now first, then by the next closure date.
+  const by = new Map();
+  [...now, ...next].forEach(c => { const k = c.k + "|" + c.n; if (!by.has(k)) by.set(k, {k: c.k, n: c.n, cl: []}); by.get(k).cl.push(c); });
+  const today = isoDay(new Date());
+  const places = [...by.values()].sort((u, v) => u.cl[0].from.localeCompare(v.cl[0].from) || u.n.localeCompare(v.n));
+  let h = `<p class="csum"><b>${now.length}</b> closed for the season now · <b>${next.length}</b> closing in the next 12 months</p>`;
+  if (places.length){
+    h += calLegend() + `<div class="cal" role="img" aria-label="Calendar of seasonal closures for the next 12 months. The list below has the same dates.">` + calHead(R) +
+      places.map(pl => {
+        const c0 = pl.cl[0], isNow = c0.from <= today;
+        const note = isNow ? `Closed until ${fmtD(c0.to)}` : `Closes ${fmtD(c0.from)}`;
+        return calRow(KIND_LABEL[pl.k] || pl.k, pl.n, pl.cl.map(c => [isoMs(c.from), isoMs(c.to)]), R, note);
+      }).join("") + `</div>`;
+  } else h += `<p class="none">NPS lists no seasonal closures of campgrounds or visitor centers in the next 12 months.</p>`;
+  // Usual open dates (Yosemite): the same calendar, from the median dates of the last 10 years
   if (S.history && S.history.length){
     const lab = d => d == null ? "–" : doyLabel(d % 365), md = x => esc(fmtD(x).replace(/, \d{4}$/, ""));
-    h += `<h3>Usual open dates (last 10 years)</h3><div class="tablewrap"><table class="stab"><thead><tr><th>Campground or trail</th><th>Usually open</th><th>Last season</th><th>Did not open</th></tr></thead><tbody>` +
+    h += `<h3>Usual open dates (last 10 years)</h3>` + calLegend("Usually closed") + `<div class="cal">` + calHead(R) +
+      S.history.map(x => {
+        // usual open window in each year of the range -> closed = the rest
+        const opens = [];
+        for (const y of [new Date(R.a).getUTCFullYear() - 1, new Date(R.a).getUTCFullYear(), new Date(R.a).getUTCFullYear() + 1]){
+          const o = Date.UTC(y, 0, 1) + x.o * DAY, c = Date.UTC(y, 0, 1) + (x.c == null ? 364 : x.c) * DAY;
+          opens.push([o, c]);
+        }
+        const closed = []; let cur = R.a - 400 * DAY;
+        opens.forEach(([o, c]) => { if (o > cur) closed.push([cur, o - DAY]); cur = c + DAY; });
+        closed.push([cur, R.b + 400 * DAY]);
+        return calRow(KIND_LABEL[x.k] || x.k, x.n, closed, R, `Usually ${lab(x.o)} – ${lab(x.c)}`, ["usually open", "usually closed"]);
+      }).join("") + `</div>`;
+    h += `<details class="clist"><summary>Show the usual dates as a table</summary><div class="tablewrap"><table class="stab"><thead><tr><th>Campground or trail</th><th>Usually open</th><th>Last season</th><th>Did not open</th></tr></thead><tbody>` +
       S.history.map(x => `<tr><td><span class="sk">${esc(KIND_LABEL[x.k] || x.k)}</span>${esc(x.n)}</td><td class="dur">${lab(x.o)} – ${lab(x.c)}</td>
         <td class="dur">${x.last[0]}: ${md(x.last[1])}${x.last[2] ? " – " + md(x.last[2]) : ", no closing date yet"}</td><td>${x.noOpen.join(", ") || "–"}</td></tr>`).join("") +
-      `</tbody></table></div>`;
+      `</tbody></table></div></details>`;
   }
-  h += `<p class="none" style="margin-top:8px">Source: NPS campground and visitor center data${S.page ? `, and the <a href="${esc(S.page)}" target="_blank" rel="noopener">park seasonal dates page</a>` : ""}. Data from ${esc(fmtD(PARK_SEASONAL.built))}. The dates can change with the weather.</p>`;
+  // The same closures as a list (for screen readers and print)
+  const item = (c, txt) => `<li><span class="sk">${esc(KIND_LABEL[c.k] || c.k)}</span><b>${esc(c.n)}</b><span class="sd">${txt}</span></li>`;
+  if (now.length || next.length) h += `<details class="clist"><summary>Show the closures as a list</summary><div class="cgrid">` +
+    `<div><h3>Closed for the season now (${now.length})</h3><ul class="slist">${now.map(c => item(c, `Closed until ${esc(fmtD(c.to))}`)).join("")}</ul></div>` +
+    `<div><h3>Next closures (${next.length})</h3><ul class="slist">${next.map(c => item(c, `Closes ${esc(fmtD(c.from))}, until ${esc(fmtD(c.to))}`)).join("")}</ul></div></div></details>`;
+  h += `<p class="none" style="margin-top:8px">Source: NPS campground and visitor center data${S.page ? `, and the <a href="${esc(S.page)}" target="_blank" rel="noopener">park seasonal dates page</a>` : ""}. Data from ${esc(fmtD(PARK_SEASONAL.built))}. The dates can change with the weather. A place is shown as open when NPS lists no closure for it.</p>`;
   $("cbody").innerHTML = h;
 }
+// Tooltip for the calendar bars (pointer and keyboard)
+(() => {
+  const tip = document.createElement("div"); tip.className = "ctip"; tip.hidden = true; document.body.appendChild(tip);
+  const show = (el, x, y) => { tip.textContent = el.dataset.tip; tip.hidden = false;
+    const w = tip.offsetWidth; tip.style.left = Math.max(8, Math.min(innerWidth - w - 8, x - w / 2)) + "px"; tip.style.top = (y - tip.offsetHeight - 10 + scrollY) + "px"; };
+  $("cbody").addEventListener("pointermove", e => { const el = e.target.closest("[data-tip]"); if (el) show(el, e.clientX, e.clientY); else tip.hidden = true; });
+  $("cbody").addEventListener("pointerleave", () => tip.hidden = true);
+  $("cbody").addEventListener("focusin", e => { const el = e.target.closest("[data-tip]"); if (el){ const r = el.getBoundingClientRect(); show(el, r.left + r.width / 2, r.top); } });
+  $("cbody").addEventListener("focusout", () => tip.hidden = true);
+})();
 $("cpark").addEventListener("change", e => { campSel = e.target.value; renderCamps(); });
 function showCamp(code){ campSel = code; renderCamps(); $("camps").scrollIntoView({behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth"}); }
 

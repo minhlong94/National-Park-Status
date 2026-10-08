@@ -614,3 +614,22 @@ Requirements:
 - The section shows "Closed for the season now" and "Next closures" side by side (one column on a phone), and for Yosemite the usual open dates.
 - The park details do not show the closures. They show one line with the number of closures and a link to the section, with the park selected.
 - Status: done.
+
+### R37. A calendar for campgrounds and visitor centers
+
+Original text from the owner:
+
+> I want "Campgrounds and visitor centers" to be easily visible - perhaps a calendar?
+
+Requirements:
+
+- The "Campgrounds and visitor centers" section shows a calendar of the next 12 months for the selected park:
+  - One row for each campground or visitor center, with its kind, its name and a short note (for example "Closed until Jul 3, 2027").
+  - Green bars show open times. Gray bars with lines show seasonal closures. A dark line shows today. A legend explains the marks.
+  - The rows that are closed now come first, then the rows by their next closure date.
+  - Put the pointer on a bar, or move to it with the Tab key, to see the dates.
+- For Yosemite, a second calendar shows the usual open dates of each campground and trail (from the last 10 years).
+- A summary line shows the number of places that are closed now and that close in the next 12 months.
+- The same data is also available as a list and as a table (in "Show ..." sections), for screen readers and print.
+- On a phone, the name is above the bar, and the month labels do not show the year.
+- Status: done.
