@@ -1,0 +1,45 @@
+name: Probe seasonal pages (temporary)
+on:
+  push:
+    branches: [claude/jolly-ptolemy-mtv1g5]
+    paths: [.github/workflows/probe-seasonal.yml]
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Yosemite seasonal page
+        shell: python
+        run: |
+          import re, html, urllib.request
+          s = urllib.request.urlopen(urllib.request.Request("https://www.nps.gov/yose/planyourvisit/seasonal.htm", headers={"User-Agent":"Mozilla/5.0"}), timeout=30).read().decode("utf-8","ignore")
+          print("tables:", s.count("<table"))
+          m = re.search(r'id="main"|role="main"', s)
+          t = s[m.start():] if m else s
+          t = re.sub(r'<script.*?</script>|<style.*?</style>', '', t, flags=re.S)
+          t = re.sub(r'</t[dh]>', ' | ', t); t = re.sub(r'</tr>', '\n', t)
+          t = html.unescape(re.sub(r'<[^>]+>', ' ', t))
+          t = re.sub(r'[ \t]+', ' ', t); t = re.sub(r'\n\s*\n+', '\n', t)
+          print(t[:9000])
+      - name: NPS API operating hours (Yosemite)
+        shell: python
+        run: |
+          import json, urllib.request
+          def get(ep):
+              return json.load(urllib.request.urlopen(f"https://developer.nps.gov/api/v1/{ep}&api_key=DEMO_KEY", timeout=60))
+          for ep in ["parks?parkCode=yose", "campgrounds?parkCode=yose&limit=50", "visitorcenters?parkCode=yose&limit=50", "places?parkCode=yose&limit=5"]:
+              j = get(ep)
+              print("\n==", ep, "total", j.get("total"))
+              for d in j["data"][:30]:
+                  for oh in d.get("operatingHours", []):
+                      ex = [(e.get("name"), e.get("startDate"), e.get("endDate"), "closed" if all(v=="Closed" for v in (e.get("exceptionHours") or {}).values()) else "hours") for e in oh.get("exceptions", [])]
+                      print(" -", d.get("name") or d.get("fullName"), "|", oh.get("name"), "|", (oh.get("description") or "")[:140].replace("\n"," "), "| exceptions:", ex[:6])
+      - name: Seasonal pages of other parks
+        run: |
+          for p in acad arch badl bibe bisc blca brca cany care cave chis cong crla cuva deva dena drto ever gaar glac glba grba grca grsa grsm grte gumo hale havo hosp indu isro jeff jotr katm kefj kova lacl lavo maca meve mora neri noca npsa olym pefo pinn redw romo sagu seki shen thro viis voya whsa wica wrst yell yose zion; do
+            for page in seasonal.htm seasonal-facilities.htm hours.htm operatinghours.htm; do
+              code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 -L -A Mozilla/5.0 "https://www.nps.gov/$p/planyourvisit/$page")
+              if [ "$code" = "200" ]; then echo "$p $page"; fi
+            done
+          done
+          echo done
