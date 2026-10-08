@@ -103,6 +103,14 @@ tr.park:hover td{background:color-mix(in srgb,var(--pine) 6%,transparent)}
 .wx{white-space:nowrap}
 .wx .t{font:700 20px/1 "Archivo Narrow",Arial,sans-serif}
 .wx small{display:block;color:var(--muted);font-size:12.5px;margin-top:3px}
+.fc > div.fhz{border:2px solid var(--partial);border-left-width:6px;background:color-mix(in srgb, var(--partial) 20%, var(--panel));padding-left:8px;border-radius:6px}
+.fc > div.fhz.h2{border-color:var(--closed);background:color-mix(in srgb, var(--closed) 16%, var(--panel))}
+.fc > div.fhz.h2 .fhl{color:var(--closed)}
+.fhl{grid-column:1/-1;display:block;font-weight:700;font-size:14px;color:var(--ink);margin-bottom:2px}
+.fhl small{display:block;font-weight:400;font-size:12.5px;color:var(--ink)}
+.hzb{display:inline-block;margin-top:6px;padding:2px 7px;border-radius:6px;font-size:12px;font-weight:700;line-height:1.3;white-space:normal}
+.hzb.h2{background:var(--closed);color:#fff}
+.hzb.h1{background:color-mix(in srgb, var(--partial) 18%, transparent);border:1px solid var(--partial);color:var(--ink)}
 .flood{display:inline-block;margin-top:6px;padding:2px 7px;border-radius:6px;font-size:12px;font-weight:700;line-height:1.3;white-space:normal;max-width:18ch}
 .flood.f2{background:var(--closed);color:#fff}
 .flood.f1{background:color-mix(in srgb, var(--partial) 18%, transparent);border:1px solid var(--partial);color:var(--ink)}
@@ -341,6 +349,7 @@ footer a{color:var(--info)}
     <button data-f="trails" aria-pressed="false">Trail issues</button>
     <button data-f="wx" aria-pressed="false">Weather warnings</button>
     <button data-f="flood" aria-pressed="false">Flood alerts</button>
+    <button data-f="hz" aria-pressed="false">Storm or heavy snow</button>
   </div>
   <div class="bestbar" role="group" aria-label="Filter by the best time to visit">
     <span class="lbl">Best time to visit:</span>
@@ -903,7 +912,7 @@ async function loadWeather(){
   const lat = PARKS.map(p=>p.lat).join(","), lon = PARKS.map(p=>p.lon).join(",");
   const url = "https://api.open-meteo.com/v1/forecast?latitude="+lat+"&longitude="+lon+
     "&current=temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,wind_speed_10m,wind_gusts_10m,precipitation"+
-    "&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,precipitation_sum,snowfall_sum"+
+    "&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,precipitation_sum,snowfall_sum,wind_gusts_10m_max,precipitation_hours"+
     "&temperature_unit=fahrenheit&wind_speed_unit=mph&precipitation_unit=inch&timezone=auto&forecast_days=3";
   const res = await fetch(url, {cache:"no-store"});
   if (!res.ok) throw new Error("Weather API returned HTTP " + res.status);
@@ -1538,9 +1547,9 @@ function render(){
   });
   const f = state.filter;
   const bestSet = bestFilterMonths();
-  const match = view.filter(({p, st, c, warns}) => (!q || matches(p, q)) && bestMatch(p.id, bestSet) &&
+  const match = view.filter(({p, st, c, w, warns}) => (!q || matches(p, q)) && bestMatch(p.id, bestSet) &&
     (f==="all" || (f==="closures" && (st.cls==="partial"||st.cls==="closed")) ||
-     (f==="roads" && c.road) || (f==="trails" && c.trail) || (f==="wx" && warns.length) || (f==="flood" && warns.some(x => floodLevel(x.event)))));
+     (f==="roads" && c.road) || (f==="trails" && c.trail) || (f==="wx" && warns.length) || (f==="flood" && warns.some(x => floodLevel(x.event))) || (f==="hz" && hazardDays(w).length)));
   const pages = Math.max(1, Math.ceil(match.length / PAGE_SIZE));
   state.page = Math.min(Math.max(1, state.page), pages);
   const first = (state.page - 1) * PAGE_SIZE;
@@ -1556,7 +1565,7 @@ function render(){
         ${warns.length ? `<span class="warn">${warns.map(x=>esc(x.event)).join(", ")}</span>` : ""}</div>`;
       const d = w.daily;
       today = `<div class="wx">${Math.round(d.temperature_2m_max[0])}° / ${Math.round(d.temperature_2m_min[0])}°F
-        <small>${toC(d.temperature_2m_max[0])}° / ${toC(d.temperature_2m_min[0])}°C · precip ${d.precipitation_probability_max[0] ?? 0}%${d.snowfall_sum[0] ? ` · snow ${inMm(d.snowfall_sum[0], 1)}` : ""}</small></div>`;
+        <small>${toC(d.temperature_2m_max[0])}° / ${toC(d.temperature_2m_min[0])}°C · precip ${d.precipitation_probability_max[0] ?? 0}%${d.snowfall_sum[0] ? ` · snow ${inMm(d.snowfall_sum[0], 1)}` : ""}</small>${hazardBadge(w)}</div>`;
     } else if (warns.length){
       now = `<span class="warn">${warns.map(x=>esc(x.event)).join(", ")}</span>`;
     }
@@ -1580,6 +1589,41 @@ function render(){
     $("t-open").textContent=tOpen; $("t-partial").textContent=tPart; $("t-closed").textContent=tClosed;
     $("t-road").textContent=tRoad; $("t-trail").textContent=tTrail; $("t-wx").textContent=tWx;
   }
+}
+
+// ---- Storms and heavy snow in the 3-day forecast (R38) ----
+// The weather code alone can say "slight rain showers" on a day with 1 in of rain and 58 mph gusts.
+// So the page also uses the amounts. Level 2 = severe (red), level 1 = take care (orange).
+function dayHazard(d, i){
+  const code = d.weather_code[i], rain = d.precipitation_sum[i] || 0, snow = d.snowfall_sum[i] || 0;
+  const gust = d.wind_gusts_10m_max ? d.wind_gusts_10m_max[i] || 0 : 0;
+  const why = []; let lvl = 0, kind = "";
+  const add = (l, k, text) => { why.push(text); if (l > lvl) lvl = l; if (!kind) kind = k; };
+  if (snow >= 4 || code === 75 || code === 86) add(snow >= 8 ? 2 : 1, "Heavy snow", `snow ${inMm(snow, 1)}`);
+  if (code === 66 || code === 67) add(2, "Freezing rain", "freezing rain (ice on roads)");
+  if (code >= 95) add(code >= 96 ? 2 : 1, "Thunderstorms", code >= 96 ? "thunderstorms with hail" : "thunderstorms");
+  if (rain >= 1 || code === 65 || code === 82) add(rain >= 2 ? 2 : 1, "Heavy rain", `rain ${inMm(rain, 2)}`);
+  if (gust >= 40) add(gust >= 58 ? 2 : 1, "Strong wind", `gusts to ${Math.round(gust)} mph (${Math.round(gust * 1.609)} km/h)`);
+  if (!lvl) return null;
+  // Rain or thunder together with strong wind is a storm
+  if (why.length > 1 && /rain|Thunder/.test(kind + why.join()) && gust >= 40 && kind !== "Heavy snow"){
+    kind = "Storm";
+    if (gust >= 50) lvl = 2; // heavy rain or thunder with near-damaging gusts
+  }
+  return {lvl, kind, why};
+}
+function hazardDays(w){
+  if (!w || !w.daily) return [];
+  return w.daily.time.map((t, i) => ({t, i, hz: dayHazard(w.daily, i)})).filter(x => x.hz);
+}
+const dayName = (t, i) => i === 0 ? "Today" : new Date(t + "T12:00:00").toLocaleDateString("en-US", {weekday:"short"});
+// Row badge: the strongest day in the next 3 days
+function hazardBadge(w){
+  const hd = hazardDays(w);
+  if (!hd.length) return "";
+  const top = hd.reduce((a, b) => b.hz.lvl > a.hz.lvl ? b : a);
+  const more = hd.length > 1 ? ` +${hd.length - 1}` : "";
+  return `<span class="hzb h${top.hz.lvl}" title="${esc(hd.map(x => `${dayName(x.t, x.i)}: ${x.hz.kind} (${x.hz.why.join(", ")})`).join(" · "))}"><span aria-hidden="true">⚠</span> ${esc(top.hz.kind)} ${esc(dayName(top.t, top.i))}${more}</span>`;
 }
 
 function floodBadge(warns){
@@ -1617,7 +1661,8 @@ function detail(p, list, w, warns){
     const d = w.daily;
     wxHtml += `<div class="fc">` + d.time.map((t,i) => {
       const day = new Date(t+"T12:00:00").toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"});
-      return `<div><b>${day}</b><span class="ft">${Math.round(d.temperature_2m_max[i])}° / ${Math.round(d.temperature_2m_min[i])}°F<small>${toC(d.temperature_2m_max[i])}° / ${toC(d.temperature_2m_min[i])}°C</small></span><span>${esc(WMO[d.weather_code[i]]||"—")}</span><span class="fp">Precip ${d.precipitation_probability_max[i] ?? 0}%, ${inMm(d.precipitation_sum[i]||0, 2)}</span></div>`;
+      const hz = dayHazard(d, i);
+      return `<div${hz ? ` class="fhz h${hz.lvl}"` : ""}>${hz ? `<span class="fhl"><span aria-hidden="true">⚠</span> ${esc(hz.kind)}<small>${esc(hz.why.join(", "))}</small></span>` : ""}<b>${day}</b><span class="ft">${Math.round(d.temperature_2m_max[i])}° / ${Math.round(d.temperature_2m_min[i])}°F<small>${toC(d.temperature_2m_max[i])}° / ${toC(d.temperature_2m_min[i])}°C</small></span><span>${esc(WMO[d.weather_code[i]]||"—")}</span><span class="fp">Precip ${d.precipitation_probability_max[i] ?? 0}%, ${inMm(d.precipitation_sum[i]||0, 2)}</span></div>`;
     }).join("") + `</div>`;
     wxHtml += `<p class="none" style="margin-top:8px">Humidity ${w.current.relative_humidity_2m}% · The forecast is for one point near the main visitor area. In large parks, the temperature changes much with elevation.</p>`;
   } else wxHtml += `<p class="none">The weather did not load.</p>`;
