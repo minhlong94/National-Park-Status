@@ -110,7 +110,8 @@ def history(code, url, today):
     links = sorted(set(re.findall(r'href="(/common/uploads/sortable_dataset/[^"]+\.csv[^"]*)"', html)))
     out = []
     for link in links:
-        kind = "trail" if "trail" in link.lower() else "campground" if "campground" in link.lower() else "facility"
+        tail = link.split("?")[0].rsplit("-", 1)[-1].lower()  # for example "CopyCampgrounds.csv"
+        kind = "trail" if "trail" in tail else "campground" if "campground" in tail else "facility"
         rows = list(csv.reader(io.StringIO(get("https://www.nps.gov" + link, raw=True))))
         if not rows or rows[0][0].strip().lower() != "year":
             continue
