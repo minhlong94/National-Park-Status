@@ -633,3 +633,25 @@ Requirements:
 - The same data is also available as a list and as a table (in "Show ..." sections), for screen readers and print.
 - On a phone, the name is above the bar, and the month labels do not show the year.
 - Status: done.
+
+### R38. Highlight storms and heavy snow in the forecast
+
+Original text from the owner:
+
+> There is an upcoming storm in GSMNP but the 3-day forecast is not highlighting it enough - do it for me, and in heavy snow as well
+
+Requirements:
+
+- The page finds the dangerous days in the 3-day forecast from the amounts, not only from the weather code. (For Great Smoky Mountains on Oct 10, 2026, the code said "rain showers", but the forecast had 1.25 in of rain and gusts to 58 mph.)
+- Rules for one day:
+  - Heavy snow: 4 in or more of snow, or the code for heavy snow. Red at 8 in or more.
+  - Freezing rain: the code for freezing rain. Red.
+  - Thunderstorms: the code for thunderstorms. Red with hail.
+  - Heavy rain: 1 in or more of rain, or the code for heavy rain. Red at 2 in or more.
+  - Strong wind: gusts of 40 mph or more. Red at 58 mph or more.
+  - Storm: heavy rain or thunderstorms together with strong wind. Red when the gusts are 50 mph or more.
+- The forecast card of that day has a colored frame and background (orange or red), the kind of danger (for example "Storm") and the values.
+- The "Today" column of the park row shows a badge with the strongest day, for example "Storm Sat". The badge tooltip lists all the days.
+- A "Storm or heavy snow" filter shows only the parks with such a day.
+- The page gets the daily wind gusts from Open-Meteo for these rules.
+- Status: done.
