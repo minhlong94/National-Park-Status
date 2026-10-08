@@ -581,3 +581,21 @@ Requirements:
   - From 80% to 100%: the visitor part decreases a little, to 75% for the busiest month, because of the crowds.
 - Fall color stays separate (option A). The "Fall:" banner shows the fall color months. The "Best:" banner does not use fall color.
 - Status: done.
+
+### R35. Seasonal closure dates
+
+Original text from the owner:
+
+> It is lacking some seasonal closure dates of parks, e.g., Yosemite: https://www.nps.gov/yose/planyourvisit/seasonal.htm
+
+Requirements:
+
+- The park details show a "Seasonal closures" section (in the third column, above the closure history):
+  - "Closed now": the campgrounds and visitor centers that are closed for the season now, and the date they open again.
+  - "Next closures": the seasonal closures that start in the next 12 months, with the start and end dates.
+  - Closures shorter than 7 days (for example Christmas Day) are not shown.
+  - The source is the NPS API (operating hours of campgrounds and visitor centers).
+- For parks with a seasonal dates page with history datasets (now: Yosemite), the section shows the usual open dates of each campground and trail. The usual dates are the median of the last 10 years. Each row also shows the last season and the years that it did not open.
+- The seasonal road history has Mariposa Grove Road (Yosemite), from the Yosemite roads dataset.
+- The script `scripts/fetch_seasonal.py` makes `data/seasonal.js`. The workflow `.github/workflows/update-seasonal.yml` runs it each Monday. It uses the `NPS_API_KEY` secret if it exists, or DEMO_KEY.
+- Status: done.
