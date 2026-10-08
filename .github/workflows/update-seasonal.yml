@@ -1,0 +1,54 @@
+name: Update seasonal closures
+
+# Seasonal closures of campgrounds and visitor centers (NPS API) and the usual open dates
+# from park seasonal pages (for example Yosemite). See scripts/fetch_seasonal.py (R35).
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - scripts/fetch_seasonal.py
+      - .github/workflows/update-seasonal.yml
+  schedule:
+    - cron: "23 8 * * 1"  # 08:23 UTC each Monday
+
+permissions:
+  contents: write
+
+# One queue for all data workflows on a branch, so two runs never push at the same time.
+concurrency:
+  group: data-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        timeout-minutes: 2
+      - uses: actions/setup-python@v5
+        timeout-minutes: 3
+        with:
+          python-version: "3.12"
+      - name: Get the data
+        timeout-minutes: 8
+        env:
+          NPS_API_KEY: ${{ secrets.NPS_API_KEY }}
+        run: python3 -u scripts/fetch_seasonal.py
+      - name: Commit the data if it changed
+        timeout-minutes: 2
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898333+github-actions[bot]@users.noreply.github.com"
+          git add data/seasonal.js
+          if git diff --cached --quiet; then
+            echo "No change in the data."
+          else
+            git commit -m "Update seasonal closures"
+            git pull --rebase --quiet origin "$GITHUB_REF_NAME"
+            git push origin "HEAD:$GITHUB_REF_NAME"
+            # GitHub Pages serves the gh-pages branch. Publish the new data from main.
+            if [ "$GITHUB_REF_NAME" = "main" ]; then
+              git push origin HEAD:gh-pages
+            fi
+          fi
