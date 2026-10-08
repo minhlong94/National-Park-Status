@@ -1,0 +1,13 @@
+name: Probe GSMNP forecast (temporary)
+on:
+  push:
+    branches: [claude/jolly-ptolemy-mtv1g5]
+    paths: [.github/workflows/probe-storm.yml]
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - run: |
+          curl -s --max-time 30 "https://api.open-meteo.com/v1/forecast?latitude=35.6118&longitude=-83.4895&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,precipitation_sum,snowfall_sum,wind_gusts_10m_max,precipitation_hours&temperature_unit=fahrenheit&wind_speed_unit=mph&precipitation_unit=inch&timezone=auto&forecast_days=3" | python3 -m json.tool | head -80
+          curl -s --max-time 30 -H "Accept: application/geo+json" -A "probe" "https://api.weather.gov/alerts/active?area=TN" | python3 -c "import json,sys; [print(f['properties']['event'],'|',f['properties']['areaDesc'][:120]) for f in json.load(sys.stdin)['features']]"
