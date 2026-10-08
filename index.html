@@ -129,6 +129,21 @@ tr.detail[hidden]{display:none}
 .fc .fp{grid-column:2/-1;color:var(--muted)}
 .banner{border:1px solid var(--closed);color:var(--closed);border-radius:8px;padding:10px 14px;margin:14px 0;font-size:14px}
 .banner[hidden]{display:none}
+.seasonal{margin-bottom:18px;padding-bottom:12px;border-bottom:1px solid var(--line)}
+.seasonal .sh{font-size:14px;margin:10px 0 4px;font-weight:600}
+.slist{list-style:none;margin:0;padding:0}
+.slist li{padding:5px 0;border-top:1px solid var(--line);font-size:14px;line-height:1.35}
+.slist li:first-child{border-top:0}
+.slist b{display:block;font-weight:600}
+.slist .sd{color:var(--muted);font-size:13px}
+.sk{display:inline-block;font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.03em;margin-right:6px}
+.smore summary{cursor:pointer;color:var(--info);font-size:13px;margin:4px 0}
+.stab{min-width:0;font-size:13px}
+.stab td,.stab th{padding:4px 6px}
+.stab{width:100%}
+.stab .sk{display:block;margin:0}
+.stab small{display:block;color:var(--muted);font-size:12px}
+.stab td.dur{white-space:nowrap;vertical-align:top}
 .hist{list-style:none;margin:0;padding:0}
 .hist li{display:grid;grid-template-columns:118px 1fr;gap:10px;padding:8px 0;border-top:1px solid var(--line)}
 .hist li:first-child{border-top:0}
@@ -612,6 +627,19 @@ const ROADS = [
 1997|May 22|Nov 12|
 1996|May 24|Nov 05|
 1995|Jul 01|Dec 11|`},
+ {id:"mgr", park:"yose", name:"Mariposa Grove Road", sub:"Yosemite · South Entrance to the Mariposa Grove of Giant Sequoias",
+  src:"https://www.nps.gov/yose/planyourvisit/seasonal.htm",
+  about:"In winter, snow closes the road to cars. The grove stays open to people on foot, on skis or on snowshoes.",
+  rows:`2025|May 10|Nov 30|
+2024|May 24|Nov 30|
+2023|May 25|Nov 30||Opened late because of a road failure
+2022|Apr 19|Nov 09|
+2021|Jun 11|Dec 09|
+2020|Jun 11|Dec 25||Closed Sep 6 to Oct 10 because of the Creek Fire
+2019|Apr 15|Nov 26|
+2018|Jun 15|Nov 30||Opened again after a restoration project (Jul 2016 to Jun 2018)
+2017|Did not open|Did not open||Closed all year for a restoration project
+2016|Did not open|Did not open||Closed from Jul 6 for a restoration project`},
  {id:"gtsr", park:"glac", name:"Going-to-the-Sun Road", sub:"Glacier · over Logan Pass (6,646 ft)",
   src:"https://www.nps.gov/glac/learn/news/logan-pass-opening-and-closing-dates.htm",
   about:"The dates are for vehicle access over Logan Pass. The lower sections stay open all year. Since 1992, the pass closes on the third Monday of October if the weather permits. NPS did not publish closing dates after 2022. During the season, weather can close the alpine section for some days. The list below the chart shows the recent closures.",
@@ -1115,6 +1143,35 @@ function roadLinks(code){
   if (!rs.length) return "";
   return `<p class="rlinks">Seasonal road history: ${rs.map(r=>`<a data-goroad="${r.id}" tabindex="0">${esc(r.name)}</a>`).join(", ")}</p>`;
 }
+// ---- Seasonal closures (R35): data/seasonal.js, from the NPS API and park seasonal pages ----
+const isoDay = d => d.toISOString().slice(0, 10);
+const fmtIso = s => fmtD(s);
+const KIND_LABEL = {"campground": "Campground", "visitor center": "Visitor center", "trail": "Trail", "facility": "Facility"};
+function seasonalHTML(code){
+  const S = window.PARK_SEASONAL && PARK_SEASONAL.parks[code];
+  if (!S) return "";
+  const today = isoDay(new Date());
+  const cl = (S.closures || []).filter(c => c.to >= today);
+  const now = cl.filter(c => c.from <= today), next = cl.filter(c => c.from > today);
+  const item = (c, txt) => `<li><span class="sk">${esc(KIND_LABEL[c.k] || c.k)}</span><b>${esc(c.n)}</b><span class="sd">${txt}</span></li>`;
+  const list = (arr, fn, max) => arr.length <= max ? `<ul class="slist">${arr.map(fn).join("")}</ul>` :
+    `<ul class="slist">${arr.slice(0, max).map(fn).join("")}</ul><details class="smore"><summary>${arr.length - max} more</summary><ul class="slist">${arr.slice(max).map(fn).join("")}</ul></details>`;
+  let h = `<h2>Seasonal closures</h2>`;
+  if (now.length) h += `<h3 class="sh">Closed now (${now.length})</h3>` + list(now, c => item(c, `Closed until ${esc(fmtIso(c.to))}`), 4);
+  if (next.length) h += `<h3 class="sh">Next closures (${next.length})</h3>` + list(next, c => item(c, `Closes ${esc(fmtIso(c.from))}, until ${esc(fmtIso(c.to))}`), 4);
+  if (!now.length && !next.length) h += `<p class="none">NPS lists no seasonal closures of campgrounds or visitor centers in the next 12 months.</p>`;
+  if (S.history && S.history.length){
+    const lab = d => d == null ? "–" : doyLabel(d % 365);
+    const md = x => esc(fmtD(x).replace(/, \d{4}$/, ""));
+    h += `<h3 class="sh">Usual open dates (last 10 years)</h3><table class="stab"><thead><tr><th>Campground or trail</th><th>Usually open</th></tr></thead><tbody>` +
+      S.history.map(x => `<tr><td><span class="sk">${esc(KIND_LABEL[x.k] || x.k)}</span>${esc(x.n)}
+        <small>${x.last[0]}: ${md(x.last[1])}${x.last[2] ? " – " + md(x.last[2]) : ", no closing date yet"}${x.noOpen.length ? `. Did not open: ${x.noOpen.join(", ")}` : ""}</small></td>
+        <td class="dur">${lab(x.o)} – ${lab(x.c)}</td></tr>`).join("") + `</tbody></table>`;
+  }
+  h += `<p class="none" style="margin-top:8px">Source: NPS campground and visitor center data${S.page ? `, and the <a href="${esc(S.page)}" target="_blank" rel="noopener">park seasonal dates page</a>` : ""}. Updated each week. The dates can change with the weather.</p>`;
+  return `<div class="seasonal">${h}</div>`;
+}
+
 function histHTML(code){
   return `<h2>Closure history</h2><ul class="hist">` + histList(code).map(e =>
     `<li><div class="hd"><b>${esc(startText(e))}</b>${e.end ? "to " + esc(fmtD(e.end)) : ""}${durText(e)!=="–" ? `<br>${durText(e)} days` : ""}</div>
@@ -1434,7 +1491,7 @@ function detail(p, list, w, warns){
   if (other.length){
     wxHtml += `<h2 style="margin-top:14px">NWS warnings</h2>` + other.map(x => `<div class="alert k-danger"><div class="at">${esc(x.event)}</div><div class="ad">${esc(x.headline||"")}</div></div>`).join("");
   }
-  return `<div class="dbox"><div>${floodHTML(warns)}${liveRoadsHTML(p.code)}${alertsHtml}${roadWorkLink(p.code)}${p.note?`<p class="am">${esc(p.note)}</p>`:""}${roadLinks(p.id)}<p class="am"><a href="https://www.nps.gov/${p.code}/planyourvisit/conditions.htm" target="_blank" rel="noopener">Official ${esc(p.name)} conditions page</a></p></div><div>${wxHtml}</div><div>${histHTML(p.id)}</div><div class="mviz" data-mviz="${p.id}"></div></div>`;
+  return `<div class="dbox"><div>${floodHTML(warns)}${liveRoadsHTML(p.code)}${alertsHtml}${roadWorkLink(p.code)}${p.note?`<p class="am">${esc(p.note)}</p>`:""}${roadLinks(p.id)}<p class="am"><a href="https://www.nps.gov/${p.code}/planyourvisit/conditions.htm" target="_blank" rel="noopener">Official ${esc(p.name)} conditions page</a></p></div><div>${wxHtml}</div><div>${seasonalHTML(p.code)}${histHTML(p.id)}</div><div class="mviz" data-mviz="${p.id}"></div></div>`;
 }
 
 // ---- Monthly visits and climate (R9) ----
@@ -1971,7 +2028,8 @@ renderHistory();
 render();
 if (!restoreCache()) refresh(); // saved data first; new data only on "Refresh data"
 // The "Best time" column uses the stored monthly and fall color data. Load it once. It does not refresh.
-Promise.all([loadHistory(), loadFoliage(), loadData("data/airports.js", "PARK_AIRPORTS").catch(() => null)]).then(() => {
+Promise.all([loadHistory(), loadFoliage(), loadData("data/airports.js", "PARK_AIRPORTS").catch(() => null),
+             loadData("data/seasonal.js", "PARK_SEASONAL").catch(() => null)]).then(() => {
   if (!("PARK_FOLIAGE" in window)) window.PARK_FOLIAGE = null;
   render();
   if (window.PARK_FOLIAGE) initFallMap(); else $("fmapbox").innerHTML = `<p class="none" style="padding:12px">The fall color data did not load.</p>`;

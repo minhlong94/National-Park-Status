@@ -9,7 +9,7 @@ This page shows the current conditions of all 63 U.S. national parks. The list s
 - **Status of each park**: open, partial closures or closed. The status comes from official NPS alerts.
 - **Number of alerts** for roads, trails, facilities and other subjects. Click a park row to see all its alerts, its closure history and a 3-day forecast.
 - **Current weather and the forecast for today.** Temperatures are in °F and °C. Rain and snow are in inches and mm. The page also shows the active warnings from the National Weather Service.
-- **Seasonal road history**: the opening and closing dates for Tioga Road, Glacier Point Road, Going-to-the-Sun Road and Trail Ridge Road. The page shows only the last 10 years, with the newest year first.
+- **Seasonal road history**: the opening and closing dates for Tioga Road, Glacier Point Road, Mariposa Grove Road, Going-to-the-Sun Road and Trail Ridge Road. The page shows only the last 10 years, with the newest year first.
 - **Visits and climate by month**: click a park to see four charts with the same months:
   - recreation visits in each month of the last 3 calendar years, with one color for each year
   - the average daily low and high temperature
@@ -24,6 +24,7 @@ This page shows the current conditions of all 63 U.S. national parks. The list s
 - **Live road status (Glacier)**: the closed roads and the roads with construction, from the park road map. The NPS alerts do not always include these closures. The closed roads are added to the Roads count. Other parks do not publish this data now.
 - **Road work pages**: a link to the road construction and project work page of the park, if the park has one.
 - **Nearby airports**: 2 to 4 airports with scheduled flights near each park, with the IATA code and the straight-line distance.
+- **Seasonal closures**: the campgrounds and visitor centers that are closed for the season now, and the seasonal closures in the next 12 months, from the NPS data. For Yosemite, the usual open dates of each campground and trail in the last 10 years.
 - **Closure history**: the major full and partial closures from the last 5 years. The list also shows shutdowns of all parks.
 
 The table shows 10 parks on each page. The first page shows the 10 most visited parks.
@@ -89,6 +90,10 @@ The workflow `.github/workflows/update-foliage.yml` runs the script each Monday.
 ## Park outline data
 
 The file `data/park-bounds.js` keeps a simple outline of each park and the NWS zones inside the park. The page uses it to find the weather alerts for the whole park. The script `scripts/build_bounds.py` makes it. The workflow `.github/workflows/build-bounds.yml` runs the script when the script changes, or when you start it from the **Actions** tab. Park boundaries and NWS zones change very little, so no schedule runs it.
+
+## Seasonal closure data
+
+The script `scripts/fetch_seasonal.py` makes `data/seasonal.js`. It gets the seasonal closures of campgrounds and visitor centers from the NPS API, and the open dates of each year from the datasets on the Yosemite seasonal dates page. The workflow `.github/workflows/update-seasonal.yml` runs it each Monday. To use your own NPS key, add it as the repository secret `NPS_API_KEY`.
 
 ## Airport data
 
