@@ -721,3 +721,19 @@ Requirements:
 - The status column of the park row shows only badges: the status ("Open", "Partial closures", "Closed"), the flood alert and the flash flood rating.
 - The names of the closures (NPS alerts and live road closures, main roads first) are not shown as a list in the row. They are in the tooltip of the status badge. The park details show all the closures.
 - Status: done.
+
+### R43. Planned road dates of other parks in the seasonal road section
+
+Original text from the owner:
+
+> I want to include seasonal road closure in the lower section for other parks, such as Yellowstone https://www.nps.gov/yell/planyourvisit/parkroads.htm
+
+Requirements:
+
+- The weekly seasonal workflow (`scripts/fetch_seasonal.py`) reads the planned road dates of this year from the roads page (`parkroads.htm`) and the hours page (`hours.htm`) of each park. It knows two forms:
+  - "Open April 17 - October 31, 2026: West Entrance to Madison, Madison to Old Faithful" (Yellowstone). One row for each road section. "Open year-round" is a road that is open all year. The dates for oversnow vehicles (snowmobiles and snowcoaches) are not used.
+  - "May 1, Spring opening of Teton Park Road" and "October 31, Winter closure of Teton Park Road" (Grand Teton).
+- The pages of the other parks do not give the dates in a form that a program can read. A park is added when its page uses one of the two forms.
+- The seasonal road section has a "Road dates" tab for each park with planned dates. The tab shows a calendar of the year: one row for each road section, green when open, gray with lines when closed, and a line for today. A summary line shows how many road sections are open today on the plan.
+- The park details have a link to the tab ("Seasonal roads").
+- Status: done.
