@@ -1,0 +1,31 @@
+name: Probe Zion conditions (temporary)
+on:
+  push:
+    branches: [claude/jolly-ptolemy-mtv1g5]
+    paths: [.github/workflows/probe-zion.yml]
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: NPS alerts for Zion
+        shell: python
+        run: |
+          import json, urllib.request
+          j = json.load(urllib.request.urlopen("https://developer.nps.gov/api/v1/alerts?parkCode=zion&limit=50&api_key=DEMO_KEY", timeout=60))
+          for a in j["data"]:
+              print("-", a["category"], "|", a["title"], "|", a.get("lastIndexedDate"), "|", (a.get("description") or "")[:200].replace("\n", " "))
+      - name: Conditions page
+        shell: python
+        run: |
+          import re, html, urllib.request
+          s = urllib.request.urlopen(urllib.request.Request("https://www.nps.gov/zion/planyourvisit/conditions.htm", headers={"User-Agent": "Mozilla/5.0"}), timeout=30).read().decode("utf-8", "ignore")
+          for m in re.finditer(r"(?i)narrows|slot canyon", s):
+              ctx = re.sub(r"\s+", " ", s[max(0, m.start()-300):m.start()+300])
+              print("CTX:", ctx[:600]); print()
+          links = sorted(set(re.findall(r'(?:src|href|data-[a-z-]+)="([^"]*(?:json|csv|alerts|arcgis|status)[^"]*)"', s)))
+          print("\n".join(links[:40]))
+          i = s.find('id="main"')
+          t = re.sub(r"<script.*?</script>|<style.*?</style>", "", s[i:], flags=re.S)
+          t = html.unescape(re.sub(r"<[^>]+>", "\n", t)); t = re.sub(r"\n\s*\n+", "\n", t)
+          print(t[:4000])
