@@ -1223,7 +1223,7 @@ const KIND_LABEL = {"campground": "Campground", "visitor center": "Visitor cente
 // Seasonal area closures (R44): yearly dates (mm-dd) from the park pages and the Superintendent's Compendium
 function areaKind(t){
   if (/voluntar/i.test(t)) return "Voluntary area";
-  if (/nest|raptor|falcon|eagle|sheep|bighorn|wildlife|bird|roost|\bbats?\b|rooker|\belk\b|bears?\b|turtle|seal|sea lion/i.test(t)) return "Wildlife area";
+  if (/\bBMA\b|bear management|nest|raptor|falcon|eagle|sheep|bighorn|wildlife|bird|roost|\bbats?\b|rooker|\belk\b|bears?\b|turtle|seal|sea lion/i.test(t)) return "Wildlife area";
   if (/climb/i.test(t)) return "Climbing";
   if (/\btrail/i.test(t)) return "Trail";
   if (/\broad\b/i.test(t)) return "Road";
@@ -1243,7 +1243,8 @@ function areaOccurrences(S){
       const to = (a.to < a.from ? yr + 1 : yr) + "-" + a.to;
       // A general subject ("Area is closed", "The following areas") takes the name of the heading above it
       const generic = /^(the\s+)?(following\s+)?(areas?|closures?|from|annual|annually|these|all lands)\b/i.test(areaName(a.t)) || areaName(a.t).length < 6;
-      const n = generic && a.h && !/closure|compendium|^\(?[a-z0-9]{1,3}\)/i.test(a.h) ? a.h : areaName(a.t);
+      const head = (a.h || "").replace(/^[A-Z]\d?\.\s+/, "").replace(/\bBMA\b/, "Bear Management Area");
+      const n = generic && head && !/^(seasonal |wildlife |area |park |annual )?closures?$|compendium|^\(?[a-z0-9]{1,3}\)/i.test(head) ? head : areaName(a.t);
       out.push({k: areaKind((a.h || "") + " " + a.t), n, from: yr + "-" + a.from, to, full: a.t, src: a.src});
     }
   });

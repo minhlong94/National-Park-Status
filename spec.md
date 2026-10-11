@@ -737,3 +737,22 @@ Requirements:
 - The seasonal road section has a "Road dates" tab for each park with planned dates. The tab shows a calendar of the year: one row for each road section, green when open, gray with lines when closed, and a line for today. A summary line shows how many road sections are open today on the plan.
 - The park details have a link to the tab ("Seasonal roads").
 - Status: done.
+
+### R44. Seasonal area closures (wildlife, trails, areas) for all parks
+
+Original text from the owner:
+
+> You lack closure for Grand Teton https://www.nps.gov/grte/learn/management/wildlife-closures.htm please make sure not to miss any parks
+
+Requirements:
+
+- Each week, for every park, the seasonal workflow (`scripts/fetch_seasonal.py`) reads the pages where parks post seasonal closures:
+  - the Plan Your Visit and Management index pages, hours, conditions and seasonal pages, wildlife closure and closure pages, laws and policies pages, and the Superintendent's Compendium (also as PDF);
+  - the links on these pages about closures, the compendium, bear management, wildlife protection, raptors and nesting (two link levels, at most 30 pages for each park).
+- The script keeps a sentence or a short list item when it closes something between two dates of the year, for example "closed to all public entry from December 15 through March 31". A "Seasonal Closures" heading above a list also counts. "Voluntarily avoid" zones are kept and marked as voluntary.
+- The script leaves out: rules that are not closures of a place (food storage, smoking, vehicles, boats, fishing, camping rules, surfing), opening hours, reservations, notes about past years, dates when something is open, rules for all year, and repeated closures.
+- When the sentence has a general subject ("Area is closed …"), the page uses the heading above it as the name (for example "Hayden Valley Bear Management Area").
+- The "Campgrounds, visitor centers and seasonal closures" section shows these closures in the same calendar (kinds: Wildlife area, Voluntary area, Climbing, Trail, Road, Area). They repeat every year. The list view shows the full text and a link to the NPS page.
+- For each park, the section links to the Superintendent's Compendium, the official list of all closures and rules, when the script finds it.
+- Coverage now: dated closures in 26 parks. Compendium links for 51 of the 62 park sites (Sequoia and Kings Canyon share one). The script cannot find a compendium for Acadia, Carlsbad Caverns, Denali, Death Valley, Gates of the Arctic, Glacier Bay, Katmai, Kobuk Valley, Lake Clark, American Samoa and White Sands.
+- Status: done.
