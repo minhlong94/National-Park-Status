@@ -668,7 +668,7 @@ Requirements:
   - Its text has no trail keyword, so the page put it in "Other", not in "Trails".
   - The park row showed only "Partial closures", with no names.
 - The trail keywords now also include: hikers, wilderness, narrows, slot canyon(s), canyoneering, river hike(s).
-- The park row shows the names of up to 3 closures under the status, and "+N more closures" if there are more. The full name is in the tooltip.
+- The park row shows the names of up to 3 closures under the status, and "+N more closures" if there are more. The full name is in the tooltip. Changed by R42: the names are now only in the tooltip of the status badge.
 - In the park details, the alert groups that have a closure come first.
 - Status: done.
 
@@ -705,7 +705,19 @@ Requirements:
   - The road is closed only in part (the ends stay open), and the page did not show this.
   - The page shows the data from the last refresh (R29). Old saved data did not have the closure, and the page did not tell the reader that the data was old.
 - The page reads all the road parts that have a status. A road is "Closed" when all its parts with a status are closed, and "Partly closed" when some parts are still open.
-- The park row lists the live road closures with the NPS closures (up to 3 names). Main roads come first, for example "Going-to-the-Sun Road partly closed (winter weather)". Campground loops come after the NPS closures. Road parts with no name are not counted or listed.
+- The park row lists the live road closures with the NPS closures (up to 3 names; changed by R42: now in the tooltip of the status badge). Main roads come first, for example "Going-to-the-Sun Road partly closed (winter weather)". Campground loops come after the NPS closures. Road parts with no name are not counted or listed.
 - The seasonal road history shows the live status of the road now, if the park has a live road map ("Now: Partly closed · Winter Weather").
 - If the saved data is older than 6 hours, the time at the top is red and says "Click Refresh data for the current status". The page still gets new data only when the reader clicks the button.
+- Status: done.
+
+### R42. Only badges in the status column
+
+Original text from the owner:
+
+> only show banner here since there are too many info (screenshot of the Status column of Great Smoky Mountains)
+
+Requirements:
+
+- The status column of the park row shows only badges: the status ("Open", "Partial closures", "Closed"), the flood alert and the flash flood rating.
+- The names of the closures (NPS alerts and live road closures, main roads first) are not shown as a list in the row. They are in the tooltip of the status badge. The park details show all the closures.
 - Status: done.
