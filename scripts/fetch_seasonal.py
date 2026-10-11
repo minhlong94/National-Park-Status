@@ -5,6 +5,8 @@ Two sources:
 1. NPS API (campgrounds and visitor centers): the "closed" exceptions of the operating hours.
    The script keeps the closures that end today or later, start in the next 12 months and are at least 7 days long.
    One-day closures (for example Christmas Day) are left out.
+3. Park roads and hours pages: the planned road opening and closing dates of this year
+   (for example Yellowstone and Grand Teton).
 2. Park "seasonal" pages with history datasets (for example Yosemite): the open dates of each campground
    and trail in each year. The script finds the "Download This Dataset" links on the page and keeps the
    datasets with a "Year" column and date ranges such as "Jun 20-Sep 26".
@@ -13,6 +15,7 @@ The workflow .github/workflows/update-seasonal.yml runs this script each Monday.
 Set the NPS_API_KEY environment variable to use your own key. Otherwise the script uses DEMO_KEY.
 """
 import csv
+import html
 import datetime as dt
 import io
 import json
@@ -147,6 +150,71 @@ def history(code, url, today):
     return out
 
 
+def page_text(url):
+    """The main text of an NPS page, with one line for each paragraph, list item or table row."""
+    try:  # one try: most parks do not have the page
+        with urllib.request.urlopen(urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"}), timeout=30) as r:
+            s = r.read().decode("utf-8", "ignore")
+    except Exception as e:  # noqa: BLE001
+        raise RuntimeError(f"{url}: {e}")
+    i = s.find('id="main"')
+    s = s[i:] if i > 0 else s
+    s = re.sub(r"<script.*?</script>|<style.*?</style>", "", s, flags=re.S)
+    s = re.sub(r"</(p|li|tr|h\d|div)>|<br\s*/?>", "\n", s)
+    s = re.sub(r"</t[dh]>", " | ", s)
+    s = html.unescape(re.sub(r"<[^>]+>", " ", s))
+    s = re.sub(r"[ \t]+", " ", s)
+    return s.split("Park footer")[0]
+
+
+def iso(mon, day, year):
+    m = MON.get(mon[:3].lower())
+    try:
+        return dt.date(year, m, int(day)).isoformat() if m else None
+    except ValueError:
+        return None
+
+
+def road_schedule(code, today):
+    """Planned road opening and closing dates of this year (R43), from the park roads or hours page.
+
+    Two forms on NPS pages:
+    - "Open April 17 - October 31, 2026: West Entrance to Madison, Madison to Old Faithful" (Yellowstone)
+    - "May 1, Spring opening of Teton Park Road" and "October 31, Winter closure of Teton Park Road" (Grand Teton)
+    """
+    for page in ("parkroads.htm", "hours.htm"):
+        url = f"https://www.nps.gov/{code}/planyourvisit/{page}"
+        try:
+            t = page_text(url)
+        except RuntimeError:
+            continue
+        t = re.split(r"(?i)oversnow|snowmobile", t)[0]  # only the dates for regular vehicles
+        ym = re.search(r"\b(20\d\d) Road Opening", t)
+        year = int(ym.group(1)) if ym else today.year
+        items = []
+        for m in re.finditer(r"Open\s+(year-round|([A-Z][a-z]+)\.?\s+(\d{1,2})\s*[-–]\s*([A-Z][a-z]+)\.?\s+(\d{1,2})\*?,?\s*(20\d\d)?)\s*:\s*([^\n]+)", t):
+            y = int(m.group(6)) if m.group(6) else year
+            o = None if m.group(1) == "year-round" else iso(m.group(2), m.group(3), y)
+            c = None if m.group(1) == "year-round" else iso(m.group(4), m.group(5), y)
+            if m.group(1) != "year-round" and not (o and c):
+                continue
+            for seg in re.split(r",\s*(?![^(]*\))", m.group(7).split(". ")[0]):
+                seg = seg.strip(" .*")
+                if 3 < len(seg) < 90:
+                    items.append({"n": seg, "open": o, "close": c})
+        pairs = {}
+        for m in re.finditer(r"([A-Z][a-z]+)\.?\s+(\d{1,2}),?\s*\|?\s*(?:Spring |Summer |Seasonal )?(opening|Winter closure|closure|closing) of ([A-Z][^|\n.,]{3,60})", t):
+            d = iso(m.group(1), m.group(2), year)
+            road = m.group(4).strip()
+            if d:
+                pairs.setdefault(road, {})["open" if "open" in m.group(3).lower() else "close"] = d
+        items += [{"n": r, "open": v["open"], "close": v["close"]} for r, v in pairs.items() if v.get("open") and v.get("close")]
+        if items:
+            print(f"  roads {code}: {len(items)} from {page}", flush=True)
+            return {"year": year, "src": url, "items": items}
+    return None
+
+
 def main():
     today = dt.date.today()
     parks = fh.load_parks()
@@ -173,6 +241,10 @@ def main():
         if h:
             data["parks"].setdefault(code, {})["history"] = h
             data["parks"][code]["page"] = url
+    for code in codes:
+        rs = road_schedule(code, today)
+        if rs:
+            data["parks"].setdefault(code, {})["roads"] = rs
     if not ok:
         sys.exit("The NPS API did not answer. The file does not change.")
     for v in data["parks"].values():
