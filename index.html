@@ -388,7 +388,7 @@ footer a{color:var(--info)}
 
   <section class="roadsec" id="roads" aria-labelledby="rh">
     <h2 id="rh">Seasonal road history</h2>
-    <p>This section shows the opening and closing dates of the large park roads that snow closes each winter. It shows only the last 10 years, with the newest year first. Each bar is one season. The bottom of the bar is the day the road opened. The top of the bar is the day the road closed for winter.</p>
+    <p>This section shows the opening and closing dates of the large park roads that snow closes each winter. It shows only the last 10 years, with the newest year first. Each bar is one season. The bottom of the bar is the day the road opened. The top of the bar is the day the road closed for winter. The "Road dates" tabs show the planned dates of this year for each road section, from the park pages (for example Yellowstone and Grand Teton).</p>
     <div class="rtabs" role="group" aria-label="Choose a road" id="rtabs"></div>
     <div id="rbody"></div>
   </section>
@@ -1213,9 +1213,9 @@ function histList(code){
   return own.concat(SYSTEM_W.map(e=>Object.assign({park:"*"},e))).sort((a,b)=>b.start.localeCompare(a.start));
 }
 function roadLinks(code){
-  const rs = ROADS.filter(r=>r.park===code);
+  const rs = [...ROADS, ...schedTabs()].filter(r=>r.park===code);
   if (!rs.length) return "";
-  return `<p class="rlinks">Seasonal road history: ${rs.map(r=>`<a data-goroad="${r.id}" tabindex="0">${esc(r.name)}</a>`).join(", ")}</p>`;
+  return `<p class="rlinks">Seasonal roads: ${rs.map(r=>`<a data-goroad="${r.id}" tabindex="0">${esc(r.name)}</a>`).join(", ")}</p>`;
 }
 // ---- Seasonal closures (R35): data/seasonal.js, from the NPS API and park seasonal pages ----
 const isoDay = d => d.toISOString().slice(0, 10);
@@ -1414,9 +1414,31 @@ function roadNow(r){
   return e ? `<p class="rnow closed"><b>Now: ${roadState(e)}</b>${e.reasons.length ? ` · ${esc(e.reasons.join("; "))}` : ""}${esc(when)}</p>`
            : `<p class="rnow open"><b>Now: Open</b>${esc(when)}</p>`;
 }
+// ---- Planned road dates of this year (R43): data/seasonal.js "roads", from the park roads or hours page ----
+function schedTabs(){
+  const P = window.PARK_SEASONAL ? PARK_SEASONAL.parks : {};
+  return Object.entries(P).filter(([c, v]) => v.roads && v.roads.items.length && PARK_BY[c])
+    .map(([c, v]) => ({id: "sched-" + c, park: c, name: `${PARK_BY[c].name} roads, ${v.roads.year}`, sched: v.roads}));
+}
+function renderSchedule(r){
+  const S = r.sched, y = S.year, t = new Date();
+  const R = {a: Date.UTC(y, 0, 1), b: Date.UTC(y + 1, 0, 1), today: Date.UTC(t.getFullYear(), t.getMonth(), t.getDate())};
+  const md = iso => new Date(iso + "T00:00:00Z").toLocaleDateString("en-US", {month:"short", day:"numeric", timeZone:"UTC"});
+  const items = [...S.items].sort((u, v) => (u.open || "") .localeCompare(v.open || "") || (v.close || "9").localeCompare(u.close || "9"));
+  const today = isoDay(t);
+  const nOpen = items.filter(x => !x.open || (x.open <= today && today <= x.close)).length;
+  $("rbody").innerHTML = `<p class="rabout"><b>Planned opening and closing dates for regular vehicles in ${y}.</b> All dates can change with the weather.
+      <a href="${esc(S.src)}" target="_blank" rel="noopener">NPS source</a></p>
+    <p class="csum"><b>${nOpen}</b> of ${items.length} road sections are open today on the plan.</p>
+    ${calLegend("Closed (planned)")}<div class="cal">${calHead(R)}${items.map(x =>
+      calRow("Road", x.n, x.open ? [[R.a, isoMs(x.open) - DAY], [isoMs(x.close) + DAY, R.b - DAY]] : [], R,
+        x.open ? `Open ${md(x.open)} – ${md(x.close)}` : "Open all year", ["open (planned)", "closed (planned)"])).join("")}</div>`;
+}
 function renderRoads(){
-  $("rtabs").innerHTML = ROADS.map(r=>`<button data-road="${r.id}" aria-pressed="${r.id===roadSel}">${esc(r.name)}<small>${esc(PARK_BY[r.park].name)}</small></button>`).join("");
-  const r = ROADS.find(z=>z.id===roadSel);
+  const tabs = [...ROADS, ...schedTabs()];
+  $("rtabs").innerHTML = tabs.map(r=>`<button data-road="${r.id}" aria-pressed="${r.id===roadSel}">${esc(r.sched ? "Road dates " + r.sched.year : r.name)}<small>${esc(PARK_BY[r.park].name)}</small></button>`).join("");
+  const r = tabs.find(z=>z.id===roadSel) || ROADS[0];
+  if (r.sched){ renderSchedule(r); return; }
   const minYear = new Date().getFullYear() - ROAD_YEARS + 1;
   const rows = parseRoad(r).filter(z=>z.y>=minYear).sort((a,b)=>b.y-a.y);
   if (!rows.some(z=>z.od!==null)){ $("rbody").innerHTML = `<p class="rabout">There are no dates for this road in the last ${ROAD_YEARS} years.</p>`; return; }
@@ -2337,6 +2359,7 @@ Promise.all([loadHistory(), loadFoliage(), loadData("data/airports.js", "PARK_AI
   if (!("PARK_FOLIAGE" in window)) window.PARK_FOLIAGE = null;
   render();
   renderCamps();
+  renderRoads(); // add the planned road dates tabs
   if (window.PARK_FOLIAGE) initFallMap(); else $("fmapbox").innerHTML = `<p class="none" style="padding:12px">The fall color data did not load.</p>`;
 }).catch(() => {});
 </script>
