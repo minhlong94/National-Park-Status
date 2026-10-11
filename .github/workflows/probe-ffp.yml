@@ -1,0 +1,36 @@
+name: Probe flash flood potential (temporary)
+on:
+  push:
+    branches: [claude/jolly-ptolemy-mtv1g5]
+    paths: [.github/workflows/probe-ffp.yml]
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: RRA products
+        shell: python
+        run: |
+          import json, urllib.request
+          H = {"User-Agent": "National-Park-Status (github.com/minhlong94)", "Accept": "application/ld+json"}
+          get = lambda u: json.load(urllib.request.urlopen(urllib.request.Request(u, headers=H), timeout=60))
+          locs = get("https://api.weather.gov/products/types/RRA/locations")
+          print("RRA locations:", locs.get("locations"))
+          L = get("https://api.weather.gov/products/types/RRA/locations/SLC")
+          items = L.get("@graph", [])
+          print("SLC RRA count:", len(items), [ (i["issuanceTime"], i["productName"]) for i in items[:5]])
+          if items:
+              p = get(items[0]["@id"])
+              print("=== LATEST SLC ===\n", p["productText"][:5000])
+          # other offices that may issue flash flood potential text
+          for loc in (locs.get("locations") or {}):
+              if loc == "SLC": continue
+              try:
+                  L2 = get(f"https://api.weather.gov/products/types/RRA/locations/{loc}")
+                  it = L2.get("@graph", [])
+                  if it:
+                      t = get(it[0]["@id"])["productText"]
+                      if "FLASH FLOOD" in t.upper() or "POTENTIAL" in t.upper():
+                          print(f"\n=== {loc} ({it[0]['issuanceTime']}) ===\n", t[:1500])
+              except Exception as e:
+                  print(loc, "err", e)
