@@ -278,6 +278,8 @@ def closure_sentences(text):
             if re.search(r"(?i)\bopen\b", sent) and not CLOSED_RX.search(sent):
                 continue  # dates when something is open
             t = line if len(line) <= 400 else sent  # a short list item stays whole, so its subject stays with the dates
+            if NOT_CLOSURE_RX.search(t) or len(re.findall(r"[A-Za-z]{4,}", t)) < 5:
+                continue  # opening hours, or no subject (for example "November 1 - April 14: Closed")
             for m in RANGE_RX.finditer(sent):
                 a, b = MON.get(m.group(1)[:3].lower()), MON.get(m.group(3)[:3].lower())
                 if a and b and 1 <= int(m.group(2)) <= 31 and 1 <= int(m.group(4)) <= 31:

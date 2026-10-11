@@ -394,8 +394,8 @@ footer a{color:var(--info)}
   </section>
 
   <section class="campsec" id="camps" aria-labelledby="ch">
-    <h2 id="ch">Campgrounds and visitor centers</h2>
-    <p>Seasonal closures of campgrounds and visitor centers: the closures now and the closures in the next 12 months. The data comes from NPS and is updated each week. Closures shorter than 7 days are not shown. For Yosemite, the section also shows the usual open dates of the last 10 years.</p>
+    <h2 id="ch">Campgrounds, visitor centers and seasonal closures</h2>
+    <p>Seasonal closures of campgrounds, visitor centers, trails and areas (for example wildlife closures): the closures now and the closures in the next 12 months. The data comes from NPS and is updated each week. The area closures come from the park pages and the Superintendent's Compendium of each park. They repeat each year. Closures shorter than 7 days are not shown. For Yosemite, the section also shows the usual open dates of the last 10 years.</p>
     <div class="cctl"><label for="cpark">Park</label> <select id="cpark"></select></div>
     <div id="cbody"><p class="none">Loading…</p></div>
   </section>
@@ -1220,9 +1220,35 @@ function roadLinks(code){
 // ---- Seasonal closures (R35): data/seasonal.js, from the NPS API and park seasonal pages ----
 const isoDay = d => d.toISOString().slice(0, 10);
 const KIND_LABEL = {"campground": "Campground", "visitor center": "Visitor center", "trail": "Trail", "facility": "Facility"};
+// Seasonal area closures (R44): yearly dates (mm-dd) from the park pages and the Superintendent's Compendium
+function areaKind(t){
+  if (/voluntar/i.test(t)) return "Voluntary area";
+  if (/nest|raptor|falcon|eagle|sheep|bighorn|wildlife|bird|roost|\bbats?\b|rooker|\belk\b|bears?\b|turtle|seal|sea lion/i.test(t)) return "Wildlife area";
+  if (/climb/i.test(t)) return "Climbing";
+  if (/\btrail/i.test(t)) return "Trail";
+  if (/\broad\b/i.test(t)) return "Road";
+  return "Area";
+}
+function areaName(t){
+  t = t.replace(/^\s*(\(?[a-z0-9]{1,3}[).]\s*)+/i, "").replace(/^(the following|following)\s+/i, "");
+  const m = t.match(/^(.{6,90}?)\s+(is|are|will be|may be|shall be)\s+(closed|restricted)/i) || t.match(/^(.{6,90}?)\s+closed\b/i);
+  const n = m ? m[1] : t;
+  return n.length > 90 ? n.slice(0, 88).replace(/\s+\S*$/, "") + "…" : n;
+}
+function areaOccurrences(S){
+  const y = new Date().getFullYear(), out = [];
+  (S.areas || []).forEach(a => {
+    for (const yr of [y - 1, y, y + 1]){
+      const to = (a.to < a.from ? yr + 1 : yr) + "-" + a.to;
+      out.push({k: areaKind(a.t), n: areaName(a.t), from: yr + "-" + a.from, to, full: a.t, src: a.src});
+    }
+  });
+  return out;
+}
 function seasonalLists(S){
-  const today = isoDay(new Date());
-  const cl = (S.closures || []).filter(c => c.to >= today);
+  const today = isoDay(new Date()), until = isoDay(new Date(Date.now() + 365 * DAY));
+  const cl = [...(S.closures || []), ...areaOccurrences(S).filter(c => c.from <= until)].filter(c => c.to >= today)
+    .sort((u, v) => u.from.localeCompare(v.from));
   return {now: cl.filter(c => c.from <= today), next: cl.filter(c => c.from > today)};
 }
 // Park details: a short line with a link to the section
@@ -1231,7 +1257,7 @@ function campLink(code){
   if (!S) return "";
   const {now, next} = seasonalLists(S);
   const t = [now.length ? `${now.length} closed for the season now` : "", next.length ? `${next.length} closing in the next 12 months` : ""].filter(Boolean).join(", ");
-  return `<p class="rlinks">Campgrounds and visitor centers: <a data-gocamp="${code}" tabindex="0">${t || (S.history ? "usual open dates" : "no seasonal closures")}</a></p>`;
+  return `<p class="rlinks">Seasonal closures: <a data-gocamp="${code}" tabindex="0">${t || (S.history ? "usual open dates" : "no seasonal closures")}</a></p>`;
 }
 let campSel = null;
 function campParks(){
@@ -1262,7 +1288,7 @@ function calHead(R){
   return `<div class="crow chead"><div class="cname"></div><div class="ctrack">${h}</div></div>`;
 }
 // closed: list of [startMs, endMs] (end = last closed day). Everything else in the range is open.
-function calRow(kind, name, closed, R, note, words = ["open", "closed for the season"]){
+function calRow(kind, name, closed, R, note, words = ["open", "closed for the season"], full = ""){
   // keep the real dates (x0, y0) for the tooltip; draw only the part inside the range
   closed = closed.map(([x, y]) => [Math.max(x, R.a), Math.min(y + DAY, R.b), x, y]).filter(([x, y]) => y > x).sort((u, v) => u[0] - v[0]);
   const segs = []; let cur = R.a;
@@ -1273,7 +1299,7 @@ function calRow(kind, name, closed, R, note, words = ["open", "closed for the se
       `${name}: ${words[1]}, ${x0 < R.a - 300 * DAY ? "" : msLabel(x0) + " "}to ${msLabel(Math.min(y0, R.b + 300 * DAY))}`;
     return `<span class="cseg ${st}" style="left:${pct(x, R)}%;width:${(pct(y, R) - pct(x, R)).toFixed(3)}%" data-tip="${esc(tip)}" aria-label="${esc(tip)}" tabindex="0"></span>`;
   }).join("");
-  return `<div class="crow"><div class="cname"><span class="sk">${esc(kind)}</span>${esc(name)}${note ? `<small>${esc(note)}</small>` : ""}</div>
+  return `<div class="crow"><div class="cname"${full ? ` title="${esc(full)}"` : ""}><span class="sk">${esc(kind)}</span>${esc(name)}${note ? `<small>${esc(note)}</small>` : ""}</div>
     <div class="ctrack">${bars}<i class="ctoday" style="left:${pct(R.today, R)}%"></i></div></div>`;
 }
 function calLegend(extra){
@@ -1290,7 +1316,7 @@ function renderCamps(){
   const R = calRange();
   // One row for each place. Places closed now first, then by the next closure date.
   const by = new Map();
-  [...now, ...next].forEach(c => { const k = c.k + "|" + c.n; if (!by.has(k)) by.set(k, {k: c.k, n: c.n, cl: []}); by.get(k).cl.push(c); });
+  [...now, ...next].forEach(c => { const k = c.k + "|" + c.n; if (!by.has(k)) by.set(k, {k: c.k, n: c.n, full: c.full, cl: []}); by.get(k).cl.push(c); });
   const today = isoDay(new Date());
   const places = [...by.values()].sort((u, v) => u.cl[0].from.localeCompare(v.cl[0].from) || u.n.localeCompare(v.n));
   let h = `<p class="csum"><b>${now.length}</b> closed for the season now · <b>${next.length}</b> closing in the next 12 months</p>`;
@@ -1299,7 +1325,7 @@ function renderCamps(){
       places.map(pl => {
         const c0 = pl.cl[0], isNow = c0.from <= today;
         const note = isNow ? `Closed until ${fmtD(c0.to)}` : `Closes ${fmtD(c0.from)}`;
-        return calRow(KIND_LABEL[pl.k] || pl.k, pl.n, pl.cl.map(c => [isoMs(c.from), isoMs(c.to)]), R, note);
+        return calRow(KIND_LABEL[pl.k] || pl.k, pl.n, pl.cl.map(c => [isoMs(c.from), isoMs(c.to)]), R, note + (pl.full ? " (every year)" : ""), undefined, pl.full);
       }).join("") + `</div>`;
   } else h += `<p class="none">NPS lists no seasonal closures of campgrounds or visitor centers in the next 12 months.</p>`;
   // Usual open dates (Yosemite): the same calendar, from the median dates of the last 10 years
@@ -1324,11 +1350,13 @@ function renderCamps(){
       `</tbody></table></div></details>`;
   }
   // The same closures as a list (for screen readers and print)
-  const item = (c, txt) => `<li><span class="sk">${esc(KIND_LABEL[c.k] || c.k)}</span><b>${esc(c.n)}</b><span class="sd">${txt}</span></li>`;
+  const item = (c, txt) => `<li><span class="sk">${esc(KIND_LABEL[c.k] || c.k)}</span><b>${esc(c.n)}</b><span class="sd">${txt}</span>${c.full ?
+    `<span class="sd"><br>${esc(c.full)} <a href="${esc(c.src)}" target="_blank" rel="noopener">NPS page</a></span>` : ""}</li>`;
   if (now.length || next.length) h += `<details class="clist"><summary>Show the closures as a list</summary><div class="cgrid">` +
     `<div><h3>Closed for the season now (${now.length})</h3><ul class="slist">${now.map(c => item(c, `Closed until ${esc(fmtD(c.to))}`)).join("")}</ul></div>` +
     `<div><h3>Next closures (${next.length})</h3><ul class="slist">${next.map(c => item(c, `Closes ${esc(fmtD(c.from))}, until ${esc(fmtD(c.to))}`)).join("")}</ul></div></div></details>`;
-  h += `<p class="none" style="margin-top:8px">Source: NPS campground and visitor center data${S.page ? `, and the <a href="${esc(S.page)}" target="_blank" rel="noopener">park seasonal dates page</a>` : ""}. Data from ${esc(fmtD(PARK_SEASONAL.built))}. The dates can change with the weather. A place is shown as open when NPS lists no closure for it.</p>`;
+  if (S.compendium) h += `<p class="rlinks">All closures and rules of this park: <a href="${esc(S.compendium)}" target="_blank" rel="noopener">Superintendent's Compendium</a></p>`;
+  h += `<p class="none" style="margin-top:8px">Source: NPS campground and visitor center data, and the closures with yearly dates on the park pages and in the Superintendent's Compendium${S.page ? `, and the <a href="${esc(S.page)}" target="_blank" rel="noopener">park seasonal dates page</a>` : ""}. Data from ${esc(fmtD(PARK_SEASONAL.built))}. The dates can change with the weather. A place is shown as open when NPS lists no closure for it.</p>`;
   $("cbody").innerHTML = h;
 }
 // Tooltip for the calendar bars (pointer and keyboard)
