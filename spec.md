@@ -671,3 +671,23 @@ Requirements:
 - The park row shows the names of up to 3 closures under the status, and "+N more closures" if there are more. The full name is in the tooltip.
 - In the park details, the alert groups that have a closure come first.
 - Status: done.
+
+### R40. Flash flood potential rating
+
+Original text from the owner:
+
+> I want to include potential ratings for the parks in this link and other parks as well: https://forecast.weather.gov/product.php?site=NWS&product=RRA&issuedby=SLC
+
+Requirements:
+
+- On "Refresh data", the page gets the latest NWS Salt Lake City "Flash Flood Potential Rating" (product RRA, office SLC) from api.weather.gov. It reads the rating of each day (for example today and tomorrow) for Arches, Bryce Canyon, Canyonlands, Capitol Reef and Zion. The ratings are: Not expected, Possible, Probable, Expected.
+- No other NWS office publishes this rating. For the other parks, the page makes an estimate for the 3 forecast days:
+  - Expected: an active NWS Flash Flood Warning or Emergency (today).
+  - Probable: an active Flood Watch or Flash Flood Watch, thunderstorms, or 1 in of rain or more.
+  - Possible: 0.5 in of rain or more, or rain showers with 0.25 in or more.
+  - The page always labels the estimate as an estimate. It is not an NWS rating.
+- The park row shows a "Flash flood" badge with the highest rating and its day: red for Expected, orange for Probable. An official rating also shows at Possible. An estimate shows only at Probable or Expected.
+- The park details show "Flash flood potential" first, with the rating of each day, the source, the issue time and the meaning of the rating.
+- The "Flood alerts" filter also shows the parks with a rating of Probable or Expected.
+- The page does not use an official rating that is older than 36 hours. The page saves the rating in the browser with the other data (R29).
+- Status: done.

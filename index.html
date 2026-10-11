@@ -115,6 +115,16 @@ tr.park:hover td{background:color-mix(in srgb,var(--pine) 6%,transparent)}
 .cll li{padding-left:10px;position:relative;margin-top:3px}
 .cll li::before{content:"";position:absolute;left:0;top:.45em;width:5px;height:5px;border-radius:50%;background:var(--closed)}
 .cllm{display:block;font-size:12px;color:var(--muted);margin-top:2px}
+.ffp{display:inline-block;margin-top:6px;padding:2px 7px;border-radius:6px;font-size:12px;font-weight:700;line-height:1.3;white-space:normal;max-width:24ch}
+.ffp.L3{background:var(--closed);color:#fff}
+.ffp.L2{background:color-mix(in srgb, var(--partial) 22%, transparent);border:1px solid var(--partial);color:var(--ink)}
+.ffp.L1{border:1px solid var(--line);color:var(--ink)}
+.ffpd{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 6px}
+.ffpd div{border:1px solid var(--line);border-radius:6px;padding:5px 9px;font-size:13px;background:var(--panel);min-width:7em}
+.ffpd b{display:block;font-size:12px;color:var(--muted);font-weight:600}
+.ffpd span{font-weight:700}
+.ffpd .L3{background:var(--closed);border-color:var(--closed);color:#fff}.ffpd .L3 b{color:#fff}
+.ffpd .L2{background:color-mix(in srgb, var(--partial) 22%, var(--panel));border-color:var(--partial)}
 .flood{display:inline-block;margin-top:6px;padding:2px 7px;border-radius:6px;font-size:12px;font-weight:700;line-height:1.3;white-space:normal;max-width:18ch}
 .flood.f2{background:var(--closed);color:#fff}
 .flood.f1{background:color-mix(in srgb, var(--partial) 18%, transparent);border:1px solid var(--partial);color:var(--ink)}
@@ -314,6 +324,7 @@ footer a{color:var(--info)}
     <span><i class="dot" id="d-wx"></i><b>Weather</b> <span id="s-wx">waiting</span></span>
     <span><i class="dot" id="d-nws"></i><b>NWS warnings</b> <span id="s-nws">waiting</span></span>
     <span><i class="dot" id="d-roads"></i><b>Live road status</b> <span id="s-roads">waiting</span></span>
+    <span><i class="dot" id="d-ffp"></i><b>Flash flood rating</b> <span id="s-ffp">waiting</span></span>
   </div>
 
   <details class="settings" id="settings">
@@ -858,7 +869,7 @@ function shortNum(n){
   return String(Math.round(n));
 }
 const PAGE_SIZE = 10; // the first page shows the 10 most visited parks
-const state = { alerts:{}, wx:{}, nws:{}, roads:{}, filter:"all", sort:"visits", q:"", open:new Set(), loaded:false, page:1, best:"any", bestMonths:new Set() };
+const state = { alerts:{}, wx:{}, nws:{}, roads:{}, ffp:null, filter:"all", sort:"visits", q:"", open:new Set(), loaded:false, page:1, best:"any", bestMonths:new Set() };
 
 function getKey(){ try{ return localStorage.getItem("npsKey") || "DEMO_KEY"; }catch(e){ return "DEMO_KEY"; } }
 function setKey(k){ try{ k ? localStorage.setItem("npsKey", k) : localStorage.removeItem("npsKey"); }catch(e){} }
@@ -1103,20 +1114,20 @@ function slimAlerts(by){
   return out;
 }
 function saveCache(){
-  const data = {nps: state.alerts, wx: state.wx, nws: state.nws, roads: state.roads};
+  const data = {nps: state.alerts, wx: state.wx, nws: state.nws, roads: state.roads, ffp: state.ffp};
   const c = {sources: {}};
-  ["nps", "wx", "nws", "roads"].forEach(k => { if (cacheTime[k]) c.sources[k] = {t: cacheTime[k], data: k === "nps" ? slimAlerts(data.nps) : data[k]}; });
+  ["nps", "wx", "nws", "roads", "ffp"].forEach(k => { if (cacheTime[k]) c.sources[k] = {t: cacheTime[k], data: k === "nps" ? slimAlerts(data.nps) : data[k]}; });
   try { localStorage.setItem(CACHE_KEY, JSON.stringify(c)); } catch(e){ /* full or blocked storage: the page still works */ }
 }
 function restoreCache(){
   let c = null;
   try { c = JSON.parse(localStorage.getItem(CACHE_KEY) || "null"); } catch(e){ c = null; }
   if (!c || !c.sources || !Object.keys(c.sources).length) return false;
-  ["nps", "wx", "nws", "roads"].forEach(k => {
+  ["nps", "wx", "nws", "roads", "ffp"].forEach(k => {
     const src = c.sources[k];
     if (!src) return;
     cacheTime[k] = src.t;
-    if (k === "nps") state.alerts = src.data; else if (k === "wx") state.wx = src.data; else if (k === "nws") state.nws = src.data; else state.roads = src.data;
+    if (k === "nps") state.alerts = src.data; else if (k === "wx") state.wx = src.data; else if (k === "nws") state.nws = src.data; else if (k === "roads") state.roads = src.data; else state.ffp = src.data;
     setSrc(k, "ok", `saved ${fmtTime(src.t)}`);
   });
   state.loaded = true;
@@ -1130,9 +1141,9 @@ async function refresh(){
   const btn = $("refresh");
   btn.disabled = true; btn.textContent = "Refreshing…";
   const errs = [];
-  const results = await Promise.allSettled([loadNPS(), loadWeather(), loadNWS(), loadRoads()]);
+  const results = await Promise.allSettled([loadNPS(), loadWeather(), loadNWS(), loadRoads(), loadFFP()]);
   const now = Date.now();
-  ["nps","wx","nws","roads"].forEach((k,i) => {
+  ["nps","wx","nws","roads","ffp"].forEach((k,i) => {
     if (results[i].status === "fulfilled") cacheTime[k] = now;
     else if (cacheTime[k]){
       // Keep the saved data of this source and tell the reader its time.
@@ -1553,7 +1564,7 @@ function render(){
   const bestSet = bestFilterMonths();
   const match = view.filter(({p, st, c, w, warns}) => (!q || matches(p, q)) && bestMatch(p.id, bestSet) &&
     (f==="all" || (f==="closures" && (st.cls==="partial"||st.cls==="closed")) ||
-     (f==="roads" && c.road) || (f==="trails" && c.trail) || (f==="wx" && warns.length) || (f==="flood" && warns.some(x => floodLevel(x.event))) || (f==="hz" && hazardDays(w).length)));
+     (f==="roads" && c.road) || (f==="trails" && c.trail) || (f==="wx" && warns.length) || (f==="flood" && (warns.some(x => floodLevel(x.event)) || ffpTop(ffpFor(p, w, warns)).lvl >= 2)) || (f==="hz" && hazardDays(w).length)));
   const pages = Math.max(1, Math.ceil(match.length / PAGE_SIZE));
   state.page = Math.min(Math.max(1, state.page), pages);
   const first = (state.page - 1) * PAGE_SIZE;
@@ -1579,7 +1590,7 @@ function render(){
       <td class="rank">${p.r}</td>
       <td><div class="pname">${esc(p.name)}</div><div class="pstate">${esc(p.st)}</div>${bestBanner(p.id)}${airportLine(p.id)}</td>
       <td class="num">${shortNum(p.v)}</td>
-      <td><span class="chip ${st.cls}">${st.label}</span>${closureLines(list)}${floodBadge(warns)}</td>
+      <td><span class="chip ${st.cls}">${st.label}</span>${closureLines(list)}${floodBadge(warns)}${ffpBadge(p, w, warns)}</td>
       ${cell(c.road)}${cell(c.trail)}${cell(c.facility)}${cell(c.other)}
       <td>${now}</td><td>${today}</td></tr>`);
     html.push(`<tr class="detail" data-for="${p.id}" ${isOpen? "": "hidden"}><td colspan="10">${detail(p, list, w, warns)}</td></tr>`);
@@ -1639,6 +1650,82 @@ function closureLines(list){
     (cl.length > 3 ? `<span class="cllm">+${cl.length - 3} more closures</span>` : "");
 }
 
+// ---- Flash flood potential (R40) ----
+// Official: the NWS Salt Lake City "Flash Flood Potential Rating" (product RRA SLC), for 5 parks in southern Utah.
+// Other parks: an estimate by this page from the NWS flood alerts and the forecast rain and thunderstorms.
+const FFP_LEVELS = ["Not expected", "Possible", "Probable", "Expected"];
+const FFP_PARKS = {arches:"arch", "bryce canyon":"brca", canyonlands:"cany", "capitol reef":"care", zion:"zion"};
+const FFP_DEF = ["Flash flooding is not expected.", "Some slot canyons, dry washes and small streams can have flash floods.",
+  "Some slot canyons, dry washes and small streams will probably have flash floods.", "Many slot canyons, dry washes and small streams will have flash floods."];
+async function loadFFP(){
+  setSrc("ffp","busy","loading…");
+  const H = {headers:{Accept:"application/ld+json"}, cache:"no-store"};
+  const list = await (await fetch("https://api.weather.gov/products/types/RRA/locations/SLC", H)).json();
+  const item = (list["@graph"] || []).find(x => /flash flood|hydrologic/i.test(x.productName || "")) || (list["@graph"] || [])[0];
+  if (!item) throw new Error("no NWS rating");
+  const text = (await (await fetch(item["@id"], H)).json()).productText || "";
+  if (!/Flash Flood Potential Rating/i.test(text)) throw new Error("no NWS rating");
+  const days = [...text.matchAll(/\.\.\.([A-Z ]+?)\.\.\./g)].map(m => m[1].trim());
+  const parks = {};
+  text.split("\n").forEach(line => {
+    const cols = line.trim().split(/\s{2,}/);
+    if (cols.length < 2) return;
+    const key = Object.keys(FFP_PARKS).find(k => cols[0].toLowerCase().startsWith(k) && /national park/i.test(cols[0]));
+    if (!key) return;
+    parks[FFP_PARKS[key]] = cols.slice(1).map(r => FFP_LEVELS.findIndex(l => l.toLowerCase() === r.toLowerCase()));
+  });
+  if (!Object.keys(parks).length) throw new Error("rating not read");
+  state.ffp = {issued: item.issuanceTime, days, parks};
+  setSrc("ffp","ok", `${Object.keys(parks).length} parks`);
+}
+const ffpDayLabel = (d, i) => /today/i.test(d) ? "Today" : /tonight/i.test(d) ? "Tonight" : d ? d[0] + d.slice(1, 3).toLowerCase() : `Day ${i + 1}`;
+// Official rating for a park, or null. A rating older than 36 hours is not used.
+function ffpOfficial(id){
+  const F = state.ffp;
+  if (!F || !F.parks[id] || Date.now() - Date.parse(F.issued) > 36 * 3600000) return null;
+  return F.parks[id].map((lvl, i) => ({day: ffpDayLabel(F.days[i], i), lvl})).filter(x => x.lvl >= 0);
+}
+// Estimate for the 3 forecast days: NWS flood alerts first, then the forecast rain and thunderstorms
+function ffpEstimate(w, warns){
+  if (!w || !w.daily) return null;
+  const d = w.daily;
+  return d.time.map((t, i) => {
+    const rain = d.precipitation_sum[i] || 0, code = d.weather_code[i];
+    let lvl = code >= 95 || rain >= 1 ? 2 : rain >= 0.5 || (code >= 80 && rain >= 0.25) ? 1 : 0;
+    (warns || []).forEach(x => {
+      const ev = x.event || "", ends = x.ends ? x.ends.slice(0, 10) : t;
+      if (ends < t) return;
+      if (/flash flood (warning|emergency)/i.test(ev) && i === 0) lvl = 3;
+      else if (/flood watch/i.test(ev)) lvl = Math.max(lvl, 2);
+    });
+    return {day: dayName(t, i), lvl};
+  });
+}
+function ffpFor(p, w, warns){
+  const o = ffpOfficial(p.id);
+  if (o && o.length) return {official: true, days: o};
+  const e = ffpEstimate(w, warns);
+  return e ? {official: false, days: e} : null;
+}
+function ffpTop(f){ return f ? f.days.reduce((a, b) => b.lvl > a.lvl ? b : a, {lvl: -1}) : {lvl: -1}; }
+// Row badge: official rating from "Possible"; the estimate only from "Probable"
+function ffpBadge(p, w, warns){
+  const f = ffpFor(p, w, warns), top = ffpTop(f);
+  if (top.lvl < (f && f.official ? 1 : 2)) return "";
+  const tip = (f.official ? "NWS Flash Flood Potential Rating: " : "Estimate by this page (not an NWS rating): ") + f.days.map(x => `${x.day} ${FFP_LEVELS[x.lvl]}`).join(", ");
+  return `<span class="ffp L${top.lvl}" title="${esc(tip)}"><span aria-hidden="true">≋</span> Flash flood: ${esc(FFP_LEVELS[top.lvl])} ${esc(top.day.toLowerCase() === "today" ? "today" : top.day)}${f.official ? "" : " (est.)"}</span>`;
+}
+// Park details: the rating for each day, with the definitions
+function ffpHTML(p, w, warns){
+  const f = ffpFor(p, w, warns);
+  if (!f || (!f.official && ffpTop(f).lvl < 1)) return "";
+  const F = state.ffp;
+  return `<h2>Flash flood potential</h2><div class="ffpd">${f.days.map(x => `<div class="L${x.lvl}"><b>${esc(x.day)}</b><span>${esc(FFP_LEVELS[x.lvl])}</span></div>`).join("")}</div>
+    <p class="none">${f.official ? `NWS Salt Lake City Flash Flood Potential Rating, issued ${esc(fmtTime(Date.parse(F.issued)))}.` :
+      "Estimate by this page from the NWS flood alerts and the forecast rain and thunderstorms. NWS does not publish a rating for this park."}
+    ${esc(FFP_DEF[ffpTop(f).lvl])} Stay out of slot canyons and narrow washes when the rating is Probable or Expected.</p>`;
+}
+
 function floodBadge(warns){
   const f = (warns || []).find(x => floodLevel(x.event));
   return f ? `<span class="flood f${floodLevel(f.event)}" title="${esc(f.headline || f.event)}"><span aria-hidden="true">⚠</span> ${esc(f.event)}</span>` : "";
@@ -1685,7 +1772,7 @@ function detail(p, list, w, warns){
   if (other.length){
     wxHtml += `<h2 style="margin-top:14px">NWS warnings</h2>` + other.map(x => `<div class="alert k-danger"><div class="at">${esc(x.event)}</div><div class="ad">${esc(x.headline||"")}</div></div>`).join("");
   }
-  return `<div class="dbox"><div>${floodHTML(warns)}${liveRoadsHTML(p.code)}${alertsHtml}${roadWorkLink(p.code)}${p.note?`<p class="am">${esc(p.note)}</p>`:""}${roadLinks(p.id)}${campLink(p.code)}<p class="am"><a href="https://www.nps.gov/${p.code}/planyourvisit/conditions.htm" target="_blank" rel="noopener">Official ${esc(p.name)} conditions page</a></p></div><div>${wxHtml}</div><div>${histHTML(p.id)}</div><div class="mviz" data-mviz="${p.id}"></div></div>`;
+  return `<div class="dbox"><div>${ffpHTML(p, w, warns)}${floodHTML(warns)}${liveRoadsHTML(p.code)}${alertsHtml}${roadWorkLink(p.code)}${p.note?`<p class="am">${esc(p.note)}</p>`:""}${roadLinks(p.id)}${campLink(p.code)}<p class="am"><a href="https://www.nps.gov/${p.code}/planyourvisit/conditions.htm" target="_blank" rel="noopener">Official ${esc(p.name)} conditions page</a></p></div><div>${wxHtml}</div><div>${histHTML(p.id)}</div><div class="mviz" data-mviz="${p.id}"></div></div>`;
 }
 
 // ---- Monthly visits and climate (R9) ----
