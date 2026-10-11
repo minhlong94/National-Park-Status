@@ -655,3 +655,19 @@ Requirements:
 - A "Storm or heavy snow" filter shows only the parks with such a day.
 - The page gets the daily wind gusts from Open-Meteo for these rules.
 - Status: done.
+
+### R39. Show the names of the closures, and find more trail closures
+
+Original text from the owner:
+
+> Zion status today is missing "The Virgin River Narrows and all slot canyons closed" https://www.nps.gov/zion/planyourvisit/conditions.htm
+
+Requirements:
+
+- The NPS alert was in the data, but the page did not show it clearly:
+  - Its text has no trail keyword, so the page put it in "Other", not in "Trails".
+  - The park row showed only "Partial closures", with no names.
+- The trail keywords now also include: hikers, wilderness, narrows, slot canyon(s), canyoneering, river hike(s).
+- The park row shows the names of up to 3 closures under the status, and "+N more closures" if there are more. The full name is in the tooltip.
+- In the park details, the alert groups that have a closure come first.
+- Status: done.
