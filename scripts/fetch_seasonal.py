@@ -188,7 +188,9 @@ def road_schedule(code, today):
             t = page_text(url)
         except RuntimeError:
             continue
-        t = re.split(r"(?i)oversnow|snowmobile", t)[0]  # only the dates for regular vehicles
+        i = t.find("Road Opening")  # start at the dates heading, if the page has one
+        t = t[i:] if i >= 0 else t
+        t = re.split(r"(?i)oversnow vehicle", t)[0]  # only the dates for regular vehicles
         ym = re.search(r"\b(20\d\d) Road Opening", t)
         year = int(ym.group(1)) if ym else today.year
         items = []
