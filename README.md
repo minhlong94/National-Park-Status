@@ -23,7 +23,7 @@ This page shows the current conditions of all 63 U.S. national parks. The list s
 - **Flash flood potential**: for Arches, Bryce Canyon, Canyonlands, Capitol Reef and Zion, the official NWS Salt Lake City Flash Flood Potential Rating (Not expected, Possible, Probable, Expected) for each day. For the other parks, an estimate by the page from the NWS flood alerts and the forecast rain and thunderstorms. The page labels it as an estimate.
 - **Storms and heavy snow**: the 3-day forecast marks the days with heavy rain, thunderstorms, strong wind gusts, freezing rain or heavy snow, from the forecast amounts. Orange means take care. Red means danger. The park row shows a badge with the strongest day, for example "Storm Sat". The **Storm or heavy snow** filter shows only these parks.
 - **Flood alerts**: the page finds the NWS alerts for the whole park area, not only for one point. A flash flood warning shows in red under the park status, and a flood watch or advisory shows in orange. The **Flood alerts** filter shows only the parks with a flood alert. The park details show the alert text first.
-- **Live road status (Glacier)**: the closed roads and the roads with construction, from the park road map. The NPS alerts do not always include these closures. The closed roads are added to the Roads count. Other parks do not publish this data now.
+- **Live road status (Glacier)**: the closed and partly closed roads and the roads with construction, from the park road map. The park row shows the names of the main closed roads, and the seasonal road history shows the status of Going-to-the-Sun Road now. The NPS alerts do not always include these closures. The closed roads are added to the Roads count. Other parks do not publish this data now.
 - **Road work pages**: a link to the road construction and project work page of the park, if the park has one.
 - **Nearby airports**: 2 to 4 airports with scheduled flights near each park, with the IATA code and the straight-line distance.
 - **Campgrounds and visitor centers**: a separate section after the seasonal road history. Select a park to see a calendar of the next 12 months: one row for each campground and visitor center, green when open and gray when closed for the season, with a line for today. The data comes from NPS. For Yosemite, a second calendar shows the usual open dates of each campground and trail in the last 10 years. The park details have a link to this section.
@@ -31,7 +31,7 @@ This page shows the current conditions of all 63 U.S. national parks. The list s
 
 The table shows 10 parks on each page. The first page shows the 10 most visited parks.
 
-The page saves the last park statuses, live road status, weather and warnings in your browser. When you open the page again, it shows the saved data and the time of that data. Click **Refresh data** to get new data. On your first visit, the page gets the data one time. The monthly data and the fall color data are stored in files and do not refresh with this button.
+The page saves the last park statuses, live road status, weather and warnings in your browser. When you open the page again, it shows the saved data and the time of that data. If the data is older than 6 hours, the time is red. Click **Refresh data** to get new data. On your first visit, the page gets the data one time. The monthly data and the fall color data are stored in files and do not refresh with this button.
 
 ## Data sources
 

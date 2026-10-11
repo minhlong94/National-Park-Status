@@ -111,6 +111,10 @@ tr.park:hover td{background:color-mix(in srgb,var(--pine) 6%,transparent)}
 .hzb{display:inline-block;margin-top:6px;padding:2px 7px;border-radius:6px;font-size:12px;font-weight:700;line-height:1.3;white-space:normal}
 .hzb.h2{background:var(--closed);color:#fff}
 .hzb.h1{background:color-mix(in srgb, var(--partial) 18%, transparent);border:1px solid var(--partial);color:var(--ink)}
+.stamp.stale{color:var(--closed);font-weight:600}
+.rnow{margin:0 0 10px;padding:8px 12px;border-radius:8px;font-size:15px;border:1px solid var(--line)}
+.rnow.closed{border-color:var(--closed);background:color-mix(in srgb, var(--closed) 12%, var(--panel))}
+.rnow.open{border-color:var(--open);background:color-mix(in srgb, var(--open) 10%, var(--panel))}
 .cll{list-style:none;margin:5px 0 0;padding:0;font-size:12px;line-height:1.3;max-width:24ch}
 .cll li{padding-left:10px;position:relative;margin-top:3px}
 .cll li::before{content:"";position:absolute;left:0;top:.45em;width:5px;height:5px;border-radius:50%;background:var(--closed)}
@@ -945,7 +949,7 @@ async function loadWeather(){
 const LIVE_ROADS = {
   glac: {
     sql: "https://carto.nps.gov/user/glaclive/api/v2/sql",
-    q: "SELECT rdname, status, reason, seasdesc FROM glac_road_nds WHERE status IN ('closed','construction')",
+    q: "SELECT rdname, status, reason, seasdesc FROM glac_road_nds WHERE status IS NOT NULL",
     map: "https://www.nps.gov/glac/planyourvisit/directions.htm",
   },
 };
@@ -971,30 +975,39 @@ async function loadRoads(){
       const by = {};
       (j.rows || []).forEach(r => {
         const name = (r.rdname || "Unnamed road").trim();
-        const e = by[name] || (by[name] = {name, closed:false, reasons:[], season:r.seasdesc || ""});
-        if (r.status === "closed") e.closed = true;
-        const why = (r.reason || "").trim();
+        const e = by[name] || (by[name] = {name, closed:false, partial:false, nClosed:0, nOpen:0, nWork:0, reasons:[], season:r.seasdesc || ""});
+        if (r.status === "closed") e.nClosed++; else if (r.status === "construction") e.nWork++; else e.nOpen++;
+        const why = (r.status === "open" ? "" : r.reason || "").trim();
         if (why && !e.reasons.includes(why)) e.reasons.push(why);
       });
-      out[code] = Object.values(by).sort((a,b) => (b.closed - a.closed) || a.name.localeCompare(b.name));
+      // Keep the roads with a closed or construction part. "partial" = some parts of the road are still open.
+      out[code] = Object.values(by).filter(e => e.nClosed || e.nWork).map(e => Object.assign(e, {closed: e.nClosed > 0, partial: e.nClosed > 0 && e.nOpen > 0}))
+        .sort((a,b) => roadRank(a.name) - roadRank(b.name) || (b.closed - a.closed) || a.name.localeCompare(b.name));
       ok++;
     }catch(e){ /* keep the saved data of this park */ }
   }));
   const n = Object.keys(LIVE_ROADS).length;
   if (ok === 0) throw new Error("Road status unreachable");
   state.roads = Object.assign({}, state.roads, out);
-  const closed = Object.values(out).reduce((t, l) => t + l.filter(r => r.closed).length, 0);
+  const closed = Object.values(out).reduce((t, l) => t + l.filter(r => r.closed && roadRank(r.name) < 3).length, 0);
   setSrc("roads", ok === n ? "ok" : "err", `${closed} roads closed`);
 }
-const liveClosed = code => ((state.roads || {})[code] || []).filter(r => r.closed).length;
+// Main roads first: the roads of the seasonal road history, then highways and roads, then campground loops and small roads
+function roadRank(name){
+  if (ROADS.some(r => r.name.toLowerCase() === name.toLowerCase())) return 0;
+  if (/no name|unnamed/i.test(name)) return 3;
+  return /highway|road/i.test(name) && !/campground|loop|picnic/i.test(name) ? 1 : 2;
+}
+const roadState = r => r.partial ? "Partly closed" : r.closed ? "Closed" : "Construction";
+const liveClosed = code => ((state.roads || {})[code] || []).filter(r => r.closed && roadRank(r.name) < 3).length;
 function liveRoadsHTML(code){
   const src = LIVE_ROADS[code];
   if (!src) return "";
   const list = (state.roads || {})[code];
-  let h = `<h2>Live road status${list ? ` (${list.filter(r => r.closed).length} closed)` : ""}</h2>`;
+  let h = `<h2>Live road status${list ? ` (${list.filter(r => r.closed && roadRank(r.name) < 3).length} closed)` : ""}</h2>`;
   if (!list) h += `<p class="none">The live road status did not load.</p>`;
   else if (!list.length) h += `<p class="none">The park road map shows no closed roads.</p>`;
-  else h += list.map(r => `<div class="alert ${r.closed ? "k-closure" : "k-caution"}"><div class="at">${esc(r.name)}: ${r.closed ? "Closed" : "Construction"}</div>
+  else h += list.map(r => `<div class="alert ${r.closed ? "k-closure" : "k-caution"}"><div class="at">${esc(r.name)}: ${roadState(r)}</div>
     ${r.reasons.length ? `<div class="ad">${esc(r.reasons.join("; "))}</div>` : ""}${r.season ? `<div class="am">Usual season: ${esc(r.season)}</div>` : ""}</div>`).join("");
   return h + `<p class="am"><a href="${esc(src.map)}" target="_blank" rel="noopener">Park road status map</a></p>`;
 }
@@ -1132,7 +1145,9 @@ function restoreCache(){
   });
   state.loaded = true;
   const oldest = Math.min(...Object.values(cacheTime));
-  $("stamp").textContent = `Saved data from ${fmtTime(oldest)}`;
+  const old = Date.now() - oldest > 6 * 3600000;
+  $("stamp").textContent = `Saved data from ${fmtTime(oldest)}` + (old ? ". Click Refresh data for the current status." : "");
+  $("stamp").classList.toggle("stale", old);
   $("stamp").title = "The page shows the data from your last refresh. Click Refresh data to get new data.";
   return true;
 }
@@ -1164,10 +1179,12 @@ async function refresh(){
   } else banner.hidden = true;
   state.loaded = true;
   $("stamp").textContent = "Updated " + fmtTime(now);
+  $("stamp").classList.remove("stale");
   $("stamp").title = "";
   btn.disabled = false; btn.textContent = "Refresh data";
   saveCache();
   render();
+  renderRoads();
 }
 
 function parkStatus(list){
@@ -1391,6 +1408,16 @@ function roadChart(rows, intr){
 }
 const ROAD_YEARS = 10; // show only the last 10 calendar years, newest first
 let roadSel = "tioga";
+// The live status of a road in the history, if the park has a live road map (R41)
+function roadNow(r){
+  if (!LIVE_ROADS[r.park]) return "";
+  const list = (state.roads || {})[r.park];
+  if (!list) return "";
+  const e = list.find(x => x.name.toLowerCase() === r.name.toLowerCase());
+  const when = cacheTime.roads ? ` (park road map, ${fmtTime(cacheTime.roads)})` : "";
+  return e ? `<p class="rnow closed"><b>Now: ${roadState(e)}</b>${e.reasons.length ? ` · ${esc(e.reasons.join("; "))}` : ""}${esc(when)}</p>`
+           : `<p class="rnow open"><b>Now: Open</b>${esc(when)}</p>`;
+}
 function renderRoads(){
   $("rtabs").innerHTML = ROADS.map(r=>`<button data-road="${r.id}" aria-pressed="${r.id===roadSel}">${esc(r.name)}<small>${esc(PARK_BY[r.park].name)}</small></button>`).join("");
   const r = ROADS.find(z=>z.id===roadSel);
@@ -1403,7 +1430,7 @@ function renderRoads(){
   const iyears = Object.keys(intr).map(Number).sort((a,b)=>b-a);
   const intrList = iyears.length ? `<div class="rintr"><h3>Short closures after the road opened</h3><ul class="hist">${iyears.flatMap(yr=>intr[yr].map(iv=>`<li><div class="hd"><b>${esc(iv.from)}${iv.to?"–"+esc(iv.to):"–?"}, ${yr}</b>${iv.to?(doy(yr,iv.to)-doy(yr,iv.from))+" days":"Reopening not confirmed"}</div><div><div class="ht"><span class="tag full">Closed</span>${esc(iv.what)}</div><div class="hn">${esc(iv.why)}. ${esc(iv.detail)}</div></div></li>`)).join("")}</ul></div>` : "";
   $("rbody").innerHTML = `
-    <p class="rabout"><b>${esc(r.sub)}.</b> ${esc(r.about)} <a href="${r.src}" target="_blank" rel="noopener">NPS source</a></p>
+    ${roadNow(r)}<p class="rabout"><b>${esc(r.sub)}.</b> ${esc(r.about)} <a href="${r.src}" target="_blank" rel="noopener">NPS source</a></p>
     <div class="rstats">
       <div><strong>${doyLabel(st.avgO)}</strong><span>Average opening (${st.n} years, ${st.to}–${st.from})</span></div>
       <div><strong>${doyLabel(st.medO)}</strong><span>Median opening</span></div>
@@ -1590,7 +1617,7 @@ function render(){
       <td class="rank">${p.r}</td>
       <td><div class="pname">${esc(p.name)}</div><div class="pstate">${esc(p.st)}</div>${bestBanner(p.id)}${airportLine(p.id)}</td>
       <td class="num">${shortNum(p.v)}</td>
-      <td><span class="chip ${st.cls}">${st.label}</span>${closureLines(list)}${floodBadge(warns)}${ffpBadge(p, w, warns)}</td>
+      <td><span class="chip ${st.cls}">${st.label}</span>${closureLines(list, p.code)}${floodBadge(warns)}${ffpBadge(p, w, warns)}</td>
       ${cell(c.road)}${cell(c.trail)}${cell(c.facility)}${cell(c.other)}
       <td>${now}</td><td>${today}</td></tr>`);
     html.push(`<tr class="detail" data-for="${p.id}" ${isOpen? "": "hidden"}><td colspan="10">${detail(p, list, w, warns)}</td></tr>`);
@@ -1642,8 +1669,10 @@ function hazardBadge(w){
 }
 
 // The names of the closures under the status (R39), so the reader sees what is closed without opening the park
-function closureLines(list){
-  const cl = (list || []).filter(a => a.isClosure);
+function closureLines(list, code){
+  const live = ((state.roads || {})[code] || []).filter(r => r.closed && roadRank(r.name) < 3)
+    .map(r => ({title: `${r.name} ${roadState(r).toLowerCase()}${r.reasons.length ? ` (${r.reasons[0].toLowerCase()})` : ""}`, live: true}));
+  const cl = [...live.filter(x => roadRank(x.title) < 2), ...(list || []).filter(a => a.isClosure), ...live.filter(x => roadRank(x.title) >= 2)];
   if (!cl.length) return "";
   const short = t => { t = (t || "").trim(); return t.length > 70 ? t.slice(0, 68).replace(/\s+\S*$/, "") + "…" : t; };
   return `<ul class="cll">${cl.slice(0, 3).map(a => `<li title="${esc(a.title)}">${esc(short(a.title))}</li>`).join("")}</ul>` +

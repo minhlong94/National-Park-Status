@@ -691,3 +691,21 @@ Requirements:
 - The "Flood alerts" filter also shows the parks with a rating of Probable or Expected.
 - The page does not use an official rating that is older than 36 hours. The page saves the rating in the browser with the other data (R29).
 - Status: done.
+
+### R41. Show live road closures in the park row, and old saved data
+
+Original text from the owner:
+
+> GTTS closed yet you didnt catch it (screenshot of the Glacier road map: "Going-to-the-Sun Road Closed, Winter Weather")
+
+Requirements:
+
+- The live road data of Glacier had the closure, but the page did not show it clearly:
+  - The park row showed only the number of roads, not their names.
+  - The road is closed only in part (the ends stay open), and the page did not show this.
+  - The page shows the data from the last refresh (R29). Old saved data did not have the closure, and the page did not tell the reader that the data was old.
+- The page reads all the road parts that have a status. A road is "Closed" when all its parts with a status are closed, and "Partly closed" when some parts are still open.
+- The park row lists the live road closures with the NPS closures (up to 3 names). Main roads come first, for example "Going-to-the-Sun Road partly closed (winter weather)". Campground loops come after the NPS closures. Road parts with no name are not counted or listed.
+- The seasonal road history shows the live status of the road now, if the park has a live road map ("Now: Partly closed · Winter Weather").
+- If the saved data is older than 6 hours, the time at the top is red and says "Click Refresh data for the current status". The page still gets new data only when the reader clicks the button.
+- Status: done.
