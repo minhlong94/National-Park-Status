@@ -226,6 +226,7 @@ RANGE_RX = re.compile(MONTHS_RX + r"\s+(\d{1,2})(?:st|nd|rd|th)?(?:,?\s*20\d\d)?
 # Rules that are not closures of a place to people (food storage, smoking, vehicles, boats, fishing, camping rules)
 RULE_RX = re.compile(r"(?i)smok|food|garbage|inspect|watercraft|vessel|truck|trailer|vehicle length|bicycl|fishing|angling|hunting|firearm|"
                      r"camping conditions|campfire|fires? (are|is) |permit fee|quiet hours|pets?\b|dogs?\b|drone|aircraft|snowmobil|over.?snow|speed")
+NOT_CLOSURE_RX = re.compile(r"(?i)\d{1,2}(:\d\d)?\s*(am|pm|a\.m\.|p\.m\.)|reservations? (are |is )?required|no ticket|holidays?\b|nights? in a")
 CLOSED_RX = re.compile(r"\b(closed|closure|closures|no (public )?entry|prohibited|off.limits|avoid)\b", re.I)
 
 
@@ -272,8 +273,10 @@ def closure_sentences(text):
         for sent in re.split(r"(?<=[.;])\s+", line):
             if not (25 <= len(sent) <= 600) or not (CLOSED_RX.search(sent) or CLOSED_RX.search(line) or re.search(r"(?i)closure", heading)):
                 continue
-            if RULE_RX.search(sent):
-                continue
+            if RULE_RX.search(sent) or NOT_CLOSURE_RX.search(sent) or re.match(r"(?:19|20)\d\d(?:\s*[-–]\s*\d{2,4})?\s*:", line):
+                continue  # a rule, opening hours, a reservation, or a note about a past year
+            if re.search(r"(?i)\bopen\b", sent) and not CLOSED_RX.search(sent):
+                continue  # dates when something is open
             t = line if len(line) <= 400 else sent  # a short list item stays whole, so its subject stays with the dates
             for m in RANGE_RX.finditer(sent):
                 a, b = MON.get(m.group(1)[:3].lower()), MON.get(m.group(3)[:3].lower())
@@ -312,12 +315,16 @@ def area_closures(code):
         for c in closure_sentences(text):
             c["src"] = url
             found.append(c)
-    # one entry for each sentence and date range
-    out, keys = [], set()
+    # one entry for each closure: the same dates and similar words are the same closure
+    words = lambda t: set(re.findall(r"[a-z]{4,}", t.lower()))
+    out = []
     for c in found:
-        k = (c["t"][:80].lower(), c["from"], c["to"])
-        if k not in keys:
-            keys.add(k); out.append(c)
+        if c["from"] == "01-01" and c["to"] == "12-31":
+            continue  # all year: a rule, not a seasonal closure
+        same = [o for o in out if o["from"] == c["from"] and o["to"] == c["to"]
+                and len(words(o["t"]) & words(c["t"])) >= 0.35 * min(len(words(o["t"])), len(words(c["t"])) or 1)]
+        if not same:
+            out.append(c)
     print(f"    {code}: {len(seen)} pages tried, compendium: {compendium}", flush=True)
     return out[:40], compendium
 
