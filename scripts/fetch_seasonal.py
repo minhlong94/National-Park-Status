@@ -218,11 +218,14 @@ def road_schedule(code, today):
 
 
 # ---- Seasonal area closures (R44): wildlife closures, area and trail closures with yearly dates ----
-AREA_PAGES = ["planyourvisit/hours.htm", "planyourvisit/conditions.htm", "planyourvisit/seasonal.htm", "planyourvisit/closures.htm",
+AREA_PAGES = ["planyourvisit/index.htm", "learn/management/index.htm", "planyourvisit/hours.htm", "planyourvisit/conditions.htm", "planyourvisit/seasonal.htm", "planyourvisit/closures.htm",
               "planyourvisit/wildlife-closures.htm", "learn/management/wildlife-closures.htm", "learn/management/closures.htm",
               "learn/management/compendium.htm", "learn/management/superintendents-compendium.htm"]
 MONTHS_RX = r"(January|February|March|April|May|June|July|August|September|October|November|December|Jan|Feb|Mar|Apr|Jun|Jul|Aug|Sept?|Oct|Nov|Dec)\.?"
 RANGE_RX = re.compile(MONTHS_RX + r"\s+(\d{1,2})(?:st|nd|rd|th)?(?:,?\s*20\d\d)?\)?\s*(?:through|thru|to|until|-|–|—)\s*" + MONTHS_RX + r"\s+(\d{1,2})(?:st|nd|rd|th)?", re.I)
+# Rules that are not closures of a place to people (food storage, smoking, vehicles, boats, fishing, camping rules)
+RULE_RX = re.compile(r"(?i)smok|food|garbage|inspect|watercraft|vessel|truck|trailer|vehicle length|bicycl|fishing|angling|hunting|firearm|"
+                     r"camping conditions|campfire|fires? (are|is) |permit fee|quiet hours|pets?\b|dogs?\b|drone|aircraft|snowmobil|over.?snow|speed")
 CLOSED_RX = re.compile(r"\b(closed|closure|closures|no (public )?entry|prohibited|off.limits|avoid)\b", re.I)
 
 
@@ -269,6 +272,8 @@ def closure_sentences(text):
         for sent in re.split(r"(?<=[.;])\s+", line):
             if not (25 <= len(sent) <= 600) or not (CLOSED_RX.search(sent) or CLOSED_RX.search(line) or re.search(r"(?i)closure", heading)):
                 continue
+            if RULE_RX.search(sent):
+                continue
             t = line if len(line) <= 400 else sent  # a short list item stays whole, so its subject stays with the dates
             for m in RANGE_RX.finditer(sent):
                 a, b = MON.get(m.group(1)[:3].lower()), MON.get(m.group(3)[:3].lower())
@@ -281,8 +286,8 @@ def closure_sentences(text):
 def area_closures(code):
     """Seasonal closures with yearly dates from the park pages and the Superintendent's Compendium (also PDF)."""
     base = f"https://www.nps.gov/{code}/"
-    todo, seen, found = [base + p for p in AREA_PAGES], set(), []
-    while todo and len(seen) < 16:
+    todo, seen, found, compendium = [base + p for p in AREA_PAGES], set(), [], None
+    while todo and len(seen) < 24:
         url = todo.pop(0)
         if url in seen:
             continue
@@ -290,6 +295,8 @@ def area_closures(code):
         data, ctype = page_html(url)
         if not data:
             continue
+        if re.search(r"(?i)compendium", url) and not compendium:
+            compendium = url
         if "pdf" in ctype or url.lower().endswith(".pdf"):
             text = pdf_to_text(data)
         else:
@@ -298,7 +305,7 @@ def area_closures(code):
             # follow links about closures or the compendium, in this park (one level)
             if url in [base + p for p in AREA_PAGES]:
                 for href, label in re.findall(r'href="([^"#]+)"[^>]*>(.*?)</a>', s, flags=re.S):
-                    if re.search(r"(?i)closure|compendium", href + " " + label):
+                    if re.search(r"(?i)closure|compendium|bear.?management|wildlife.?(closure|protection)|restricted area|raptor|nesting", href + " " + label):
                         u = href if href.startswith("http") else "https://www.nps.gov" + href if href.startswith("/") else None
                         if u and (u.startswith(base) or "/common/uploads/" in u or u.startswith("https://www.nps.gov/" + code)) and u not in seen:
                             todo.append(u)
@@ -311,7 +318,8 @@ def area_closures(code):
         k = (c["t"][:80].lower(), c["from"], c["to"])
         if k not in keys:
             keys.add(k); out.append(c)
-    return out[:40]
+    print(f"    {code}: {len(seen)} pages tried, compendium: {compendium}", flush=True)
+    return out[:40], compendium
 
 
 def main():
@@ -341,10 +349,12 @@ def main():
             data["parks"].setdefault(code, {})["history"] = h
             data["parks"][code]["page"] = url
     for code in codes:
-        ac = area_closures(code)
+        ac, comp = area_closures(code)
         print(f"  areas {code}: {len(ac)}", flush=True)
         if ac:
             data["parks"].setdefault(code, {})["areas"] = ac
+        if comp:
+            data["parks"].setdefault(code, {})["compendium"] = comp
         rs = road_schedule(code, today)
         if rs:
             data["parks"].setdefault(code, {})["roads"] = rs
