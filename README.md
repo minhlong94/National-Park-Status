@@ -6,7 +6,7 @@ This page shows the current conditions of all 63 U.S. national parks. The list s
 
 ## What the page shows
 
-- **Status of each park**: open, partial closures or closed. The status comes from official NPS alerts.
+- **Status of each park**: open, partial closures or closed. The status comes from official NPS alerts. The names of up to 3 closures show under the status.
 - **Number of alerts** for roads, trails, facilities and other subjects. Click a park row to see all its alerts, its closure history and a 3-day forecast.
 - **Current weather and the forecast for today.** Temperatures are in °F and °C. Rain and snow are in inches and mm. The page also shows the active warnings from the National Weather Service.
 - **Seasonal road history**: the opening and closing dates for Tioga Road, Glacier Point Road, Mariposa Grove Road, Going-to-the-Sun Road and Trail Ridge Road. The page shows only the last 10 years, with the newest year first.
