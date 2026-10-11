@@ -1231,7 +1231,8 @@ function areaKind(t){
 }
 function areaName(t){
   t = t.replace(/^\s*(\(?[a-z0-9]{1,3}[).]\s*)+/i, "").replace(/^(the following|following)\s+/i, "");
-  const m = t.match(/^(.{6,90}?)\s+(is|are|will be|may be|shall be)\s+(closed|restricted)/i) || t.match(/^(.{6,90}?)\s+closed\b/i);
+  const m = t.match(/\bavoid\s+(?:the\s+)?(.{4,70}?)\s+(?:from\s+)?(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)/i) ||
+    t.match(/^(.{6,90}?)\s+(is|are|will be|may be|shall be)\s+(closed|restricted)/i) || t.match(/^(.{6,90}?)\s+closed\b/i);
   const n = m ? m[1] : t;
   return n.length > 90 ? n.slice(0, 88).replace(/\s+\S*$/, "") + "…" : n;
 }

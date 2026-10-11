@@ -220,7 +220,9 @@ def road_schedule(code, today):
 # ---- Seasonal area closures (R44): wildlife closures, area and trail closures with yearly dates ----
 AREA_PAGES = ["planyourvisit/index.htm", "learn/management/index.htm", "planyourvisit/hours.htm", "planyourvisit/conditions.htm", "planyourvisit/seasonal.htm", "planyourvisit/closures.htm",
               "planyourvisit/wildlife-closures.htm", "learn/management/wildlife-closures.htm", "learn/management/closures.htm",
-              "learn/management/compendium.htm", "learn/management/superintendents-compendium.htm"]
+              "learn/management/compendium.htm", "learn/management/superintendents-compendium.htm",
+              "learn/management/superintendent-s-compendium.htm", "learn/management/lawsandpolicies.htm",
+              "learn/management/laws-and-policies.htm", "learn/management/park-compendium.htm"]
 MONTHS_RX = r"(January|February|March|April|May|June|July|August|September|October|November|December|Jan|Feb|Mar|Apr|Jun|Jul|Aug|Sept?|Oct|Nov|Dec)\.?"
 RANGE_RX = re.compile(MONTHS_RX + r"\s+(\d{1,2})(?:st|nd|rd|th)?(?:,?\s*20\d\d)?\)?\s*(?:through|thru|to|until|-|–|—)\s*" + MONTHS_RX + r"\s+(\d{1,2})(?:st|nd|rd|th)?", re.I)
 # Rules that are not closures of a place to people (food storage, smoking, vehicles, boats, fishing, camping rules)
@@ -291,29 +293,29 @@ def closure_sentences(text):
 def area_closures(code):
     """Seasonal closures with yearly dates from the park pages and the Superintendent's Compendium (also PDF)."""
     base = f"https://www.nps.gov/{code}/"
-    todo, seen, found, compendium = [base + p for p in AREA_PAGES], set(), [], None
-    while todo and len(seen) < 24:
-        url = todo.pop(0)
+    todo, seen, found, compendium = [(base + p, 0) for p in AREA_PAGES], set(), [], None
+    while todo and len(seen) < 30:
+        url, depth = todo.pop(0)
         if url in seen:
             continue
         seen.add(url)
         data, ctype = page_html(url)
         if not data:
             continue
-        if re.search(r"(?i)compendium", url) and not compendium:
+        if re.search(r"(?i)compendium", url) and (not compendium or url.lower().endswith(".pdf") is False and compendium.lower().endswith(".pdf")):
             compendium = url
         if "pdf" in ctype or url.lower().endswith(".pdf"):
             text = pdf_to_text(data)
         else:
             s = data.decode("utf-8", "ignore")
             text = html_to_text(s)
-            # follow links about closures or the compendium, in this park (one level)
-            if url in [base + p for p in AREA_PAGES]:
+            # follow links about closures or the compendium, in this park (two levels)
+            if depth < 2:
                 for href, label in re.findall(r'href="([^"#]+)"[^>]*>(.*?)</a>', s, flags=re.S):
                     if re.search(r"(?i)closure|compendium|bear.?management|wildlife.?(closure|protection)|restricted area|raptor|nesting", href + " " + label):
                         u = href if href.startswith("http") else "https://www.nps.gov" + href if href.startswith("/") else None
                         if u and (u.startswith(base) or "/common/uploads/" in u or u.startswith("https://www.nps.gov/" + code)) and u not in seen:
-                            todo.append(u)
+                            todo.append((u, depth + 1))
         for c in closure_sentences(text):
             c["src"] = url
             found.append(c)
