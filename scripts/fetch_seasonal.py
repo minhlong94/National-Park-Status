@@ -226,9 +226,9 @@ AREA_PAGES = ["planyourvisit/index.htm", "learn/management/index.htm", "planyour
 MONTHS_RX = r"(January|February|March|April|May|June|July|August|September|October|November|December|Jan|Feb|Mar|Apr|Jun|Jul|Aug|Sept?|Oct|Nov|Dec)\.?"
 RANGE_RX = re.compile(MONTHS_RX + r"\s+(\d{1,2})(?:st|nd|rd|th)?(?:,?\s*20\d\d)?\)?\s*(?:through|thru|to|until|-|–|—)\s*" + MONTHS_RX + r"\s+(\d{1,2})(?:st|nd|rd|th)?", re.I)
 # Rules that are not closures of a place to people (food storage, smoking, vehicles, boats, fishing, camping rules)
-RULE_RX = re.compile(r"(?i)smok|food|garbage|inspect|watercraft|vessel|truck|trailer|vehicle length|bicycl|fishing|angling|hunting|firearm|"
+RULE_RX = re.compile(r"(?i)surf|skim|smok|food|garbage|inspect|watercraft|vessel|truck|trailer|vehicle length|bicycl|fishing|angling|hunting|firearm|"
                      r"camping conditions|campfire|fires? (are|is) |permit fee|quiet hours|pets?\b|dogs?\b|drone|aircraft|snowmobil|over.?snow|speed")
-NOT_CLOSURE_RX = re.compile(r"(?i)\d{1,2}(:\d\d)?\s*(am|pm|a\.m\.|p\.m\.)|reservations? (are |is )?required|no ticket|holidays?\b|nights? in a")
+NOT_CLOSURE_RX = re.compile(r"(?i)defined as|calendar year|\d{1,2}(:\d\d)?\s*(am|pm|a\.m\.|p\.m\.)|reservations? (are |is )?required|no ticket|holidays?\b|nights? in a")
 CLOSED_RX = re.compile(r"\b(closed|closure|closures|no (public )?entry|prohibited|off.limits|avoid)\b", re.I)
 
 
@@ -270,7 +270,12 @@ def closure_sentences(text):
     for line in text.split("\n"):
         line = re.sub(r"\s+", " ", line).strip(" •·-*")
         if line.startswith("##"):
-            heading = line
+            heading = line[2:].strip()
+            continue
+        words_ = line.split()
+        if 1 < len(words_) <= 9 and len(line) < 70 and not line.endswith(".") and not RANGE_RX.search(line) \
+                and sum(w[:1].isupper() for w in words_) >= 0.6 * len(words_):
+            heading = line  # a short title line (also in PDF text), for example "Gallatin Bear Management Area"
             continue
         for sent in re.split(r"(?<=[.;])\s+", line):
             if not (25 <= len(sent) <= 600) or not (CLOSED_RX.search(sent) or CLOSED_RX.search(line) or re.search(r"(?i)closure", heading)):
@@ -280,13 +285,13 @@ def closure_sentences(text):
             if re.search(r"(?i)\bopen\b", sent) and not CLOSED_RX.search(sent):
                 continue  # dates when something is open
             t = line if len(line) <= 400 else sent  # a short list item stays whole, so its subject stays with the dates
-            if NOT_CLOSURE_RX.search(t) or len(re.findall(r"[A-Za-z]{4,}", t)) < 5:
+            if NOT_CLOSURE_RX.search(t) or RULE_RX.search(t) or len(re.findall(r"[A-Za-z]{4,}", t)) < 5:
                 continue  # opening hours, or no subject (for example "November 1 - April 14: Closed")
             for m in RANGE_RX.finditer(sent):
                 a, b = MON.get(m.group(1)[:3].lower()), MON.get(m.group(3)[:3].lower())
                 if a and b and 1 <= int(m.group(2)) <= 31 and 1 <= int(m.group(4)) <= 31:
                     out.append({"t": t, "from": f"{a:02d}-{int(m.group(2)):02d}", "to": f"{b:02d}-{int(m.group(4)):02d}",
-                                "vol": bool(re.search(r"(?i)voluntar", t))})
+                                "vol": bool(re.search(r"(?i)voluntar", t)), "h": heading[:80]})
     return out
 
 
