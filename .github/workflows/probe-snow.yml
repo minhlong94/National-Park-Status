@@ -1,0 +1,13 @@
+name: Probe past snow (temporary)
+on:
+  push:
+    branches: [claude/jolly-ptolemy-mtv1g5]
+    paths: [.github/workflows/probe-snow.yml]
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - run: |
+          curl -s --max-time 30 "https://api.open-meteo.com/v1/forecast?latitude=63.7298,48.7596,44.6,37.7456&longitude=-148.8879,-113.787,-110.5,-119.5936&current=snow_depth&daily=snowfall_sum&precipitation_unit=inch&timezone=auto&past_days=30&forecast_days=1" \
+          | python3 -c "import json,sys; d=json.load(sys.stdin); [print(x['current_units'], x['current'], x['daily_units'], 'n=',len(x['daily']['time']), x['daily']['time'][0], x['daily']['time'][-1], 'sum=',round(sum(v or 0 for v in x['daily']['snowfall_sum']),2), x['daily']['snowfall_sum'][-8:]) for x in d]"
