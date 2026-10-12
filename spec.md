@@ -756,3 +756,17 @@ Requirements:
 - For each park, the section links to the Superintendent's Compendium, the official list of all closures and rules, when the script finds it.
 - Coverage now: dated closures in 26 parks. Compendium links for 51 of the 62 park sites (Sequoia and Kings Canyon share one). The script cannot find a compendium for Acadia, Carlsbad Caverns, Denali, Death Valley, Gates of the Arctic, Glacier Bay, Katmai, Kobuk Valley, Lake Clark, American Samoa and White Sands.
 - Status: done.
+
+### R45. Past snow in the current weather
+
+Original text from the owner:
+
+> For each park current weather I also want past snow accumulations
+
+Requirements:
+
+- On "Refresh data", the page also gets from Open-Meteo the daily snowfall of the last 30 days and the snow depth now, for all parks in one request. If this request fails, the rest of the weather still shows.
+- The "Weather now" column of the park row shows a snow line when there was snow in the last 7 days or there is snow on the ground, for example "Snow: 5.4 in (137 mm) in 7 days · 4 in (100 mm) on the ground".
+- The park details show a "Past snow" table: today (so far), yesterday, the last 7 days, the last 30 days and the snow on the ground now. The values are for one point near the main visitor area.
+- The page saves the past snow in the browser with the other weather data (R29).
+- Status: done.
