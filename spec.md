@@ -770,3 +770,19 @@ Requirements:
 - The park details show a "Past snow" table: today (so far), yesterday, the last 7 days, the last 30 days and the snow on the ground now. The values are for one point near the main visitor area.
 - The page saves the past snow in the browser with the other weather data (R29).
 - Status: done.
+
+### R46. Usual closing day of Going-to-the-Sun Road
+
+Original text from the owner:
+
+> GTTS: fully open until the third Monday of October. Make it a default line for general anticipation
+
+Requirements:
+
+- Going-to-the-Sun Road has a usual plan: it is fully open over Logan Pass until the third Monday of October, if the weather permits.
+- The page calculates the date for this year (for example Monday, October 19, 2026). After that date, it shows the date of next year.
+- The line shows always, also with no live data:
+  - in the seasonal road history, above the live status ("Usually fully open until the third Monday of October (Mon, Oct 19, 2026), if the weather permits.");
+  - in the Glacier park details, under the live status of Going-to-the-Sun Road.
+- Other roads can have the same kind of rule (`plan` in the road data).
+- Status: done.

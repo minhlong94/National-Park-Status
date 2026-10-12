@@ -114,6 +114,7 @@ tr.park:hover td{background:color-mix(in srgb,var(--pine) 6%,transparent)}
 .stamp.stale{color:var(--closed);font-weight:600}
 .rnow{margin:0 0 10px;padding:8px 12px;border-radius:8px;font-size:15px;border:1px solid var(--line)}
 .rnow.closed{border-color:var(--closed);background:color-mix(in srgb, var(--closed) 12%, var(--panel))}
+.rnow.plan{border-color:var(--info);background:color-mix(in srgb, var(--info) 10%, var(--panel))}
 .rnow.open{border-color:var(--open);background:color-mix(in srgb, var(--open) 10%, var(--panel))}
 .snowp{display:block;color:var(--info);font-weight:600;margin-top:2px}
 .spast{min-width:0;width:100%;font-size:13px}
@@ -705,6 +706,8 @@ const ROADS = [
 2017|Did not open|Did not open||Closed all year for a restoration project
 2016|Did not open|Did not open||Closed from Jul 6 for a restoration project`},
  {id:"gtsr", park:"glac", name:"Going-to-the-Sun Road", sub:"Glacier · over Logan Pass (6,646 ft)",
+  // Usual plan (R46): fully open over Logan Pass until the third Monday of October (month 9 = October, weekday 1 = Monday)
+  plan:{close:{n:3, wd:1, m:9, text:"the third Monday of October"}},
   src:"https://www.nps.gov/glac/learn/news/logan-pass-opening-and-closing-dates.htm",
   about:"The dates are for vehicle access over Logan Pass. The lower sections stay open all year. Since 1992, the pass closes on the third Monday of October if the weather permits. NPS did not publish closing dates after 2022. During the season, weather can close the alpine section for some days. The list below the chart shows the recent closures.",
   rows:`2026|Jun 22||
@@ -1026,7 +1029,7 @@ function liveRoadsHTML(code){
   if (!list) h += `<p class="none">The live road status did not load.</p>`;
   else if (!list.length) h += `<p class="none">The park road map shows no closed roads.</p>`;
   else h += list.map(r => `<div class="alert ${r.closed ? "k-closure" : "k-caution"}"><div class="at">${esc(r.name)}: ${roadState(r)}</div>
-    ${r.reasons.length ? `<div class="ad">${esc(r.reasons.join("; "))}</div>` : ""}${r.season ? `<div class="am">Usual season: ${esc(r.season)}</div>` : ""}</div>`).join("");
+    ${r.reasons.length ? `<div class="ad">${esc(r.reasons.join("; "))}</div>` : ""}${r.season ? `<div class="am">Usual season: ${esc(r.season)}</div>` : ""}${(() => { const R0 = ROADS.find(x => x.plan && x.name.toLowerCase() === r.name.toLowerCase()); return R0 ? `<div class="am">${roadPlan(R0).replace(/<\/?(p|b)[^>]*>/g, "")}</div>` : ""; })()}</div>`).join("");
   return h + `<p class="am"><a href="${esc(src.map)}" target="_blank" rel="noopener">Park road status map</a></p>`;
 }
 function roadWorkLink(code){
@@ -1460,6 +1463,20 @@ function roadChart(rows, intr){
 const ROAD_YEARS = 10; // show only the last 10 calendar years, newest first
 let roadSel = "tioga";
 // The live status of a road in the history, if the park has a live road map (R41)
+// The usual closing day of a road, from a rule such as "the third Monday of October" (R46)
+function nthWeekday(y, m, wd, n){
+  const first = new Date(Date.UTC(y, m, 1)).getUTCDay();
+  return new Date(Date.UTC(y, m, 1 + ((wd - first + 7) % 7) + (n - 1) * 7));
+}
+function roadPlan(r){
+  if (!r.plan || !r.plan.close) return "";
+  const c = r.plan.close, t = new Date(), today = Date.UTC(t.getFullYear(), t.getMonth(), t.getDate());
+  let d = nthWeekday(t.getFullYear(), c.m, c.wd, c.n);
+  const past = d.getTime() < today;
+  if (past) d = nthWeekday(t.getFullYear() + 1, c.m, c.wd, c.n);
+  const lab = d.toLocaleDateString("en-US", {weekday:"short", month:"short", day:"numeric", year:"numeric", timeZone:"UTC"});
+  return `<p class="rnow plan"><b>Usually fully open until ${esc(c.text)}</b> (${past ? "next: " : ""}${esc(lab)}), if the weather permits.</p>`;
+}
 function roadNow(r){
   if (!LIVE_ROADS[r.park]) return "";
   const list = (state.roads || {})[r.park];
@@ -1503,7 +1520,7 @@ function renderRoads(){
   const iyears = Object.keys(intr).map(Number).sort((a,b)=>b-a);
   const intrList = iyears.length ? `<div class="rintr"><h3>Short closures after the road opened</h3><ul class="hist">${iyears.flatMap(yr=>intr[yr].map(iv=>`<li><div class="hd"><b>${esc(iv.from)}${iv.to?"–"+esc(iv.to):"–?"}, ${yr}</b>${iv.to?(doy(yr,iv.to)-doy(yr,iv.from))+" days":"Reopening not confirmed"}</div><div><div class="ht"><span class="tag full">Closed</span>${esc(iv.what)}</div><div class="hn">${esc(iv.why)}. ${esc(iv.detail)}</div></div></li>`)).join("")}</ul></div>` : "";
   $("rbody").innerHTML = `
-    ${roadNow(r)}<p class="rabout"><b>${esc(r.sub)}.</b> ${esc(r.about)} <a href="${r.src}" target="_blank" rel="noopener">NPS source</a></p>
+    ${roadPlan(r)}${roadNow(r)}<p class="rabout"><b>${esc(r.sub)}.</b> ${esc(r.about)} <a href="${r.src}" target="_blank" rel="noopener">NPS source</a></p>
     <div class="rstats">
       <div><strong>${doyLabel(st.avgO)}</strong><span>Average opening (${st.n} years, ${st.to}–${st.from})</span></div>
       <div><strong>${doyLabel(st.medO)}</strong><span>Median opening</span></div>
