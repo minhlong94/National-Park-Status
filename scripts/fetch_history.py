@@ -37,6 +37,7 @@ TRIES = 3                   # tries for each request
 SCRIPT_DEADLINE = 12 * 60   # seconds for the whole script
 MAX_FAILS_IN_A_ROW = 3      # stop using a host after this many parks fail one after the other
 # NPS Visitor Use Statistics reports Sequoia and Kings Canyon as separate units.
+EXPECTED_PARKS = 64  # 63 until 2026; Chiricahua became the 64th national park (R47)
 STATS_CODE = {"seki": "SEQU", "kica": "KICA"}
 START = time.monotonic()
 
@@ -107,8 +108,8 @@ def load_parks():
     for m in re.finditer(r'\{r:(\d+), code:"(\w+)",(?: id:"(\w+)",)? name:"([^"]+)".*?lat:(-?[\d.]+), lon:(-?[\d.]+)', html):
         r, code, pid, name, lat, lon = m.groups()
         parks.append({"id": pid or code, "code": code, "name": name, "lat": float(lat), "lon": float(lon)})
-    if len(parks) != 63:
-        sys.exit(f"Expected 63 parks in index.html, found {len(parks)}")
+    if len(parks) != EXPECTED_PARKS:
+        sys.exit(f"Expected {EXPECTED_PARKS} parks in index.html, found {len(parks)}")
     return parks
 
 
@@ -194,10 +195,37 @@ def fetch_weather(p, start, end):
 
 
 # ---- main ----
+def backfill_new_parks(store, parks):
+    """A park that is new in index.html (for example Chiricahua, R47) gets all the months that the file has.
+    The other parks do not change. If a request fails, the new park is not added, and the next run tries again."""
+    new = [p for p in parks if p["id"] not in store["parks"]]
+    if not new:
+        return False
+    months = [add_months(store["first"], k) for k in range(months_between(store["first"], store["last"]) + 1)]
+    print(f"New parks: {[p['id'] for p in new]}. Getting {store['first']} to {store['last']} for them.", flush=True)
+    visits = fetch_visits(sorted({stats_code(p) for p in new}), store["first"], store["last"])
+    for p in new:
+        try:
+            w = fetch_weather(p, store["first"], store["last"])
+        except Exception as e:  # noqa: BLE001
+            print(f"ERROR weather {p['id']}: {e}. The park is not added now.", flush=True)
+            continue
+        pv = visits.get(stats_code(p), {})
+        rec = {"v": [], "hi": [], "lo": [], "rain": [], "snow": []}
+        for mon in months:
+            rec["v"].append(pv.get(mon))
+            for key in ("hi", "lo", "rain", "snow"):
+                rec[key].append((w.get(mon) or {}).get(key))
+        store["parks"][p["id"]] = rec
+    return True
+
+
 def main():
     today = dt.date.today()
     parks = load_parks()
     store = load_store()
+    if store is not None and backfill_new_parks(store, parks):
+        save_store(store)
     target = last_complete_month(today)  # the newest month that has ended
 
     if store is None:

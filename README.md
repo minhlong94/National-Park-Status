@@ -2,7 +2,7 @@
 
 **Live page: https://minhlong94.github.io/National-Park-Status/**
 
-This page shows the current conditions of all 63 U.S. national parks. The list sorts the parks by 2025 recreation visits.
+This page shows the current conditions of all 64 U.S. national parks, including Chiricahua (Arizona), which became a national park in 2026. The list sorts the parks by 2025 recreation visits.
 
 ## What the page shows
 
@@ -101,7 +101,7 @@ The script `scripts/fetch_seasonal.py` makes `data/seasonal.js`. It gets the sea
 
 ## Airport data
 
-The file `data/airports.js` keeps the nearby airports of each park. The script `scripts/build_airports.py` makes it from the OurAirports data. Airports change very little, so no workflow refreshes this file. To update it, run:
+The file `data/airports.js` keeps the nearby airports of each park. The script `scripts/build_airports.py` makes it from the OurAirports data. Airports change very little, so no schedule refreshes this file. The workflow `.github/workflows/build-airports.yml` makes it again when the script changes, or when you start it from the **Actions** tab. You can also run:
 
 ```sh
 python3 scripts/build_airports.py
