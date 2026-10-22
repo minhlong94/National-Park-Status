@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Park Conditions — All 63 U.S. National Parks</title>
+<title>Park Conditions — All 64 U.S. National Parks</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo+Narrow:wght@500;600;700&family=Public+Sans:wght@400;500;600&display=swap" rel="stylesheet">
@@ -315,7 +315,7 @@ footer a{color:var(--info)}
   <header class="top">
     <div>
       <h1>Park conditions board</h1>
-      <p class="sub">This board shows road, trail and facility closures and the current weather for all 63 U.S. national parks. The list sorts the parks by 2025 recreation visits.</p>
+      <p class="sub">This board shows road, trail and facility closures and the current weather for all 64 U.S. national parks. The list sorts the parks by 2025 recreation visits.</p>
     </div>
     <div class="actions">
       <span class="stamp" id="stamp">Not loaded yet</span>
@@ -511,13 +511,14 @@ const PARKS = [
   {r:54, code:"grba", name:"Great Basin", st:"NV", v:161210, lat:39.0050, lon:-114.2200},
   {r:55, code:"wrst", name:"Wrangell–St. Elias", st:"AK", v:108840, lat:61.4330, lon:-142.9220},
   {r:56, code:"drto", name:"Dry Tortugas", st:"FL", v:89355, lat:24.6285, lon:-82.8732},
-  {r:57, code:"noca", name:"North Cascades", st:"WA", v:46925, lat:48.6700, lon:-121.2500},
-  {r:58, code:"npsa", name:"American Samoa", st:"AS", v:43258, lat:-14.2580, lon:-170.6830},
-  {r:59, code:"katm", name:"Katmai", st:"AK", v:34479, lat:58.5540, lon:-155.7780},
-  {r:60, code:"isro", name:"Isle Royale", st:"MI", v:29091, lat:48.0000, lon:-88.9000},
-  {r:61, code:"lacl", name:"Lake Clark", st:"AK", v:19778, lat:60.2000, lon:-154.3100},
-  {r:62, code:"gaar", name:"Gates of the Arctic", st:"AK", v:14923, lat:67.7800, lon:-153.3000},
-  {r:63, code:"kova", name:"Kobuk Valley", st:"AK", v:7786, lat:67.3500, lon:-159.1200}
+  {r:57, code:"chir", name:"Chiricahua", st:"AZ", v:70406, lat:32.0094, lon:-109.3893, note:"Chiricahua became a national park in 2026. It was Chiricahua National Monument. Some data sources still use the old name."},
+  {r:58, code:"noca", name:"North Cascades", st:"WA", v:46925, lat:48.6700, lon:-121.2500},
+  {r:59, code:"npsa", name:"American Samoa", st:"AS", v:43258, lat:-14.2580, lon:-170.6830},
+  {r:60, code:"katm", name:"Katmai", st:"AK", v:34479, lat:58.5540, lon:-155.7780},
+  {r:61, code:"isro", name:"Isle Royale", st:"MI", v:29091, lat:48.0000, lon:-88.9000},
+  {r:62, code:"lacl", name:"Lake Clark", st:"AK", v:19778, lat:60.2000, lon:-154.3100},
+  {r:63, code:"gaar", name:"Gates of the Arctic", st:"AK", v:14923, lat:67.7800, lon:-153.3000},
+  {r:64, code:"kova", name:"Kobuk Valley", st:"AK", v:7786, lat:67.3500, lon:-159.1200}
 ];
 PARKS.forEach(p => { if (!p.id) p.id = p.code; });
 const NP = PARKS.length;

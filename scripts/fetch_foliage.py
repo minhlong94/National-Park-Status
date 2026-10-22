@@ -134,11 +134,19 @@ def km_for(store, p):
 
 
 def fill_missing(store, parks):
-    """Grid method for parks without data: get all years again with the 21 km box (once for each park)."""
+    """Grid method for parks without data: get all years again with the 21 km box (once for each park).
+    A park that is new in index.html (R47) first gets all years with the normal box."""
+    new = [p for p in parks if p["id"] not in store["parks"]]
+    if new:
+        bands, years = band_names(), sorted(map(int, store["years"]))
+        for p in new:
+            print("foliage (new park)", p["id"], p["name"], flush=True)
+            res = park_years(p, bands, years, km=KM)
+            store["parks"][p["id"]] = {str(y): res.get(y) for y in years}
     todo = [p for p in parks if p["id"] not in store.get("wide", [])
             and sum(1 for v in store["parks"].get(p["id"], {}).values() if v and v.get("mid") is not None) < MIN_DATA_YEARS]
     if not todo:
-        return False
+        return bool(new)
     years = sorted(map(int, store["years"]))
     bands = band_names()
     print(f"Wide box for {len(todo)} parks without data: {[p['id'] for p in todo]}", flush=True)
