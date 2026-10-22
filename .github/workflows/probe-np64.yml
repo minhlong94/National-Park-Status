@@ -1,0 +1,32 @@
+name: Probe 64th park (temporary)
+on:
+  push:
+    branches: [claude/jolly-ptolemy-mtv1g5]
+    paths: [.github/workflows/probe-np64.yml]
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - shell: python
+        run: |
+          import json, re, urllib.request, sys
+          sys.path.insert(0, "scripts"); import fetch_history as fh
+          ours = {p["code"] for p in fh.load_parks()} | {p["id"] for p in fh.load_parks()}
+          get = lambda u: json.load(urllib.request.urlopen(urllib.request.Request(u, headers={"User-Agent": "probe"}), timeout=90))
+          allp, start = [], 0
+          while True:
+              j = get(f"https://developer.nps.gov/api/v1/parks?limit=500&start={start}&api_key=DEMO_KEY")
+              allp += j["data"]; start += len(j["data"])
+              if not j["data"] or start >= int(j["total"]): break
+          print("NPS units:", len(allp))
+          np = [p for p in allp if re.search(r"National Parks?\b(?! ?Service)", p.get("designation","")) or re.search(r"National Park$", p.get("fullName",""))]
+          print("units named/designated National Park:", len(np))
+          for p in np:
+              if p["parkCode"] not in ours:
+                  print("NOT IN PAGE:", p["parkCode"], "|", p["fullName"], "|", p.get("designation"), "|", p.get("states"), p.get("latitude"), p.get("longitude"))
+          desig = {}
+          for p in allp: desig.setdefault(p.get("designation",""), []).append(p["parkCode"])
+          for d in sorted(desig):
+              if "Park" in d and "Historical" not in d and "Memorial" not in d: print(" desig:", repr(d), len(desig[d]))
