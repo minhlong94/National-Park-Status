@@ -8,7 +8,7 @@ Text rule: Write this file, the README and the page text in ASD-STE100 Simplifie
 
 ## Product
 
-The product is one web page, `index.html`. The page shows the current conditions of all 63 U.S. national parks.
+The product is one web page, `index.html`. The page shows the current conditions of all 64 U.S. national parks (63 until 2026; see R47).
 
 - Live page: https://minhlong94.github.io/National-Park-Status/
 - Source of the first version: the "Park conditions board" artifact (https://claude.ai/artifact/Ko71Jdm9JFZkz49sRf7GYt).
@@ -785,4 +785,26 @@ Requirements:
   - in the seasonal road history, above the live status ("Usually fully open until the third Monday of October (Mon, Oct 19, 2026), if the weather permits.");
   - in the Glacier park details, under the live status of Going-to-the-Sun Road.
 - Other roads can have the same kind of rule (`plan` in the road data).
+- Status: done.
+
+### R47. Chiricahua, the 64th national park
+
+Original text from the owner:
+
+> There is the 64th park. See if data supports it yet
+
+Requirements:
+
+- The NPS API lists Chiricahua (code `chir`, Arizona) with the designation "National Park". It was Chiricahua National Monument.
+- The data sources support it:
+  - NPS alerts, campgrounds (Bonita Canyon Campground) and visitor center: yes.
+  - Monthly visits (NPS Visitor Use Statistics, unit CHIR): yes, from January 2023 to December 2025. The 2025 total is 70,406 visits.
+  - Park outline (NPS boundary data, unit CHIR, still named "Chiricahua National Monument"), NWS zones, Open-Meteo weather and climate, NASA fall color data and OurAirports: yes.
+  - The NWS Flash Flood Potential Rating does not include it (it is not in southern Utah). The page uses its estimate (R40).
+  - The closure history (fixed data) has no event for it.
+- The park list has 64 parks. Chiricahua is number 57 by 2025 visits, between Dry Tortugas and North Cascades. The parks after it move down one place. A note in the park details says that it was a national monument.
+- The data scripts accept a park that is new in `index.html`:
+  - `scripts/fetch_history.py` expects 64 parks and gets all the months of the file for a new park. The other parks do not change.
+  - `scripts/fetch_foliage.py` gets all the years for a new park with the normal box, then with the wide box if it has no data.
+  - The airports, park outlines and seasonal closures are made again for all parks. The new workflow `.github/workflows/build-airports.yml` makes `data/airports.js` when its script changes, or from the Actions tab.
 - Status: done.
