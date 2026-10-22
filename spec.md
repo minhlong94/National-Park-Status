@@ -807,4 +807,5 @@ Requirements:
   - `scripts/fetch_history.py` expects 64 parks and gets all the months of the file for a new park. The other parks do not change.
   - `scripts/fetch_foliage.py` gets all the years for a new park with the normal box, then with the wide box if it has no data.
   - The airports, park outlines and seasonal closures are made again for all parks. The new workflow `.github/workflows/build-airports.yml` makes `data/airports.js` when its script changes, or from the Actions tab.
+- The default branch of the repository is gh-pages, so the scheduled data runs worked on gh-pages and main did not get their data. Now a scheduled run works on main and then publishes main to gh-pages, so the two branches stay the same.
 - Status: done.
