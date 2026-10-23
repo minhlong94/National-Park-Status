@@ -690,7 +690,7 @@ Requirements:
 - The park details show "Flash flood potential" first, with the rating of each day, the source, the issue time and the meaning of the rating.
 - The "Flood alerts" filter also shows the parks with a rating of Probable or Expected.
 - The page does not use an official rating that is older than 36 hours. The page saves the rating in the browser with the other data (R29).
-- Status: done.
+- Status: changed by R48. The rating now covers all 3 forecast days.
 
 ### R41. Show live road closures in the park row, and old saved data
 
@@ -808,4 +808,19 @@ Requirements:
   - `scripts/fetch_foliage.py` gets all the years for a new park with the normal box, then with the wide box if it has no data.
   - The airports, park outlines and seasonal closures are made again for all parks. The new workflow `.github/workflows/build-airports.yml` makes `data/airports.js` when its script changes, or from the Actions tab.
 - The default branch of the repository is gh-pages, so the scheduled data runs worked on gh-pages and main did not get their data. Now a scheduled run works on main and then publishes main to gh-pages, so the two branches stay the same.
+- Status: done.
+
+### R48. Flash flood potential for all 3 forecast days
+
+Original text from the owner:
+
+> Make flash flood potential to also include all forecast for 3 days
+
+Requirements:
+
+- The flash flood potential shows a rating for each of the 3 forecast days of every park.
+- For Arches, Bryce Canyon, Canyonlands, Capitol Reef and Zion, the days that the NWS rating covers (usually today and tomorrow) use the NWS rating. The other days use the estimate of the page (R40) and have the mark "est.".
+- The page matches the NWS rating to the days by date. "TODAY" in the rating is the issue date in Utah (Mountain time). So a rating that NWS issued yesterday gives the rating of today from its "tomorrow".
+- The park row badge shows the highest day: an NWS rating from "Possible", an estimate from "Probable". It has "(est.)" when the highest day is an estimate. The tooltip lists all 3 days.
+- The park details show the 3 days. An estimate day has a dashed frame and "est.". The text says which days come from NWS and which are estimates.
 - Status: done.
