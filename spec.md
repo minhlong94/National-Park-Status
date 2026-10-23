@@ -824,3 +824,20 @@ Requirements:
 - The park row badge shows the highest day: an NWS rating from "Possible", an estimate from "Probable". It has "(est.)" when the highest day is an estimate. The tooltip lists all 3 days.
 - The park details show the 3 days. An estimate day has a dashed frame and "est.". The text says which days come from NWS and which are estimates.
 - Status: done.
+
+### R49. Zion: the forecast upstream of the Narrows
+
+Original text from the owner:
+
+> For zion also include the narrows upstream https://forecast.weather.gov/MapClick.php?lat=37.5269&lon=-112.7612
+
+Requirements:
+
+- Rain upstream on the North Fork of the Virgin River causes flash floods in the Narrows, also when the sky in Zion Canyon is clear. The page adds the point 37.5269, -112.7612 ("The Narrows upstream") to Zion.
+- On "Refresh data", the page gets the 3-day forecast for this point (in the same Open-Meteo request) and the NWS alerts for this point.
+- The Zion park details show the 3-day forecast of the point under the park forecast, with the storm and heavy snow marks (R38) and a link to the NWS forecast for the point.
+- An NWS alert for the point counts as a Zion alert, with "(Narrows upstream)" after its name. A flood alert there shows the flood badge in the row.
+- The flash flood estimate (R40, R48) of a day uses the higher value of the park point and the upstream point.
+- The storm badge in the row also uses the upstream forecast, for example "Storm Fri (Narrows upstream)".
+- Other parks can have extra points in the same way (`EXTRA_POINTS`).
+- Status: done.
