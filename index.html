@@ -939,9 +939,16 @@ function snowPast(d, cur, units){
   if (depth != null) depth = /ft/.test(u) ? depth * 12 : /^m$/.test(u) ? depth * 39.37 : depth; // to inches
   return {today: v[n - 1] || 0, y: n > 1 ? v[n - 2] : 0, d7: sum(7), d30: sum(n), depth, from: d.time ? d.time[0] : null};
 }
+// ---- Extra forecast points (R49): places outside the park point that are important for safety ----
+// Zion: rain upstream on the North Fork of the Virgin River causes flash floods in the Narrows.
+const EXTRA_POINTS = {
+  zion: [{name: "The Narrows upstream (North Fork Virgin River)", short: "Narrows upstream", lat: 37.5269, lon: -112.7612,
+          src: "https://forecast.weather.gov/MapClick.php?lat=37.5269&lon=-112.7612"}],
+};
+const EXTRA_LIST = Object.entries(EXTRA_POINTS).flatMap(([id, pts]) => pts.map(pt => Object.assign({id}, pt)));
 async function loadWeather(){
   setSrc("wx","busy","loading…");
-  const lat = PARKS.map(p=>p.lat).join(","), lon = PARKS.map(p=>p.lon).join(",");
+  const lat = [...PARKS, ...EXTRA_LIST].map(p=>p.lat).join(","), lon = [...PARKS, ...EXTRA_LIST].map(p=>p.lon).join(",");
   const url = "https://api.open-meteo.com/v1/forecast?latitude="+lat+"&longitude="+lon+
     "&current=temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,wind_speed_10m,wind_gusts_10m,precipitation"+
     "&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,precipitation_sum,snowfall_sum,wind_gusts_10m_max,precipitation_hours"+
@@ -952,6 +959,7 @@ async function loadWeather(){
   if (!Array.isArray(data)) data = [data];
   const wx = {};
   PARKS.forEach((p,i) => wx[p.id] = data[i]);
+  EXTRA_LIST.forEach((pt, k) => { const r = data[NP + k]; if (wx[pt.id] && r && r.daily) (wx[pt.id].extra = wx[pt.id].extra || []).push({name: pt.name, short: pt.short, src: pt.src, daily: r.daily}); });
   // Past snow (R45): the daily snowfall of the last 30 days and the snow on the ground now. If this fails, the forecast still shows.
   try{
     const res2 = await fetch("https://api.open-meteo.com/v1/forecast?latitude="+lat+"&longitude="+lon+
@@ -1130,6 +1138,16 @@ async function loadNWS(){
     ok++;
   });
   await Promise.all(pointParks.map(async p => { try{ out[p.id] = await nwsPoint(p); ok++; }catch(e){ out[p.id] = null; } }));
+  // Alerts at the extra points (R49), for example a Flash Flood Warning upstream of the Narrows
+  await Promise.all(EXTRA_LIST.map(async pt => {
+    if (!out[pt.id]) return;
+    try{
+      (await nwsPoint(pt)).forEach(x => {
+        if (!out[pt.id].some(y => y.event === x.event && y.headline === x.headline)) out[pt.id].push(Object.assign(x, {where: pt.short}));
+      });
+      out[pt.id].sort(byFlood);
+    }catch(e){ /* keep the park alerts */ }
+  }));
   if (ok === 0) throw new Error("NWS unreachable"); // keep the saved warnings
   state.nws = out;
   setSrc("nws", ok === NP ? "ok" : "err", ok === NP ? `${NP} parks` : `${ok} of ${NP} parks`);
@@ -1748,7 +1766,8 @@ function dayHazard(d, i){
 }
 function hazardDays(w){
   if (!w || !w.daily) return [];
-  return w.daily.time.map((t, i) => ({t, i, hz: dayHazard(w.daily, i)})).filter(x => x.hz);
+  const at = (d, where) => d.time.map((t, i) => ({t, i, where, hz: dayHazard(d, i)})).filter(x => x.hz);
+  return [...at(w.daily, ""), ...(w.extra || []).flatMap(x => at(x.daily, x.short))];
 }
 const dayName = (t, i) => i === 0 ? "Today" : new Date(t + "T12:00:00").toLocaleDateString("en-US", {weekday:"short"});
 // Row badge: the strongest day in the next 3 days
@@ -1757,7 +1776,7 @@ function hazardBadge(w){
   if (!hd.length) return "";
   const top = hd.reduce((a, b) => b.hz.lvl > a.hz.lvl ? b : a);
   const more = hd.length > 1 ? ` +${hd.length - 1}` : "";
-  return `<span class="hzb h${top.hz.lvl}" title="${esc(hd.map(x => `${dayName(x.t, x.i)}: ${x.hz.kind} (${x.hz.why.join(", ")})`).join(" · "))}"><span aria-hidden="true">⚠</span> ${esc(top.hz.kind)} ${esc(dayName(top.t, top.i))}${more}</span>`;
+  return `<span class="hzb h${top.hz.lvl}" title="${esc(hd.map(x => `${dayName(x.t, x.i)}${x.where ? ` (${x.where})` : ""}: ${x.hz.kind} (${x.hz.why.join(", ")})`).join(" · "))}"><span aria-hidden="true">⚠</span> ${esc(top.hz.kind)} ${esc(dayName(top.t, top.i))}${top.where ? ` (${esc(top.where)})` : ""}${more}</span>`;
 }
 
 // The names of the closures under the status (R39), so the reader sees what is closed without opening the park
@@ -1829,7 +1848,8 @@ function ffpFor(p, w, warns){
     return days.length ? {official: true, days} : null;
   }
   const d = w.daily;
-  const days = d.time.map((t, i) => o && o[t] != null ? {day: dayName(t, i), lvl: o[t], est: false} : {day: dayName(t, i), lvl: ffpEstimateDay(d, i, warns), est: true});
+  const estAt = (t, i) => Math.max(ffpEstimateDay(d, i, warns), ...(w.extra || []).map(x => { const j = x.daily.time.indexOf(t); return j < 0 ? 0 : ffpEstimateDay(x.daily, j, []); }));
+  const days = d.time.map((t, i) => o && o[t] != null ? {day: dayName(t, i), lvl: o[t], est: false} : {day: dayName(t, i), lvl: estAt(t, i), est: true});
   return {official: days.some(x => !x.est), days};
 }
 // The highest day that counts: an NWS rating from "Possible", an estimate only from "Probable"
@@ -1847,9 +1867,10 @@ function ffpHTML(p, w, warns){
   if (!f || (!f.official && !f.days.some(x => x.lvl >= 1))) return "";
   const F = state.ffp, any = f.days.reduce((a, b) => b.lvl > a.lvl ? b : a, {lvl: 0});
   const nws = f.days.filter(x => !x.est).map(x => x.day), est = f.days.filter(x => x.est).map(x => x.day);
+  const and = a => a.length > 1 ? a.slice(0, -1).join(", ") + " and " + a[a.length - 1] : a.join("");
   return `<h2>Flash flood potential</h2><div class="ffpd">${f.days.map(x => `<div class="L${x.lvl}${x.est ? " est" : ""}"><b>${esc(x.day)}${x.est ? " · est." : ""}</b><span>${esc(FFP_LEVELS[x.lvl])}</span></div>`).join("")}</div>
-    <p class="none">${nws.length ? `${esc(nws.join(" and "))}: NWS Salt Lake City Flash Flood Potential Rating, issued ${esc(fmtTime(Date.parse(F.issued)))}. ` : ""}${est.length ?
-      `${esc(est.join(" and "))} (est.): estimate by this page from the NWS flood alerts and the forecast rain and thunderstorms${nws.length ? "" : ". NWS does not publish a rating for this park"}. ` : ""}
+    <p class="none">${nws.length ? `${esc(and(nws))}: NWS Salt Lake City Flash Flood Potential Rating, issued ${esc(fmtTime(Date.parse(F.issued)))}. ` : ""}${est.length ?
+      `${esc(and(est))} (est.): estimate by this page from the NWS flood alerts and the forecast rain and thunderstorms${(w && w.extra || []).length ? ` in the park and at ${esc(w.extra.map(x => x.short).join(", "))}` : ""}${nws.length ? "" : ". NWS does not publish a rating for this park"}. ` : ""}
     ${esc(FFP_DEF[any.lvl])} Stay out of slot canyons and narrow washes when the rating is Probable or Expected.</p>`;
 }
 
@@ -1880,9 +1901,9 @@ function floodBadge(warns){
 function floodHTML(warns){
   const fl = (warns || []).filter(x => floodLevel(x.event));
   if (!fl.length) return "";
-  return `<h2>Flood alerts (${fl.length})</h2>` + fl.map(x => `<div class="alert ${floodLevel(x.event) > 1 ? "k-danger" : "k-caution"}"><div class="at">${esc(x.event)}</div>
+  return `<h2>Flood alerts (${fl.length})</h2>` + fl.map(x => `<div class="alert ${floodLevel(x.event) > 1 ? "k-danger" : "k-caution"}"><div class="at">${esc(x.event)}${x.where ? ` (${esc(x.where)})` : ""}</div>
     <div class="ad">${esc(x.headline || "")}</div>${x.desc ? `<div class="ad">${esc(x.desc)}${x.desc.length >= 500 ? "…" : ""}</div>` : ""}
-    ${x.ends ? `<div class="am">Until ${esc(fmtTime(Date.parse(x.ends)))} · National Weather Service</div>` : ""}</div>`).join("") +
+    ${x.ends ? `<div class="am">Until ${esc(fmtTime(Date.parse(x.ends)))} · National Weather Service${x.where ? ` · for ${esc(x.where)}` : ""}</div>` : ""}</div>`).join("") +
     `<p class="none">Flash floods can come from rain far away. Stay out of slot canyons and narrow washes when a flood alert is active.</p>`;
 }
 
@@ -1905,15 +1926,19 @@ function detail(p, list, w, warns){
     if (items.length) alertsHtml += `<h2>${groups[g]} (${items.length})</h2>` + items.map(alertBlock).join("");
   });
   let wxHtml = `<h2>3-day forecast</h2>`;
-  if (w && w.daily){
-    const d = w.daily;
-    wxHtml += `<div class="fc">` + d.time.map((t,i) => {
+  const fcCards = d => `<div class="fc">` + d.time.map((t,i) => {
       const day = new Date(t+"T12:00:00").toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"});
       const hz = dayHazard(d, i);
       return `<div${hz ? ` class="fhz h${hz.lvl}"` : ""}>${hz ? `<span class="fhl"><span aria-hidden="true">⚠</span> ${esc(hz.kind)}<small>${esc(hz.why.join(", "))}</small></span>` : ""}<b>${day}</b><span class="ft">${Math.round(d.temperature_2m_max[i])}° / ${Math.round(d.temperature_2m_min[i])}°F<small>${toC(d.temperature_2m_max[i])}° / ${toC(d.temperature_2m_min[i])}°C</small></span><span>${esc(WMO[d.weather_code[i]]||"—")}</span><span class="fp">Precip ${d.precipitation_probability_max[i] ?? 0}%, ${inMm(d.precipitation_sum[i]||0, 2)}</span></div>`;
     }).join("") + `</div>`;
+  if (w && w.daily){
+    wxHtml += fcCards(w.daily);
     wxHtml += `<p class="none" style="margin-top:8px">Humidity ${w.current.relative_humidity_2m}% · The forecast is for one point near the main visitor area. In large parks, the temperature changes much with elevation.</p>`;
   } else wxHtml += `<p class="none">The weather did not load.</p>`;
+  (w && w.extra || []).forEach(x => {
+    wxHtml += `<h2 style="margin-top:14px">${esc(x.name)}</h2>` + fcCards(x.daily) +
+      `<p class="none" style="margin-top:8px">Rain here can cause a flash flood in the park, also when the sky in the park is clear. <a href="${esc(x.src)}" target="_blank" rel="noopener">NWS forecast for this point</a></p>`;
+  });
   wxHtml += snowPastHTML(w);
   wxHtml += airportList(p.id);
   const other = (warns || []).filter(x => !floodLevel(x.event)); // flood alerts show in the first column
