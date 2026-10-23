@@ -129,6 +129,7 @@ tr.park:hover td{background:color-mix(in srgb,var(--pine) 6%,transparent)}
 .ffpd span{font-weight:700}
 .ffpd .L3{background:var(--closed);border-color:var(--closed);color:#fff}.ffpd .L3 b{color:#fff}
 .ffpd .L2{background:color-mix(in srgb, var(--partial) 22%, var(--panel));border-color:var(--partial)}
+.ffpd .est{border-style:dashed}
 .flood{display:inline-block;margin-top:6px;padding:2px 7px;border-radius:6px;font-size:12px;font-weight:700;line-height:1.3;white-space:normal;max-width:18ch}
 .flood.f2{background:var(--closed);color:#fff}
 .flood.f1{background:color-mix(in srgb, var(--partial) 18%, transparent);border:1px solid var(--partial);color:var(--ink)}
@@ -1795,52 +1796,61 @@ async function loadFFP(){
   state.ffp = {issued: item.issuanceTime, days, parks};
   setSrc("ffp","ok", `${Object.keys(parks).length} parks`);
 }
-const ffpDayLabel = (d, i) => /today/i.test(d) ? "Today" : /tonight/i.test(d) ? "Tonight" : d ? d[0] + d.slice(1, 3).toLowerCase() : `Day ${i + 1}`;
 // Official rating for a park, or null. A rating older than 36 hours is not used.
+// Official rating for a park by date (YYYY-MM-DD), or null. The product gives "TODAY" and the next day(s) from its issue date
+// in Utah (Mountain time), so a rating issued yesterday is matched to the right days. A rating older than 36 hours is not used.
 function ffpOfficial(id){
   const F = state.ffp;
   if (!F || !F.parks[id] || Date.now() - Date.parse(F.issued) > 36 * 3600000) return null;
-  return F.parks[id].map((lvl, i) => ({day: ffpDayLabel(F.days[i], i), lvl})).filter(x => x.lvl >= 0);
+  const d0 = new Date(F.issued).toLocaleDateString("en-CA", {timeZone: "America/Denver"});
+  const out = {};
+  F.parks[id].forEach((lvl, i) => { if (lvl >= 0) out[isoDay(new Date(Date.parse(d0 + "T12:00:00Z") + i * DAY))] = lvl; });
+  return out;
 }
-// Estimate for the 3 forecast days: NWS flood alerts first, then the forecast rain and thunderstorms
-function ffpEstimate(w, warns){
-  if (!w || !w.daily) return null;
-  const d = w.daily;
-  return d.time.map((t, i) => {
-    const rain = d.precipitation_sum[i] || 0, code = d.weather_code[i];
-    let lvl = code >= 95 || rain >= 1 ? 2 : rain >= 0.5 || (code >= 80 && rain >= 0.25) ? 1 : 0;
-    (warns || []).forEach(x => {
-      const ev = x.event || "", ends = x.ends ? x.ends.slice(0, 10) : t;
-      if (ends < t) return;
-      if (/flash flood (warning|emergency)/i.test(ev) && i === 0) lvl = 3;
-      else if (/flood watch/i.test(ev)) lvl = Math.max(lvl, 2);
-    });
-    return {day: dayName(t, i), lvl};
+// Estimate for one forecast day: NWS flood alerts first, then the forecast rain and thunderstorms
+function ffpEstimateDay(d, i, warns){
+  const t = d.time[i], rain = d.precipitation_sum[i] || 0, code = d.weather_code[i];
+  let lvl = code >= 95 || rain >= 1 ? 2 : rain >= 0.5 || (code >= 80 && rain >= 0.25) ? 1 : 0;
+  (warns || []).forEach(x => {
+    const ev = x.event || "", ends = x.ends ? x.ends.slice(0, 10) : t;
+    if (ends < t) return;
+    if (/flash flood (warning|emergency)/i.test(ev) && i === 0) lvl = 3;
+    else if (/flood watch/i.test(ev)) lvl = Math.max(lvl, 2);
   });
+  return lvl;
 }
+// All 3 forecast days (R48): the NWS rating for the days that it covers, and the estimate (est: true) for the other days
 function ffpFor(p, w, warns){
   const o = ffpOfficial(p.id);
-  if (o && o.length) return {official: true, days: o};
-  const e = ffpEstimate(w, warns);
-  return e ? {official: false, days: e} : null;
+  if (!w || !w.daily){
+    if (!o) return null;
+    const today = isoDay(new Date());
+    const days = Object.keys(o).filter(t => t >= today).sort().map((t, i) => ({day: dayName(t, i), lvl: o[t], est: false}));
+    return days.length ? {official: true, days} : null;
+  }
+  const d = w.daily;
+  const days = d.time.map((t, i) => o && o[t] != null ? {day: dayName(t, i), lvl: o[t], est: false} : {day: dayName(t, i), lvl: ffpEstimateDay(d, i, warns), est: true});
+  return {official: days.some(x => !x.est), days};
 }
-function ffpTop(f){ return f ? f.days.reduce((a, b) => b.lvl > a.lvl ? b : a, {lvl: -1}) : {lvl: -1}; }
-// Row badge: official rating from "Possible"; the estimate only from "Probable"
+// The highest day that counts: an NWS rating from "Possible", an estimate only from "Probable"
+function ffpTop(f){ return f ? f.days.filter(x => x.lvl >= (x.est ? 2 : 1)).reduce((a, b) => b.lvl > a.lvl ? b : a, {lvl: -1}) : {lvl: -1}; }
+const ffpDayText = x => `${x.day} ${FFP_LEVELS[x.lvl]}${x.est ? " (est.)" : ""}`;
 function ffpBadge(p, w, warns){
   const f = ffpFor(p, w, warns), top = ffpTop(f);
-  if (top.lvl < (f && f.official ? 1 : 2)) return "";
-  const tip = (f.official ? "NWS Flash Flood Potential Rating: " : "Estimate by this page (not an NWS rating): ") + f.days.map(x => `${x.day} ${FFP_LEVELS[x.lvl]}`).join(", ");
-  return `<span class="ffp L${top.lvl}" title="${esc(tip)}"><span aria-hidden="true">≋</span> Flash flood: ${esc(FFP_LEVELS[top.lvl])} ${esc(top.day.toLowerCase() === "today" ? "today" : top.day)}${f.official ? "" : " (est.)"}</span>`;
+  if (top.lvl < 1) return "";
+  const tip = "Flash flood potential: " + f.days.map(ffpDayText).join(", ") + (f.days.some(x => x.est) ? ". est. = estimate by this page, not an NWS rating." : ". NWS rating.");
+  return `<span class="ffp L${top.lvl}" title="${esc(tip)}"><span aria-hidden="true">≋</span> Flash flood: ${esc(FFP_LEVELS[top.lvl])} ${esc(top.day.toLowerCase() === "today" ? "today" : top.day)}${top.est ? " (est.)" : ""}</span>`;
 }
 // Park details: the rating for each day, with the definitions
 function ffpHTML(p, w, warns){
   const f = ffpFor(p, w, warns);
-  if (!f || (!f.official && ffpTop(f).lvl < 1)) return "";
-  const F = state.ffp;
-  return `<h2>Flash flood potential</h2><div class="ffpd">${f.days.map(x => `<div class="L${x.lvl}"><b>${esc(x.day)}</b><span>${esc(FFP_LEVELS[x.lvl])}</span></div>`).join("")}</div>
-    <p class="none">${f.official ? `NWS Salt Lake City Flash Flood Potential Rating, issued ${esc(fmtTime(Date.parse(F.issued)))}.` :
-      "Estimate by this page from the NWS flood alerts and the forecast rain and thunderstorms. NWS does not publish a rating for this park."}
-    ${esc(FFP_DEF[ffpTop(f).lvl])} Stay out of slot canyons and narrow washes when the rating is Probable or Expected.</p>`;
+  if (!f || (!f.official && !f.days.some(x => x.lvl >= 1))) return "";
+  const F = state.ffp, any = f.days.reduce((a, b) => b.lvl > a.lvl ? b : a, {lvl: 0});
+  const nws = f.days.filter(x => !x.est).map(x => x.day), est = f.days.filter(x => x.est).map(x => x.day);
+  return `<h2>Flash flood potential</h2><div class="ffpd">${f.days.map(x => `<div class="L${x.lvl}${x.est ? " est" : ""}"><b>${esc(x.day)}${x.est ? " · est." : ""}</b><span>${esc(FFP_LEVELS[x.lvl])}</span></div>`).join("")}</div>
+    <p class="none">${nws.length ? `${esc(nws.join(" and "))}: NWS Salt Lake City Flash Flood Potential Rating, issued ${esc(fmtTime(Date.parse(F.issued)))}. ` : ""}${est.length ?
+      `${esc(est.join(" and "))} (est.): estimate by this page from the NWS flood alerts and the forecast rain and thunderstorms${nws.length ? "" : ". NWS does not publish a rating for this park"}. ` : ""}
+    ${esc(FFP_DEF[any.lvl])} Stay out of slot canyons and narrow washes when the rating is Probable or Expected.</p>`;
 }
 
 // Row: past snow, only when there is snow (R45)
