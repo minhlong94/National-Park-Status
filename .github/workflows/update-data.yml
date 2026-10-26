@@ -7,6 +7,7 @@ name: Update park history data
 on:
   workflow_dispatch:
   push:
+    branches-ignore: [gh-pages]
     paths:
       - scripts/fetch_history.py
       - .github/workflows/update-data.yml
@@ -16,9 +17,10 @@ on:
 permissions:
   contents: write
 
-# One queue for all data workflows on a branch, so two runs never push at the same time.
+# One queue for each workflow and branch. Two different data workflows can run at the same time:
+# the push step below takes the newest commits first and tries again (R50).
 concurrency:
-  group: data-${{ github.ref }}
+  group: data-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
@@ -26,12 +28,12 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      # The default branch of the repository is gh-pages, so a scheduled run starts there.
-      # The data belongs on main: a scheduled run works on main and then publishes main to gh-pages (R47).
+      # The default branch of the repository is gh-pages, so a scheduled run (or a run from the Actions tab) starts there.
+      # The data belongs on main: such a run works on main and then publishes main to gh-pages (R47, R50).
       - uses: actions/checkout@v4
         timeout-minutes: 2
         with:
-          ref: ${{ github.event_name == 'schedule' && 'main' || github.ref }}
+          ref: ${{ github.ref_name == 'gh-pages' && 'main' || github.ref }}
       - uses: actions/setup-python@v5
         timeout-minutes: 3
         with:
@@ -55,7 +57,7 @@ jobs:
         if: ${{ !cancelled() }}
         timeout-minutes: 2
         env:
-          BRANCH: ${{ github.event_name == 'schedule' && 'main' || github.ref_name }}
+          BRANCH: ${{ github.ref_name == 'gh-pages' && 'main' || github.ref_name }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898333+github-actions[bot]@users.noreply.github.com"
@@ -64,10 +66,19 @@ jobs:
             echo "No change in the data."
           else
             git commit -m "Update park history data"
-            git pull --rebase --quiet origin "$BRANCH"
-            git push origin "HEAD:$GITHUB_REF_NAME"
-            # GitHub Pages serves the gh-pages branch. Publish the new data from main.
+            # Another data workflow can push at the same time: take its commits and try again.
+            for i in 1 2 3 4; do
+              git pull --rebase --quiet origin "$BRANCH" && git push origin "HEAD:$BRANCH" && break
+              if [ "$i" = 4 ]; then exit 1; fi
+              sleep $((i * 10))
+            done
+            # GitHub Pages serves the gh-pages branch. Publish the newest main (it has the commits of all runs).
             if [ "$BRANCH" = "main" ]; then
-              git push origin HEAD:gh-pages
+              git fetch --quiet origin main
+              git push origin origin/main:gh-pages || {
+                # another run already published a newer main
+                git fetch --quiet origin main gh-pages
+                git merge-base --is-ancestor origin/main origin/gh-pages
+              }
             fi
           fi

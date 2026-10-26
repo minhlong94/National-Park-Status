@@ -841,3 +841,20 @@ Requirements:
 - The storm badge in the row also uses the upstream forecast, for example "Storm Fri (Narrows upstream)".
 - Other parks can have extra points in the same way (`EXTRA_POINTS`).
 - Status: done.
+
+### R50. Fix the failed scheduled data run
+
+Original text from the owner:
+
+> Fix error from latest deployment
+
+Requirements:
+
+- The cause: the change in R47 did not change the push line of the data workflows. A scheduled run made its commit on main but pushed it only to gh-pages. On 2026-10-26, the fall color run pushed to gh-pages only. Then the seasonal run (made from main, without that commit) could not push to gh-pages, and failed.
+- The fall color data of that run is now on main too. No data is lost.
+- All five data workflows (`update-data`, `update-foliage`, `update-seasonal`, `build-bounds`, `build-airports`):
+  - A run that starts on gh-pages (a scheduled run, or a run from the Actions tab, because gh-pages is the default branch) works on main, pushes to main, then publishes main to gh-pages.
+  - A push to gh-pages does not start a data run.
+  - Each workflow has its own queue, so GitHub does not cancel a waiting run of another workflow.
+  - The push step takes the newest commits of main and tries again (4 times), so two runs at the same time do not fail. Then it publishes the newest main to gh-pages. If another run already published a newer main, that is not an error.
+- Status: done.
