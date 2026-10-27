@@ -1,0 +1,69 @@
+name: Update road conditions
+
+# Road condition tables that parks post on their conditions page (for example Capitol Reef),
+# for all parks. See scripts/fetch_conditions.py (R51).
+on:
+  workflow_dispatch:
+  push:
+    branches-ignore: [gh-pages]
+    paths:
+      - scripts/fetch_conditions.py
+      - .github/workflows/update-conditions.yml
+  schedule:
+    - cron: "17 */6 * * *"  # every 6 hours (the parks change the tables after storms)
+
+permissions:
+  contents: write
+
+# One queue for each workflow and branch. Two different data workflows can run at the same time:
+# the push step below takes the newest commits first and tries again (R50).
+concurrency:
+  group: data-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      # The default branch of the repository is gh-pages, so a scheduled run (or a run from the Actions tab) starts there.
+      # The data belongs on main: such a run works on main and then publishes main to gh-pages (R47, R50).
+      - uses: actions/checkout@v4
+        timeout-minutes: 2
+        with:
+          ref: ${{ github.ref_name == 'gh-pages' && 'main' || github.ref }}
+      - uses: actions/setup-python@v5
+        timeout-minutes: 3
+        with:
+          python-version: "3.12"
+      - name: Get the data
+        timeout-minutes: 8
+        run: python3 -u scripts/fetch_conditions.py
+      - name: Commit the data if it changed
+        timeout-minutes: 2
+        env:
+          BRANCH: ${{ github.ref_name == 'gh-pages' && 'main' || github.ref_name }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898333+github-actions[bot]@users.noreply.github.com"
+          git add data/road-conditions.js
+          if git diff --cached --quiet; then
+            echo "No change in the data."
+          else
+            git commit -m "Update road conditions"
+            # Another data workflow can push at the same time: take its commits and try again.
+            for i in 1 2 3 4; do
+              git pull --rebase --quiet origin "$BRANCH" && git push origin "HEAD:$BRANCH" && break
+              if [ "$i" = 4 ]; then exit 1; fi
+              sleep $((i * 10))
+            done
+            # GitHub Pages serves the gh-pages branch. Publish the newest main (it has the commits of all runs).
+            if [ "$BRANCH" = "main" ]; then
+              git fetch --quiet origin main
+              git push origin origin/main:gh-pages || {
+                # another run already published a newer main
+                git fetch --quiet origin main gh-pages
+                git merge-base --is-ancestor origin/main origin/gh-pages
+              }
+            fi
+          fi

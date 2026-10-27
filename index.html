@@ -119,6 +119,16 @@ tr.park:hover td{background:color-mix(in srgb,var(--pine) 6%,transparent)}
 .snowp{display:block;color:var(--info);font-weight:600;margin-top:2px}
 .spast{min-width:0;width:100%;font-size:13px}
 .spast td{padding:3px 6px;border-top:1px solid var(--line)}
+.rcd{margin:0 0 8px;font-size:13.5px}
+.rcd b{display:block;font-size:13px;color:var(--muted);margin:6px 0 2px}
+.rcd ul{list-style:none;margin:0;padding:0}
+.rcd li{padding:3px 0;border-top:1px solid var(--line)}
+.rcd li:first-child{border-top:0}
+.rcd small{display:block;color:var(--muted);font-size:12px}
+.rcc{font-weight:700;font-size:12px;padding:1px 6px;border-radius:5px;border:1px solid var(--line);white-space:normal}
+.rcc.L3{background:var(--closed);border-color:var(--closed);color:#fff}
+.rcc.L2{background:color-mix(in srgb, var(--partial) 22%, var(--panel));border-color:var(--partial);color:var(--ink)}
+.rcc.L0{color:var(--open);border-color:var(--open)}
 .ffp{display:inline-block;margin-top:6px;padding:2px 7px;border-radius:6px;font-size:12px;font-weight:700;line-height:1.3;white-space:normal;max-width:24ch}
 .ffp.L3{background:var(--closed);color:#fff}
 .ffp.L2{background:color-mix(in srgb, var(--partial) 22%, transparent);border:1px solid var(--partial);color:var(--ink)}
@@ -1030,7 +1040,32 @@ function roadRank(name){
   return /highway|road/i.test(name) && !/campground|loop|picnic/i.test(name) ? 1 : 2;
 }
 const roadState = r => r.partial ? "Partly closed" : r.closed ? "Closed" : "Construction";
-const liveClosed = code => ((state.roads || {})[code] || []).filter(r => r.closed && roadRank(r.name) < 3).length;
+// ---- Road condition tables of the parks (R51): data/road-conditions.js, from the park conditions page ----
+// Level: 3 = closed, 2 = impassable or not recommended, 1 = unknown or a warning, 0 = open.
+function condLevel(c){
+  if (/\bclosed\b/i.test(c)) return 3;
+  if (/impassable|not recommended|deep mud|washed out/i.test(c)) return 2;
+  if (/unknown|alert|4wd|four wheel|high clearance|\bhc/i.test(c)) return 1;
+  return 0;
+}
+// A road counts as a closure when it is closed or (likely) impassable
+const condIsClosure = c => condLevel(c) === 3 || /impassable/i.test(c);
+function condRoads(code){
+  const R = window.PARK_ROADCOND && PARK_ROADCOND.parks[code];
+  return R ? R.districts.flatMap(d => d.roads.map(r => Object.assign({district: d.name}, r))) : [];
+}
+const condClosed = code => condRoads(code).filter(r => condIsClosure(r.c)).length;
+function roadCondHTML(code){
+  const R = window.PARK_ROADCOND && PARK_ROADCOND.parks[code];
+  if (!R) return "";
+  const lab = ["Open", "Take care", "Not recommended", "Closed"];
+  const nClosed = condClosed(code);
+  return `<h2>Road conditions${nClosed ? ` (${nClosed} closed or impassable)` : ""}</h2>` + R.districts.map(d => `<div class="rcd">${d.name ? `<b>${esc(d.name)}</b>` : ""}<ul>${d.roads.map(r => {
+      const L = condLevel(r.c);
+      return `<li><span class="rcn">${esc(r.n)}</span> <span class="rcc L${L}" title="${esc(lab[L])}">${esc(r.c)}</span>${r.x ? `<small>${esc(r.x)}</small>` : ""}</li>`; }).join("")}</ul></div>`).join("") +
+    `<p class="none">${R.asOf ? `Park update of ${esc(R.asOf)}. ` : ""}Read ${esc(fmtTime(Date.parse(PARK_ROADCOND.built)))}. Conditions can change fast after rain or snow. <a href="${esc(R.src)}" target="_blank" rel="noopener">Park road conditions</a></p>`;
+}
+const liveClosed = code => ((state.roads || {})[code] || []).filter(r => r.closed && roadRank(r.name) < 3).length + condClosed(code);
 function liveRoadsHTML(code){
   const src = LIVE_ROADS[code];
   if (!src) return "";
@@ -1783,7 +1818,8 @@ function hazardBadge(w){
 // The names of the closures (NPS alerts and live road closures, main roads first), for the tooltip of the status badge (R39, R42)
 function closureNames(list, code){
   const live = ((state.roads || {})[code] || []).filter(r => r.closed && roadRank(r.name) < 3)
-    .map(r => `${r.name} ${roadState(r).toLowerCase()}${r.reasons.length ? ` (${r.reasons[0].toLowerCase()})` : ""}`);
+    .map(r => `${r.name} ${roadState(r).toLowerCase()}${r.reasons.length ? ` (${r.reasons[0].toLowerCase()})` : ""}`)
+    .concat(condRoads(code).filter(r => condIsClosure(r.c)).map(r => `${r.n}: ${r.c.toLowerCase()}`));
   return [...live.filter(t => roadRank(t) < 2), ...(list || []).filter(a => a.isClosure).map(a => (a.title || "").trim()), ...live.filter(t => roadRank(t) >= 2)];
 }
 
@@ -1865,13 +1901,10 @@ function ffpBadge(p, w, warns){
 function ffpHTML(p, w, warns){
   const f = ffpFor(p, w, warns);
   if (!f || (!f.official && !f.days.some(x => x.lvl >= 1))) return "";
-  const F = state.ffp, any = f.days.reduce((a, b) => b.lvl > a.lvl ? b : a, {lvl: 0});
   const nws = f.days.filter(x => !x.est).map(x => x.day), est = f.days.filter(x => x.est).map(x => x.day);
   const and = a => a.length > 1 ? a.slice(0, -1).join(", ") + " and " + a[a.length - 1] : a.join("");
-  return `<h2>Flash flood potential</h2><div class="ffpd">${f.days.map(x => `<div class="L${x.lvl}${x.est ? " est" : ""}"><b>${esc(x.day)}${x.est ? " · est." : ""}</b><span>${esc(FFP_LEVELS[x.lvl])}</span></div>`).join("")}</div>
-    <p class="none">${nws.length ? `${esc(and(nws))}: NWS Salt Lake City Flash Flood Potential Rating, issued ${esc(fmtTime(Date.parse(F.issued)))}. ` : ""}${est.length ?
-      `${esc(and(est))} (est.): estimate by this page from the NWS flood alerts and the forecast rain and thunderstorms${(w && w.extra || []).length ? ` in the park and at ${esc(w.extra.map(x => x.short).join(", "))}` : ""}${nws.length ? "" : ". NWS does not publish a rating for this park"}. ` : ""}
-    ${esc(FFP_DEF[any.lvl])} Stay out of slot canyons and narrow washes when the rating is Probable or Expected.</p>`;
+  return `<h2>Flash flood potential</h2><div class="ffpd">${f.days.map(x => `<div class="L${x.lvl}${x.est ? " est" : ""}" title="${esc(FFP_DEF[x.lvl])}"><b>${esc(x.day)}${x.est ? " · est." : ""}</b><span>${esc(FFP_LEVELS[x.lvl])}</span></div>`).join("")}</div>
+    <p class="none">${nws.length ? `NWS: ${esc(and(nws))}. ` : ""}${est.length ? `Estimate: ${esc(and(est))}. ` : ""}Avoid slot canyons and washes at Probable or Expected.</p>`;
 }
 
 // Row: past snow, only when there is snow (R45)
@@ -1904,7 +1937,7 @@ function floodHTML(warns){
   return `<h2>Flood alerts (${fl.length})</h2>` + fl.map(x => `<div class="alert ${floodLevel(x.event) > 1 ? "k-danger" : "k-caution"}"><div class="at">${esc(x.event)}${x.where ? ` (${esc(x.where)})` : ""}</div>
     <div class="ad">${esc(x.headline || "")}</div>${x.desc ? `<div class="ad">${esc(x.desc)}${x.desc.length >= 500 ? "…" : ""}</div>` : ""}
     ${x.ends ? `<div class="am">Until ${esc(fmtTime(Date.parse(x.ends)))} · National Weather Service${x.where ? ` · for ${esc(x.where)}` : ""}</div>` : ""}</div>`).join("") +
-    `<p class="none">Flash floods can come from rain far away. Stay out of slot canyons and narrow washes when a flood alert is active.</p>`;
+    `<p class="none">Rain far away can cause a flash flood. Avoid slot canyons and washes.</p>`;
 }
 
 function alertBlock(a){
@@ -1919,7 +1952,7 @@ function detail(p, list, w, warns){
   const groups = {road:"Roads", trail:"Trails", facility:"Facilities and camping", other:"Other alerts"};
   let alertsHtml = "";
   if (!list) alertsHtml = `<p class="none">The alerts did not load.</p>`;
-  else if (!list.length) alertsHtml = `<p class="none">NPS has no active alerts for this park.${LIVE_ROADS[p.code] ? "" : " NPS reports normal operation of roads and trails."}</p>`;
+  else if (!list.length) alertsHtml = `<p class="none">NPS has no active alerts for this park.${LIVE_ROADS[p.code] || (window.PARK_ROADCOND && PARK_ROADCOND.parks[p.code]) ? "" : " NPS reports normal operation of roads and trails."}</p>`;
   // Groups with a closure first, so closures are at the top (R39)
   else Object.keys(groups).sort((x, y) => list.some(a => a.type === y && a.isClosure) - list.some(a => a.type === x && a.isClosure)).forEach(g => {
     const items = list.filter(a => a.type === g);
@@ -1945,7 +1978,7 @@ function detail(p, list, w, warns){
   if (other.length){
     wxHtml += `<h2 style="margin-top:14px">NWS warnings</h2>` + other.map(x => `<div class="alert k-danger"><div class="at">${esc(x.event)}</div><div class="ad">${esc(x.headline||"")}</div></div>`).join("");
   }
-  return `<div class="dbox"><div>${ffpHTML(p, w, warns)}${floodHTML(warns)}${liveRoadsHTML(p.code)}${alertsHtml}${roadWorkLink(p.code)}${p.note?`<p class="am">${esc(p.note)}</p>`:""}${roadLinks(p.id)}${campLink(p.code)}<p class="am"><a href="https://www.nps.gov/${p.code}/planyourvisit/conditions.htm" target="_blank" rel="noopener">Official ${esc(p.name)} conditions page</a></p></div><div>${wxHtml}</div><div>${histHTML(p.id)}</div><div class="mviz" data-mviz="${p.id}"></div></div>`;
+  return `<div class="dbox"><div>${ffpHTML(p, w, warns)}${floodHTML(warns)}${liveRoadsHTML(p.code)}${roadCondHTML(p.code)}${alertsHtml}${roadWorkLink(p.code)}${p.note?`<p class="am">${esc(p.note)}</p>`:""}${roadLinks(p.id)}${campLink(p.code)}<p class="am"><a href="https://www.nps.gov/${p.code}/planyourvisit/conditions.htm" target="_blank" rel="noopener">Official ${esc(p.name)} conditions page</a></p></div><div>${wxHtml}</div><div>${histHTML(p.id)}</div><div class="mviz" data-mviz="${p.id}"></div></div>`;
 }
 
 // ---- Monthly visits and climate (R9) ----
@@ -2484,7 +2517,8 @@ render();
 if (!restoreCache()) refresh(); // saved data first; new data only on "Refresh data"
 // The "Best time" column uses the stored monthly and fall color data. Load it once. It does not refresh.
 Promise.all([loadHistory(), loadFoliage(), loadData("data/airports.js", "PARK_AIRPORTS").catch(() => null),
-             loadData("data/seasonal.js", "PARK_SEASONAL").catch(() => null)]).then(() => {
+             loadData("data/seasonal.js", "PARK_SEASONAL").catch(() => null),
+             loadData("data/road-conditions.js", "PARK_ROADCOND").catch(() => null)]).then(() => {
   if (!("PARK_FOLIAGE" in window)) window.PARK_FOLIAGE = null;
   render();
   renderCamps();
