@@ -1063,7 +1063,7 @@ function roadCondHTML(code){
   return `<h2>Road conditions${nClosed ? ` (${nClosed} closed or impassable)` : ""}</h2>` + R.districts.map(d => `<div class="rcd">${d.name ? `<b>${esc(d.name)}</b>` : ""}<ul>${d.roads.map(r => {
       const L = condLevel(r.c);
       return `<li><span class="rcn">${esc(r.n)}</span> <span class="rcc L${L}" title="${esc(lab[L])}">${esc(r.c)}</span>${r.x ? `<small>${esc(r.x)}</small>` : ""}</li>`; }).join("")}</ul></div>`).join("") +
-    `<p class="am">${R.asOf ? `Park update of ${esc(R.asOf)}. ` : ""}Read ${esc(fmtTime(Date.parse(PARK_ROADCOND.built)))}. Conditions can change fast after rain or snow. <a href="${esc(R.src)}" target="_blank" rel="noopener">Park road conditions</a></p>`;
+    `<p class="none">${R.asOf ? `Park update of ${esc(R.asOf)}. ` : ""}Read ${esc(fmtTime(Date.parse(PARK_ROADCOND.built)))}. Conditions can change fast after rain or snow. <a href="${esc(R.src)}" target="_blank" rel="noopener">Park road conditions</a></p>`;
 }
 const liveClosed = code => ((state.roads || {})[code] || []).filter(r => r.closed && roadRank(r.name) < 3).length + condClosed(code);
 function liveRoadsHTML(code){
@@ -1952,7 +1952,7 @@ function detail(p, list, w, warns){
   const groups = {road:"Roads", trail:"Trails", facility:"Facilities and camping", other:"Other alerts"};
   let alertsHtml = "";
   if (!list) alertsHtml = `<p class="none">The alerts did not load.</p>`;
-  else if (!list.length) alertsHtml = `<p class="none">NPS has no active alerts for this park.${LIVE_ROADS[p.code] ? "" : " NPS reports normal operation of roads and trails."}</p>`;
+  else if (!list.length) alertsHtml = `<p class="none">NPS has no active alerts for this park.${LIVE_ROADS[p.code] || (window.PARK_ROADCOND && PARK_ROADCOND.parks[p.code]) ? "" : " NPS reports normal operation of roads and trails."}</p>`;
   // Groups with a closure first, so closures are at the top (R39)
   else Object.keys(groups).sort((x, y) => list.some(a => a.type === y && a.isClosure) - list.some(a => a.type === x && a.isClosure)).forEach(g => {
     const items = list.filter(a => a.type === g);

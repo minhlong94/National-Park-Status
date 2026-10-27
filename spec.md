@@ -858,3 +858,21 @@ Requirements:
   - Each workflow has its own queue, so GitHub does not cancel a waiting run of another workflow.
   - The push step takes the newest commits of main and tries again (4 times), so two runs at the same time do not fail. Then it publishes the newest main to gh-pages. If another run already published a newer main, that is not an error.
 - Status: done.
+
+### R51. Road conditions of Capitol Reef (and other parks), and a short flash flood text
+
+Original text from the owner:
+
+> Capitol Reef has road close conditions that are not reflected. Add that as well.
+>
+> Additionally for flash flood message, keep it short
+
+Requirements:
+
+- Capitol Reef posts a "Current Road Conditions" table for each district on its conditions page (Road Name, Condition, Updated on). The NPS API does not have these conditions.
+- The script `scripts/fetch_conditions.py` reads the road condition tables of all parks (on the conditions, road conditions and roads pages). It uses a table when the first row has a road column and a condition or status column. The heading above the table is the district. When a cell has a long description, the script uses the first bold text or the first line, and keeps a short part of the rest as a note. A row that only points to another table ("See the … Table above") is left out. Now: Capitol Reef and Sequoia and Kings Canyon.
+- The workflow `.github/workflows/update-conditions.yml` runs the script every 6 hours, and saves `data/road-conditions.js`.
+- The park details show "Road conditions" for each district, with a colored mark: Closed (red), not recommended or impassable (orange), unknown or a warning (gray), open (green). It shows the date of the park update and a link.
+- A road that is closed or (likely) impassable counts as a road closure: in the Roads count, in the park status ("Partial closures") and in the tooltip of the status.
+- The flash flood text is short: "NWS: Today and Wed. Estimate: Thu. Avoid slot canyons and washes at Probable or Expected." The meaning of each rating is in the tooltip of the day. The flood alert note is short too.
+- Status: done.

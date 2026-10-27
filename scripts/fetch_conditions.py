@@ -76,6 +76,8 @@ def road_tables(page):
             if len(r) <= max(road, cond) or not clean(r[road]) or not clean(r[cond]):
                 continue
             n, c = lead(r[road]), lead(r[cond])
+            if re.match(r"(?i)see (the )?", c):
+                continue  # a pointer to another table, not a condition
             note = clean(r[cond])[len(c):].strip(" .—-:") if clean(r[cond]).startswith(c) else ""
             roads.append({"n": n[:90], "c": c[:90], "x": note[:240], "d": clean(r[date]) if date is not None and date < len(r) else ""})
         if roads:
