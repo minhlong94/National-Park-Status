@@ -473,6 +473,7 @@ Requirements:
   - the reasons on the best time banner
 - The chart axes stay in °F and inches. One axis has one unit.
 - Wind speeds stay in mph.
+- Note: R54 replaces the two units side by side with a Units button (one unit system at a time).
 - Status: done.
 
 ### R29. Save the statuses and weather in the browser
@@ -905,3 +906,27 @@ Requirements:
 - The NPS API key for development is a network secret of the cloud development environment (host `developer.nps.gov`). The proxy adds it to the requests. Tests can then use the real NPS data.
 - The key is not in the repository. The repository is public, so a key in it is not secret. The page still uses `DEMO_KEY`, or the key that a user types in "NPS API key".
 - Status: open. The secret is saved, but the NPS API returns "API_KEY_INVALID". The secret must send only the key in the `X-Api-Key` header, with no word before it.
+
+### R54. Units button: imperial or metric
+
+Original text from the owner:
+
+> Make a button to let users use imperial or metric, apply to all stats
+
+Requirements:
+
+- A "Units" button at the top of the page has two parts: "°F · Imperial" and "°C · Metric". Imperial is the default.
+- The page shows one unit system at a time. This replaces the two units side by side of R28.
+  - Imperial: °F, inches (rain and snow), mph, miles, feet.
+  - Metric: °C, mm (rain), cm (snow), km/h, km, m.
+- The units apply to all values on the page:
+  - current weather, feels like, wind and gusts, today, past snow
+  - 3-day forecast cards and the storm and heavy snow labels
+  - monthly charts (axes and titles), the monthly tooltip and the monthly values table
+  - the reasons on the best time banner
+  - airport distances and the distance of the fall color reports
+  - lengths in the fixed texts of the page (for example "Tioga Pass (9,943 ft)" and "10 in of snow")
+- The text of NPS alerts and of NPS pages stays as NPS wrote it.
+- The browser saves the choice (`parkUnits.v1`). The page uses it again on the next visit.
+- When you click the button, the page shows all values again at once. It does not get new data.
+- Status: done.
