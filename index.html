@@ -101,6 +101,10 @@ tr.park:hover td{background:color-mix(in srgb,var(--pine) 6%,transparent)}
 .cnt{font-variant-numeric:tabular-nums;font-weight:600}
 .cnt.zero{color:var(--muted);font-weight:400}
 .wx{white-space:nowrap}
+.wxi{font-size:16px;line-height:1;font-family:"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif;cursor:help}
+.wxi.big{font-size:24px;vertical-align:-4px;margin-right:6px}
+.fc .fi{display:flex;align-items:center;gap:6px}
+.fc .fw{color:var(--muted);font-size:12px}
 .wx .t{font:700 20px/1 "Archivo Narrow",Arial,sans-serif}
 .wx small{display:block;color:var(--muted);font-size:12.5px;margin-top:3px}
 .fc > div.fhz{border:2px solid var(--partial);border-left-width:6px;background:color-mix(in srgb, var(--partial) 20%, var(--panel));padding-left:8px;border-radius:6px}
@@ -860,6 +864,18 @@ const WMO = {0:"Clear",1:"Mostly clear",2:"Partly cloudy",3:"Overcast",45:"Fog",
   61:"Light rain",63:"Rain",65:"Heavy rain",66:"Freezing rain",67:"Freezing rain",
   71:"Light snow",73:"Snow",75:"Heavy snow",77:"Snow grains",80:"Rain showers",81:"Rain showers",82:"Violent showers",
   85:"Snow showers",86:"Heavy snow showers",95:"Thunderstorm",96:"Thunderstorm, hail",99:"Thunderstorm, hail"};
+// Weather icons (R52). The text in WMO is the label of the icon (tooltip and screen reader).
+const WMO_ICON = {0:"☀️",1:"🌤️",2:"⛅",3:"☁️",45:"🌫️",48:"🌫️",51:"🌦️",53:"🌦️",55:"🌧️",56:"🧊",57:"🧊",
+  61:"🌦️",63:"🌧️",65:"🌧️",66:"🧊",67:"🧊",71:"🌨️",73:"🌨️",75:"❄️",77:"🌨️",80:"🌦️",81:"🌧️",82:"🌧️",
+  85:"🌨️",86:"❄️",95:"⛈️",96:"⛈️",99:"⛈️"};
+const WMO_NIGHT = {0:"🌙",1:"🌙",2:"☁️"};
+function wxIcon(code, night, big){
+  const t = WMO[code] || "No data";
+  const i = (night && WMO_NIGHT[code]) || WMO_ICON[code] || "❔";
+  return `<span class="wxi${big ? " big" : ""}" role="img" aria-label="${esc(t)}" title="${esc(t)}">${i}</span>`;
+}
+// Small icon in front of a value. The word is the label for screen readers and the tooltip.
+const ico = (i, word) => `<span role="img" aria-label="${word}" title="${word}">${i}</span>`;
 
 const RX = {
   road:/\b(road|roads|highway|hwy|drive|parkway|route|rte|pass|bridge|traffic|lane|vehicle|vehicles|parking|entrance|tunnel|shuttle|chains?|scenic drive|pull-?out|construction)\b/i,
@@ -960,7 +976,7 @@ async function loadWeather(){
   setSrc("wx","busy","loading…");
   const lat = [...PARKS, ...EXTRA_LIST].map(p=>p.lat).join(","), lon = [...PARKS, ...EXTRA_LIST].map(p=>p.lon).join(",");
   const url = "https://api.open-meteo.com/v1/forecast?latitude="+lat+"&longitude="+lon+
-    "&current=temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,wind_speed_10m,wind_gusts_10m,precipitation"+
+    "&current=temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,wind_speed_10m,wind_gusts_10m,precipitation,is_day"+
     "&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,precipitation_sum,snowfall_sum,wind_gusts_10m_max,precipitation_hours"+
     "&temperature_unit=fahrenheit&wind_speed_unit=mph&precipitation_unit=inch&timezone=auto&forecast_days=3";
   const res = await fetch(url, {cache:"no-store"});
@@ -1747,12 +1763,12 @@ function render(){
     let now = `<span class="none">–</span>`, today = `<span class="none">–</span>`;
     if (w && w.current){
       const cu = w.current;
-      now = `<div class="wx"><span class="t">${Math.round(cu.temperature_2m)}°F</span> <span class="tc">${toC(cu.temperature_2m)}°C</span> ${esc(WMO[cu.weather_code] || "—")}
-        <small>Feels ${tBoth(cu.apparent_temperature)} · wind ${Math.round(cu.wind_speed_10m)} mph, gusts ${Math.round(cu.wind_gusts_10m)}</small>${snowLine(w)}
+      now = `<div class="wx">${wxIcon(cu.weather_code, cu.is_day === 0, true)}<span class="t">${Math.round(cu.temperature_2m)}°F</span> <span class="tc">${toC(cu.temperature_2m)}°C</span>
+        <small>Feels ${tBoth(cu.apparent_temperature)}</small><small>${ico("💨", "Wind")} ${Math.round(cu.wind_speed_10m)} mph, gusts ${Math.round(cu.wind_gusts_10m)}</small>${snowLine(w)}
         ${warns.length ? `<span class="warn">${warns.map(x=>esc(x.event)).join(", ")}</span>` : ""}</div>`;
       const d = w.daily;
-      today = `<div class="wx">${Math.round(d.temperature_2m_max[0])}° / ${Math.round(d.temperature_2m_min[0])}°F
-        <small>${toC(d.temperature_2m_max[0])}° / ${toC(d.temperature_2m_min[0])}°C · precip ${d.precipitation_probability_max[0] ?? 0}%${d.snowfall_sum[0] ? ` · snow ${inMm(d.snowfall_sum[0], 1)}` : ""}</small>${hazardBadge(w)}</div>`;
+      today = `<div class="wx">${wxIcon(d.weather_code[0], false, true)}${Math.round(d.temperature_2m_max[0])}° / ${Math.round(d.temperature_2m_min[0])}°F
+        <small>${toC(d.temperature_2m_max[0])}° / ${toC(d.temperature_2m_min[0])}°C</small><small>${ico("💧", "Precipitation")} ${d.precipitation_probability_max[0] ?? 0}%${d.snowfall_sum[0] ? ` · ${ico("❄️", "Snow")} ${inMm(d.snowfall_sum[0], 1)}` : ""}</small>${hazardBadge(w)}</div>`;
     } else if (warns.length){
       now = `<span class="warn">${warns.map(x=>esc(x.event)).join(", ")}</span>`;
     }
@@ -1962,7 +1978,7 @@ function detail(p, list, w, warns){
   const fcCards = d => `<div class="fc">` + d.time.map((t,i) => {
       const day = new Date(t+"T12:00:00").toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"});
       const hz = dayHazard(d, i);
-      return `<div${hz ? ` class="fhz h${hz.lvl}"` : ""}>${hz ? `<span class="fhl"><span aria-hidden="true">⚠</span> ${esc(hz.kind)}<small>${esc(hz.why.join(", "))}</small></span>` : ""}<b>${day}</b><span class="ft">${Math.round(d.temperature_2m_max[i])}° / ${Math.round(d.temperature_2m_min[i])}°F<small>${toC(d.temperature_2m_max[i])}° / ${toC(d.temperature_2m_min[i])}°C</small></span><span>${esc(WMO[d.weather_code[i]]||"—")}</span><span class="fp">Precip ${d.precipitation_probability_max[i] ?? 0}%, ${inMm(d.precipitation_sum[i]||0, 2)}</span></div>`;
+      return `<div${hz ? ` class="fhz h${hz.lvl}"` : ""}>${hz ? `<span class="fhl"><span aria-hidden="true">⚠</span> ${esc(hz.kind)}<small>${esc(hz.why.join(", "))}</small></span>` : ""}<b>${day}</b><span class="ft">${Math.round(d.temperature_2m_max[i])}° / ${Math.round(d.temperature_2m_min[i])}°F<small>${toC(d.temperature_2m_max[i])}° / ${toC(d.temperature_2m_min[i])}°C</small></span><span class="fi">${wxIcon(d.weather_code[i], false, true)}<span class="fw">${esc(WMO[d.weather_code[i]]||"")}</span></span><span class="fp">${ico("💧", "Precipitation")} ${d.precipitation_probability_max[i] ?? 0}%, ${inMm(d.precipitation_sum[i]||0, 2)}${d.snowfall_sum && d.snowfall_sum[i] ? ` · ${ico("❄️", "Snow")} ${inMm(d.snowfall_sum[i], 1)}` : ""}</span></div>`;
     }).join("") + `</div>`;
   if (w && w.daily){
     wxHtml += fcCards(w.daily);
