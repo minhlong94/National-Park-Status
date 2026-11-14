@@ -876,3 +876,32 @@ Requirements:
 - A road that is closed or (likely) impassable counts as a road closure: in the Roads count, in the park status ("Partial closures") and in the tooltip of the status.
 - The flash flood text is short: "NWS: Today and Wed. Estimate: Thu. Avoid slot canyons and washes at Probable or Expected." The meaning of each rating is in the tooltip of the day. The flood alert note is short too.
 - Status: done.
+
+### R52. Weather icons
+
+Original text from the owner:
+
+> For weather change it to icons for ease of reading and skimming
+
+Requirements:
+
+- The weather conditions show as icons, not as words, so that you can read the weather quickly:
+  - "Weather now": an icon for the current weather. At night, a clear sky shows a moon.
+  - "Today": an icon for the weather of today.
+  - 3-day forecast cards (also the Zion "Narrows upstream" point): an icon for each day, with the short name of the weather in small gray text.
+- Icons: ☀️ clear, 🌤️ mostly clear, ⛅ partly cloudy, ☁️ overcast, 🌫️ fog, 🌦️ light rain or showers, 🌧️ rain, 🧊 freezing rain or drizzle, 🌨️ snow, ❄️ heavy snow, ⛈️ thunderstorm, 🌙 clear at night.
+- Small icons in front of values: 💨 wind, 💧 chance of precipitation, ❄️ snow.
+- The name of the weather is the tooltip of each icon and the label for screen readers.
+- Status: done.
+
+### R53. NPS API key for development tests
+
+Original text from the owner:
+
+> For development purposes store this NPS key to test the data
+
+Requirements:
+
+- The NPS API key for development is a network secret of the cloud development environment (host `developer.nps.gov`). The proxy adds it to the requests. Tests can then use the real NPS data.
+- The key is not in the repository. The repository is public, so a key in it is not secret. The page still uses `DEMO_KEY`, or the key that a user types in "NPS API key".
+- Status: open. The secret is saved, but the NPS API returns "API_KEY_INVALID". The secret must send only the key in the `X-Api-Key` header, with no word before it.

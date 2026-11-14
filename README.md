@@ -9,7 +9,7 @@ This page shows the current conditions of all 64 U.S. national parks, including 
 - **Status of each park**: open, partial closures or closed. The status comes from official NPS alerts. Put the pointer on the status to see the names of the closures.
 - **Number of alerts** for roads, trails, facilities and other subjects. Click a park row to see all its alerts, its closure history and a 3-day forecast.
 - **Past snow**: the snow of the last 7 days and the snow on the ground now show with the current weather. The park details show the snow of today, yesterday, the last 7 days and the last 30 days.
-- **Current weather and the forecast for today.** Temperatures are in °F and °C. Rain and snow are in inches and mm. The page also shows the active warnings from the National Weather Service.
+- **Current weather and the forecast for today.** Icons show the weather (☀️ clear, ⛅ partly cloudy, 🌧️ rain, 🌨️ snow, ⛈️ thunderstorm, and more). Put the pointer on an icon to see its name. Temperatures are in °F and °C. Rain and snow are in inches and mm. The page also shows the active warnings from the National Weather Service.
 - **Seasonal road history**: the opening and closing dates for Tioga Road, Glacier Point Road, Mariposa Grove Road, Going-to-the-Sun Road and Trail Ridge Road. The page shows only the last 10 years, with the newest year first. The "Road dates" tabs show the planned opening and closing dates of this year for each road section of Yellowstone and Grand Teton, as a calendar. The weekly seasonal workflow reads these dates from the park pages.
 - **Visits and climate by month**: click a park to see four charts with the same months:
   - recreation visits in each month of the last 3 calendar years, with one color for each year
