@@ -38,6 +38,10 @@ h1{font-size:clamp(28px,4.4vw,44px);line-height:1.05;margin:0;font-weight:700;le
 .sub{color:var(--muted);margin:6px 0 0;max-width:62ch}
 .actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
 button{font:600 14px/1 "Public Sans",system-ui,sans-serif;border-radius:6px;cursor:pointer;padding:11px 16px;border:1px solid var(--line);background:var(--panel);color:var(--ink)}
+.units{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.units button{border:0;border-radius:0;margin:0;padding:7px 11px;background:var(--panel);color:var(--ink);font-size:13.5px;white-space:nowrap}
+.units button+button{border-left:1px solid var(--line)}
+.units button[aria-pressed="true"]{background:var(--ink);color:var(--paper);font-weight:600}
 button.primary{background:var(--pine);color:var(--pine-ink);border-color:var(--pine)}
 button:disabled{opacity:.6;cursor:progress}
 button:focus-visible,input:focus-visible,summary:focus-visible{outline:3px solid var(--info);outline-offset:2px}
@@ -333,6 +337,10 @@ footer a{color:var(--info)}
       <p class="sub">This board shows road, trail and facility closures and the current weather for all 64 U.S. national parks. The list sorts the parks by 2025 recreation visits.</p>
     </div>
     <div class="actions">
+      <div class="units" role="group" aria-label="Units">
+        <button type="button" data-units="imperial" aria-pressed="true" title="°F, inches, mph, miles, feet">°F · Imperial</button>
+        <button type="button" data-units="metric" aria-pressed="false" title="°C, mm, cm, km/h, km, m">°C · Metric</button>
+      </div>
       <span class="stamp" id="stamp">Not loaded yet</span>
       <button class="primary" id="refresh">Refresh data</button>
     </div>
@@ -462,7 +470,7 @@ footer a{color:var(--info)}
     The page sorts each alert into a type by keywords. Read the alert text before you drive.
     The weather comes from Open-Meteo. The warnings come from the National Weather Service (api.weather.gov).
     The visits are recreation visits in calendar year 2025, from NPS Visitor Use Statistics. NPS gives Sequoia and Kings Canyon as separate numbers.
-    Temperatures are in °F and °C. Rain and snow are in inches and mm. Wind speeds are in mph.
+    Use the Units button at the top to show imperial units (°F, inches, mph, miles, feet) or metric units (°C, mm, cm, km/h, km, m). The text of NPS alerts stays as NPS wrote it.
     <br>Source code: <a href="https://github.com/minhlong94/National-Park-Status" target="_blank" rel="noopener">github.com/minhlong94/National-Park-Status</a>
   </footer>
 </div>
@@ -889,10 +897,30 @@ const $ = id => document.getElementById(id);
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const fmtInt = n => n.toLocaleString("en-US");
 // Metric units next to US units (R28)
+// ---- Units (R54): imperial (°F, in, mph, mi, ft) or metric (°C, mm, cm, km/h, km, m) ----
+// The data is in imperial units. The page changes the values when it shows them.
+const UNITS_KEY = "parkUnits.v1";
+let METRIC = false;
+try { METRIC = localStorage.getItem(UNITS_KEY) === "metric"; } catch(e){ /* no storage: imperial */ }
 const toC = f => Math.round((f - 32) * 5 / 9);
 const toMm = i => Math.round(i * 25.4);
-const tBoth = f => `${Math.round(f)}°F (${toC(f)}°C)`;
-const inMm = (i, d) => `${(+i).toFixed(d)} in (${toMm(i)} mm)`;
+const tNum = f => METRIC ? toC(f) : Math.round(f);          // a temperature, as a number in the selected unit
+const tU = () => METRIC ? "°C" : "°F";
+const tBoth = f => `${tNum(f)}${tU()}`;                      // one temperature with its unit
+const tPair = (hi, lo) => `${tNum(hi)}° / ${tNum(lo)}${tU()}`; // high / low
+const inMm = (i, d) => METRIC ? `${toMm(i)} mm` : `${(+i).toFixed(d)} in`;            // rain
+const snowAmt = (i, d) => METRIC ? `${(i * 2.54).toFixed(Math.max(0, d))} cm` : `${(+i).toFixed(d)} in`; // snow
+const spd = mph => METRIC ? `${Math.round(mph * 1.609)} km/h` : `${Math.round(mph)} mph`;
+const dist = mi => METRIC ? `${Math.round(mi * 1.609)} km` : `${Math.round(mi)} mi`;
+const distKm = km => METRIC ? `${Math.round(km)} km` : `${Math.round(km / 1.609)} mi`;
+// Lengths in the fixed texts of this page ("9,943 ft", "5 miles")
+const uText = s => !METRIC || !s ? s : String(s)
+  .replace(/(\d+(?:\.\d+)?) (?:in|inches) of (rain|snow)\b/g, (m, n, k) => k === "rain" ? `${toMm(+n)} mm of rain` : `${Math.round(n * 2.54)} cm of snow`)
+  .replace(/(\d[\d,]*(?:\.\d+)?) (ft|feet|miles?|mi)\b/g, (m, n, u) => {
+  const v = parseFloat(n.replace(/,/g, ""));
+  if (u === "ft" || u === "feet"){ const x = v * 0.3048; return `${x < 10 ? x.toFixed(1) : Math.round(x).toLocaleString("en-US")} m`; }
+  return `${Math.round(v * 1.609).toLocaleString("en-US")} km`;
+});
 // Short form for big numbers (R23): 4.8M, 400K, 7.8K. Numbers under 1,000 do not change.
 function shortNum(n){
   if (n == null || isNaN(n)) return "–";
@@ -1476,7 +1504,7 @@ function showCamp(code){ campSel = code; renderCamps(); $("camps").scrollIntoVie
 function histHTML(code){
   return `<h2>Closure history</h2><ul class="hist">` + histList(code).map(e =>
     `<li><div class="hd"><b>${esc(startText(e))}</b>${e.end ? "to " + esc(fmtD(e.end)) : ""}${durText(e)!=="–" ? `<br>${durText(e)} days` : ""}</div>
-     <div><div class="ht"><span class="tag ${e.scope}">${SCOPE[e.scope]}</span>${esc(e.title)}${e.park==="*" ? " (all parks)" : ""}</div><div class="hn">${esc(e.note)}</div></div></li>`).join("") + `</ul>`;
+     <div><div class="ht"><span class="tag ${e.scope}">${SCOPE[e.scope]}</span>${esc(e.title)}${e.park==="*" ? " (all parks)" : ""}</div><div class="hn">${esc(uText(e.note))}</div></div></li>`).join("") + `</ul>`;
 }
 const PARK_BY = Object.fromEntries(PARKS.map(p=>[p.id,p]));
 
@@ -1526,7 +1554,7 @@ function roadChart(rows, intr){
     if (r.cd!==null) g+=`<rect x="${x(r.y)-bw/2}" y="${y(r.cd)}" width="${bw}" height="${Math.max(1,y(r.od)-y(r.cd))}" rx="${Math.min(3,bw/2)}" fill="var(--pine)" opacity="${r.note?0.55:0.85}"><title>${esc(t)}</title></rect>`;
     (intr[r.y]||[]).forEach(iv=>{ const a=doy(r.y,iv.from), b=iv.to?doy(r.y,iv.to):a+2;
       g+=`<rect x="${x(r.y)-bw/2-2}" y="${y(b)}" width="${bw+4}" height="${Math.max(3,y(a)-y(b))}" fill="var(--closed)"><title>${esc(r.y+": closed "+iv.from+(iv.to?"–"+iv.to:" (reopening not confirmed)")+" — "+iv.why)}</title></rect>`; });
-    g+=`<circle cx="${x(r.y)}" cy="${y(r.od)}" r="${Math.max(2.5,bw/2+0.5)}" fill="${r.note?"var(--partial)":"var(--ink)"}"><title>${esc(t)}${r.note?" — "+esc(r.note):""}</title></circle>`;
+    g+=`<circle cx="${x(r.y)}" cy="${y(r.od)}" r="${Math.max(2.5,bw/2+0.5)}" fill="${r.note?"var(--partial)":"var(--ink)"}"><title>${esc(t)}${r.note?" — "+esc(uText(r.note)):""}</title></circle>`;
   });
   return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Season bars by year">${g}</svg>
     <div class="cap">Dot: the opening date. An orange dot shows a year with a note. Bar: the open season, from the opening date to the closing date. Red mark: a short closure during the season. Put the pointer on a mark to see the exact dates.</div>`;
@@ -1589,9 +1617,9 @@ function renderRoads(){
   const intr = {};
   Object.entries(INTERRUPTS[r.id] || {}).forEach(([yr,list]) => { if (+yr>=minYear) intr[yr] = [...list].sort((a,b)=>doy(+yr,b.from)-doy(+yr,a.from)); });
   const iyears = Object.keys(intr).map(Number).sort((a,b)=>b-a);
-  const intrList = iyears.length ? `<div class="rintr"><h3>Short closures after the road opened</h3><ul class="hist">${iyears.flatMap(yr=>intr[yr].map(iv=>`<li><div class="hd"><b>${esc(iv.from)}${iv.to?"–"+esc(iv.to):"–?"}, ${yr}</b>${iv.to?(doy(yr,iv.to)-doy(yr,iv.from))+" days":"Reopening not confirmed"}</div><div><div class="ht"><span class="tag full">Closed</span>${esc(iv.what)}</div><div class="hn">${esc(iv.why)}. ${esc(iv.detail)}</div></div></li>`)).join("")}</ul></div>` : "";
+  const intrList = iyears.length ? `<div class="rintr"><h3>Short closures after the road opened</h3><ul class="hist">${iyears.flatMap(yr=>intr[yr].map(iv=>`<li><div class="hd"><b>${esc(iv.from)}${iv.to?"–"+esc(iv.to):"–?"}, ${yr}</b>${iv.to?(doy(yr,iv.to)-doy(yr,iv.from))+" days":"Reopening not confirmed"}</div><div><div class="ht"><span class="tag full">Closed</span>${esc(uText(iv.what))}</div><div class="hn">${esc(uText(iv.why))}. ${esc(uText(iv.detail))}</div></div></li>`)).join("")}</ul></div>` : "";
   $("rbody").innerHTML = `
-    ${roadPlan(r)}${roadNow(r)}<p class="rabout"><b>${esc(r.sub)}.</b> ${esc(r.about)} <a href="${r.src}" target="_blank" rel="noopener">NPS source</a></p>
+    ${roadPlan(r)}${roadNow(r)}<p class="rabout"><b>${esc(uText(r.sub))}.</b> ${esc(uText(r.about))} <a href="${r.src}" target="_blank" rel="noopener">NPS source</a></p>
     <div class="rstats">
       <div><strong>${doyLabel(st.avgO)}</strong><span>Average opening (${st.n} years, ${st.to}–${st.from})</span></div>
       <div><strong>${doyLabel(st.medO)}</strong><span>Median opening</span></div>
@@ -1620,7 +1648,7 @@ function renderHistory(){
   $("hrows").innerHTML = rows.map(e => `<tr>
     <td class="dur">${esc(startText(e))}</td><td class="dur">${esc(endText(e))}</td><td class="num dur">${durText(e)}</td>
     <td>${e.park==="*" ? "All parks" : esc(PARK_BY[e.park].name)}</td>
-    <td><div class="ht">${esc(e.title)}</div><div class="hn" style="color:var(--muted)">${esc(e.note)}</div></td>
+    <td><div class="ht">${esc(e.title)}</div><div class="hn" style="color:var(--muted)">${esc(uText(e.note))}</div></td>
     <td><span class="tag ${e.scope}">${SCOPE[e.scope]}</span></td></tr>`).join("");
 }
 
@@ -1645,13 +1673,13 @@ window.addEventListener("resize", syncDetailWidth);
 function airportLine(id){
   const list = window.PARK_AIRPORTS && PARK_AIRPORTS.parks[id];
   if (!list || !list.length) return "";
-  return `<div class="apl" title="${esc("Nearby airports: " + list.map(a => `${a.iata} (${a.mi} mi)`).join(", "))}"><span aria-hidden="true">✈</span> ${list.map(a => `<abbr title="${esc(a.name)}">${esc(a.iata)}</abbr>`).join(" · ")}</div>`;
+  return `<div class="apl" title="${esc("Nearby airports: " + list.map(a => `${a.iata} (${dist(a.mi)})`).join(", "))}"><span aria-hidden="true">✈</span> ${list.map(a => `<abbr title="${esc(a.name)}">${esc(a.iata)}</abbr>`).join(" · ")}</div>`;
 }
 function airportList(id){
   const list = window.PARK_AIRPORTS && PARK_AIRPORTS.parks[id];
   if (!list || !list.length) return "";
   return `<h2 style="margin-top:14px">Nearby airports</h2><ul class="aplist">` + list.map(a =>
-    `<li><b>${esc(a.iata)}</b><span>${esc(a.name)}${a.large ? ` <span class="tag limited">Large airport</span>` : ""}</span><span class="apmi">${a.mi} mi</span></li>`).join("") +
+    `<li><b>${esc(a.iata)}</b><span>${esc(a.name)}${a.large ? ` <span class="tag limited">Large airport</span>` : ""}</span><span class="apmi">${dist(a.mi)}</span></li>`).join("") +
     `</ul><p class="none" style="margin-top:6px">Airports with scheduled flights. The distance is a straight line from the park, not the driving distance.</p>`;
 }
 
@@ -1763,12 +1791,12 @@ function render(){
     let now = `<span class="none">–</span>`, today = `<span class="none">–</span>`;
     if (w && w.current){
       const cu = w.current;
-      now = `<div class="wx">${wxIcon(cu.weather_code, cu.is_day === 0, true)}<span class="t">${Math.round(cu.temperature_2m)}°F</span> <span class="tc">${toC(cu.temperature_2m)}°C</span>
-        <small>Feels ${tBoth(cu.apparent_temperature)}</small><small>${ico("💨", "Wind")} ${Math.round(cu.wind_speed_10m)} mph, gusts ${Math.round(cu.wind_gusts_10m)}</small>${snowLine(w)}
+      now = `<div class="wx">${wxIcon(cu.weather_code, cu.is_day === 0, true)}<span class="t">${tBoth(cu.temperature_2m)}</span>
+        <small>Feels ${tBoth(cu.apparent_temperature)}</small><small>${ico("💨", "Wind")} ${spd(cu.wind_speed_10m)}, gusts ${spd(cu.wind_gusts_10m)}</small>${snowLine(w)}
         ${warns.length ? `<span class="warn">${warns.map(x=>esc(x.event)).join(", ")}</span>` : ""}</div>`;
       const d = w.daily;
-      today = `<div class="wx">${wxIcon(d.weather_code[0], false, true)}${Math.round(d.temperature_2m_max[0])}° / ${Math.round(d.temperature_2m_min[0])}°F
-        <small>${toC(d.temperature_2m_max[0])}° / ${toC(d.temperature_2m_min[0])}°C</small><small>${ico("💧", "Precipitation")} ${d.precipitation_probability_max[0] ?? 0}%${d.snowfall_sum[0] ? ` · ${ico("❄️", "Snow")} ${inMm(d.snowfall_sum[0], 1)}` : ""}</small>${hazardBadge(w)}</div>`;
+      today = `<div class="wx">${wxIcon(d.weather_code[0], false, true)}<span class="tt">${tPair(d.temperature_2m_max[0], d.temperature_2m_min[0])}</span>
+        <small>${ico("💧", "Precipitation")} ${d.precipitation_probability_max[0] ?? 0}%${d.snowfall_sum[0] ? ` · ${ico("❄️", "Snow")} ${snowAmt(d.snowfall_sum[0], 1)}` : ""}</small>${hazardBadge(w)}</div>`;
     } else if (warns.length){
       now = `<span class="warn">${warns.map(x=>esc(x.event)).join(", ")}</span>`;
     }
@@ -1802,11 +1830,11 @@ function dayHazard(d, i){
   const gust = d.wind_gusts_10m_max ? d.wind_gusts_10m_max[i] || 0 : 0;
   const why = []; let lvl = 0, kind = "";
   const add = (l, k, text) => { why.push(text); if (l > lvl) lvl = l; if (!kind) kind = k; };
-  if (snow >= 4 || code === 75 || code === 86) add(snow >= 8 ? 2 : 1, "Heavy snow", `snow ${inMm(snow, 1)}`);
+  if (snow >= 4 || code === 75 || code === 86) add(snow >= 8 ? 2 : 1, "Heavy snow", `snow ${snowAmt(snow, 1)}`);
   if (code === 66 || code === 67) add(2, "Freezing rain", "freezing rain (ice on roads)");
   if (code >= 95) add(code >= 96 ? 2 : 1, "Thunderstorms", code >= 96 ? "thunderstorms with hail" : "thunderstorms");
   if (rain >= 1 || code === 65 || code === 82) add(rain >= 2 ? 2 : 1, "Heavy rain", `rain ${inMm(rain, 2)}`);
-  if (gust >= 40) add(gust >= 58 ? 2 : 1, "Strong wind", `gusts to ${Math.round(gust)} mph (${Math.round(gust * 1.609)} km/h)`);
+  if (gust >= 40) add(gust >= 58 ? 2 : 1, "Strong wind", `gusts to ${spd(gust)}`);
   if (!lvl) return null;
   // Rain or thunder together with strong wind is a storm
   if (why.length > 1 && /rain|Thunder/.test(kind + why.join()) && gust >= 40 && kind !== "Heavy snow"){
@@ -1928,15 +1956,15 @@ function snowLine(w){
   const sp = w && w.snowPast;
   if (!sp || (sp.d7 < 0.05 && !(sp.depth > 0.4))) return "";
   const parts = [];
-  if (sp.d7 >= 0.05) parts.push(`${sp.d7.toFixed(1)} in (${toMm(sp.d7)} mm) in 7 days`);
-  if (sp.depth > 0.4) parts.push(`${Math.round(sp.depth)} in (${toMm(sp.depth)} mm) on the ground`);
+  if (sp.d7 >= 0.05) parts.push(`7 days ${snowAmt(sp.d7, 1)}`);
+  if (sp.depth > 0.4) parts.push(`on the ground ${snowAmt(sp.depth, 0)}`);
   return `<small class="snowp"><span aria-hidden="true">❄</span> Snow: ${parts.join(" · ")}</small>`;
 }
 // Park details: the past snow table (R45)
 function snowPastHTML(w){
   const sp = w && w.snowPast;
   if (!sp) return "";
-  const row = (label, v) => `<tr><td>${label}</td><td class="num">${v == null ? "–" : inMm(v, 1)}</td></tr>`;
+  const row = (label, v) => `<tr><td>${label}</td><td class="num">${v == null ? "–" : snowAmt(v, 1)}</td></tr>`;
   return `<h2 style="margin-top:14px">Past snow</h2><table class="spast"><tbody>
     ${row("Today (so far)", sp.today)}${row("Yesterday", sp.y)}${row("Last 7 days", sp.d7)}${row("Last 30 days", sp.d30)}
     ${row("Snow on the ground now", sp.depth)}</tbody></table>
@@ -1978,7 +2006,7 @@ function detail(p, list, w, warns){
   const fcCards = d => `<div class="fc">` + d.time.map((t,i) => {
       const day = new Date(t+"T12:00:00").toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"});
       const hz = dayHazard(d, i);
-      return `<div${hz ? ` class="fhz h${hz.lvl}"` : ""}>${hz ? `<span class="fhl"><span aria-hidden="true">⚠</span> ${esc(hz.kind)}<small>${esc(hz.why.join(", "))}</small></span>` : ""}<b>${day}</b><span class="ft">${Math.round(d.temperature_2m_max[i])}° / ${Math.round(d.temperature_2m_min[i])}°F<small>${toC(d.temperature_2m_max[i])}° / ${toC(d.temperature_2m_min[i])}°C</small></span><span class="fi">${wxIcon(d.weather_code[i], false, true)}<span class="fw">${esc(WMO[d.weather_code[i]]||"")}</span></span><span class="fp">${ico("💧", "Precipitation")} ${d.precipitation_probability_max[i] ?? 0}%, ${inMm(d.precipitation_sum[i]||0, 2)}${d.snowfall_sum && d.snowfall_sum[i] ? ` · ${ico("❄️", "Snow")} ${inMm(d.snowfall_sum[i], 1)}` : ""}</span></div>`;
+      return `<div${hz ? ` class="fhz h${hz.lvl}"` : ""}>${hz ? `<span class="fhl"><span aria-hidden="true">⚠</span> ${esc(hz.kind)}<small>${esc(hz.why.join(", "))}</small></span>` : ""}<b>${day}</b><span class="ft">${tPair(d.temperature_2m_max[i], d.temperature_2m_min[i])}</span><span class="fi">${wxIcon(d.weather_code[i], false, true)}<span class="fw">${esc(WMO[d.weather_code[i]]||"")}</span></span><span class="fp">${ico("💧", "Precipitation")} ${d.precipitation_probability_max[i] ?? 0}%, ${inMm(d.precipitation_sum[i]||0, 2)}${d.snowfall_sum && d.snowfall_sum[i] ? ` · ${ico("❄️", "Snow")} ${snowAmt(d.snowfall_sum[i], 1)}` : ""}</span></div>`;
     }).join("") + `</div>`;
   if (w && w.daily){
     wxHtml += fcCards(w.daily);
@@ -1994,7 +2022,7 @@ function detail(p, list, w, warns){
   if (other.length){
     wxHtml += `<h2 style="margin-top:14px">NWS warnings</h2>` + other.map(x => `<div class="alert k-danger"><div class="at">${esc(x.event)}</div><div class="ad">${esc(x.headline||"")}</div></div>`).join("");
   }
-  return `<div class="dbox"><div>${ffpHTML(p, w, warns)}${floodHTML(warns)}${liveRoadsHTML(p.code)}${roadCondHTML(p.code)}${alertsHtml}${roadWorkLink(p.code)}${p.note?`<p class="am">${esc(p.note)}</p>`:""}${roadLinks(p.id)}${campLink(p.code)}<p class="am"><a href="https://www.nps.gov/${p.code}/planyourvisit/conditions.htm" target="_blank" rel="noopener">Official ${esc(p.name)} conditions page</a></p></div><div>${wxHtml}</div><div>${histHTML(p.id)}</div><div class="mviz" data-mviz="${p.id}"></div></div>`;
+  return `<div class="dbox"><div>${ffpHTML(p, w, warns)}${floodHTML(warns)}${liveRoadsHTML(p.code)}${roadCondHTML(p.code)}${alertsHtml}${roadWorkLink(p.code)}${p.note?`<p class="am">${esc(uText(p.note))}</p>`:""}${roadLinks(p.id)}${campLink(p.code)}<p class="am"><a href="https://www.nps.gov/${p.code}/planyourvisit/conditions.htm" target="_blank" rel="noopener">Official ${esc(p.name)} conditions page</a></p></div><div>${wxHtml}</div><div>${histHTML(p.id)}</div><div class="mviz" data-mviz="${p.id}"></div></div>`;
 }
 
 // ---- Monthly visits and climate (R9) ----
@@ -2162,7 +2190,7 @@ function bestTime(id){
   const his = best.map(i => H.wx.hi[i]).filter(v => v != null), reasons = [];
   if (his.length){
     const a = Math.round(Math.min(...his)), b = Math.round(Math.max(...his));
-    reasons.push(a === b ? `average highs of ${a}°F (${toC(a)}°C)` : `average highs of ${a}–${b}°F (${toC(a)}–${toC(b)}°C)`);
+    reasons.push(tNum(a) === tNum(b) ? `average highs of ${tBoth(a)}` : `average highs of ${tNum(a)}–${tBoth(b)}`);
   }
   const cb = best.map(i => parts[i].crowd).filter(v => v != null);
   if (cb.length){
@@ -2170,7 +2198,7 @@ function bestTime(id){
     reasons.push(share >= 0.85 ? "most visitors come at this time" : `about ${Math.round(share*100)}% of the visitors of the busiest month`);
   }
   const rb = best.map(i => H.wx.rain[i]).filter(v => v != null), sb = best.map(i => H.wx.snow[i]).filter(v => v != null);
-  if (rb.length && avg(rb) > 4) reasons.push(`rain is frequent (about ${Math.round(avg(rb))} in or ${toMm(avg(rb))} mm a month)`);
+  if (rb.length && avg(rb) > 4) reasons.push(`rain is frequent (about ${inMm(avg(rb), 0)} a month)`);
   if (sb.length && Math.max(...sb) >= 2) reasons.push("snow is possible");
   const limited = parts.map((p,i) => p.limited ? i : -1).filter(i => i >= 0);
   // Seasonal roads of this park: the usual open dates in the last 10 years
@@ -2215,7 +2243,11 @@ function drawMonthly(box, id){
   g1 += hitLayer(L, band, T1-8, base1, true, "visits");
 
   // 2. Temperature: floating column from the average daily low to the average daily high
-  const H2 = 160, T2 = 10, B2 = 22, base2 = H2-B2, lo = P.wx.lo, hi = P.wx.hi;
+  // Values in the selected units (R54): °F or °C, rain in inches or mm, snow in inches or cm
+  const cv = (a, f) => a.map(v => v == null ? null : f(v));
+  const lo = cv(P.wx.lo, v => METRIC ? (v - 32) * 5 / 9 : v), hi = cv(P.wx.hi, v => METRIC ? (v - 32) * 5 / 9 : v);
+  const rainU = cv(P.wx.rain, v => METRIC ? v * 25.4 : v), snowU = cv(P.wx.snow, v => METRIC ? v * 2.54 : v);
+  const H2 = 160, T2 = 10, B2 = 22, base2 = H2-B2;
   const tv = [...lo, ...hi].filter(v => v != null);
   const tt = ticks(Math.min(...tv), Math.max(...tv), 4), y2 = v => base2 - (v-tt[0])/(tt[tt.length-1]-tt[0])*(base2-T2);
   const tw = Math.min(24, band*0.45);
@@ -2264,7 +2296,7 @@ function drawMonthly(box, id){
     const part = (k, name) => r && r[k][1] ? `${name} in ${Math.round(100 * r[k][0] / r[k][1])}% of ${r[k][1]} reports` : "";
     const msg = r ? [part("colored","colored leaves"), part("falling","falling leaves")].filter(Boolean).join(", ") + ` from ${r.sites} ${r.sites === 1 ? "site" : "sites"}` : `no reports`;
     if (!fall) fallHtml += `<div class="mtitle">Fall color</div>`;
-    fallHtml += `<p class="mfall"><span>This season, ${range}, within ${now.km} km of the park:</span> ${esc(msg)}.</p>`;
+    fallHtml += `<p class="mfall"><span>This season, ${range}, within ${distKm(now.km)} of the park:</span> ${esc(msg)}.</p>`;
   } else if (fall && fall.clear && now && now.stale){
     fallHtml += `<p class="mfall"><span>Reports for this season start on Aug 15.</span></p>`;
   }
@@ -2278,16 +2310,16 @@ function drawMonthly(box, id){
     <div class="mlegend" role="group" aria-label="Show or hide years">${years.map(y => `<button type="button" data-year="${y}" aria-pressed="${!hiddenYears.has(y)}"><i style="background:${colorOf(y)}"></i>${y}</button>`).join("")}</div>
     <svg viewBox="0 0 ${W} ${H1}" width="${W}" height="${H1}" role="group" aria-label="Recreation visits by month">${g1}</svg>
     ${fallHtml}
-    <div class="mtitle">Temperature <span>average daily low to high, °F, last 3 years (°C in the tooltip and the table)</span></div>
+    <div class="mtitle">Temperature <span>average daily low to high, ${tU()}, last 3 years</span></div>
     <svg viewBox="0 0 ${W} ${H2}" width="${W}" height="${H2}" aria-hidden="true">${g2}</svg>
-    <div class="mtitle">Rain <span>average monthly total, inches, last 3 years</span></div>
-    ${amountChart(P.wx.rain, "--rain")}
-    <div class="mtitle">Snow <span>average monthly total, inches of snow, last 3 years</span></div>
-    ${snowTotal >= 0.1 ? amountChart(P.wx.snow, "--snow") : `<p class="none">Almost no snow falls here in an average year.</p>`}
+    <div class="mtitle">Rain <span>average monthly total, ${METRIC ? "mm" : "inches"}, last 3 years</span></div>
+    ${amountChart(rainU, "--rain")}
+    <div class="mtitle">Snow <span>average monthly total, ${METRIC ? "cm" : "inches"} of snow, last 3 years</span></div>
+    ${snowTotal >= 0.1 ? amountChart(snowU, "--snow") : `<p class="none">Almost no snow falls here in an average year.</p>`}
     <div class="mtip" hidden></div>
     <details><summary>Show the values as a table</summary><div class="tablewrap"><table>
-      <thead><tr><th>Month</th>${years.map(y => `<th class="num">Visits ${y}</th>`).join("")}<th class="num">Low °F</th><th class="num">Low °C</th><th class="num">High °F</th><th class="num">High °C</th><th class="num">Rain in</th><th class="num">Rain mm</th><th class="num">Snow in</th><th class="num">Snow mm</th></tr></thead>
-      <tbody>${MONTHS.map((m,i) => `<tr><td>${m}</td>${years.map(y => `<td class="num">${vis(y)[i] == null ? "–" : shortNum(vis(y)[i])}</td>`).join("")}<td class="num">${lo[i] ?? "–"}</td><td class="num">${lo[i] == null ? "–" : toC(lo[i])}</td><td class="num">${hi[i] ?? "–"}</td><td class="num">${hi[i] == null ? "–" : toC(hi[i])}</td><td class="num">${P.wx.rain[i] ?? "–"}</td><td class="num">${P.wx.rain[i] == null ? "–" : toMm(P.wx.rain[i])}</td><td class="num">${P.wx.snow[i] ?? "–"}</td><td class="num">${P.wx.snow[i] == null ? "–" : toMm(P.wx.snow[i])}</td></tr>`).join("")}</tbody>
+      <thead><tr><th>Month</th>${years.map(y => `<th class="num">Visits ${y}</th>`).join("")}<th class="num">Low ${tU()}</th><th class="num">High ${tU()}</th><th class="num">Rain ${METRIC ? "mm" : "in"}</th><th class="num">Snow ${METRIC ? "cm" : "in"}</th></tr></thead>
+      <tbody>${MONTHS.map((m,i) => `<tr><td>${m}</td>${years.map(y => `<td class="num">${vis(y)[i] == null ? "–" : shortNum(vis(y)[i])}</td>`).join("")}<td class="num">${lo[i] == null ? "–" : Math.round(lo[i])}</td><td class="num">${hi[i] == null ? "–" : Math.round(hi[i])}</td><td class="num">${P.wx.rain[i] == null ? "–" : METRIC ? Math.round(rainU[i]) : P.wx.rain[i]}</td><td class="num">${P.wx.snow[i] == null ? "–" : METRIC ? snowU[i].toFixed(1) : P.wx.snow[i]}</td></tr>`).join("")}</tbody>
     </table></div></details>
     <p class="msrc">Sources: NPS Visitor Use Statistics (recreation visits). Open-Meteo historical weather (ERA5 model) at the forecast point of the park. Data to ${esc(H.lastLabel)}.${fall ? ` Fall color: NASA MODIS land surface phenology (MCD12Q2), ${(window.PARK_FOLIAGE.wide || []).includes(id) ? "21 km box (the 3 km box had no data)" : "3 km box"} at the same point.` : ""}${now && !now.stale ? " This season: USA National Phenology Network." : ""}</p>`;
 
@@ -2306,9 +2338,9 @@ function drawMonthly(box, id){
     const h = document.createElement("div"); h.className = "mth"; h.textContent = MONTHS_LONG[i]; tip.append(h);
     years.slice().reverse().forEach(y => { if (!hiddenYears.has(y)) tip.append(row(colorOf(y), `Visits ${y}`, vis(y)[i] == null ? "No data yet" : shortNum(vis(y)[i]))); });
     tip.append(document.createElement("hr"));
-    tip.append(row("var(--temp)", "Low to high", lo[i] == null ? "–" : `${Math.round(lo[i])}° to ${Math.round(hi[i])}°F (${toC(lo[i])}° to ${toC(hi[i])}°C)`));
+    tip.append(row("var(--temp)", "Low to high", lo[i] == null ? "–" : `${Math.round(lo[i])}° to ${Math.round(hi[i])}${tU()}`));
     tip.append(row("var(--rain)", "Rain", P.wx.rain[i] == null ? "–" : inMm(P.wx.rain[i], 2)));
-    tip.append(row("var(--snow)", "Snow", P.wx.snow[i] == null ? "–" : inMm(P.wx.snow[i], 1)));
+    tip.append(row("var(--snow)", "Snow", P.wx.snow[i] == null ? "–" : snowAmt(P.wx.snow[i], 1)));
     if (fall && fall.clear){
       const m0 = doyDate(fall.sen).getUTCMonth(), m1 = doyDate(fall.dor).getUTCMonth();
       const mm = doyDate(fall.mid).getUTCMonth();
@@ -2353,6 +2385,16 @@ function showMonthly(id){
     box.innerHTML = `<h2>Visits and climate by month</h2><p class="none">The monthly data did not load. If you opened the file directly, use a local web server (see the README).</p>`;
   });
 }
+// Units button (R54): shows all values again in the selected units
+function setUnits(metric){
+  METRIC = metric;
+  try { localStorage.setItem(UNITS_KEY, metric ? "metric" : "imperial"); } catch(e){ /* not saved */ }
+  document.querySelectorAll("[data-units]").forEach(b => b.setAttribute("aria-pressed", String((b.dataset.units === "metric") === METRIC)));
+  Object.keys(bestCache).forEach(k => delete bestCache[k]); // the best time reasons have values in them
+  render(); // also draws the monthly charts of the open parks again
+}
+document.querySelectorAll("[data-units]").forEach(b => b.addEventListener("click", () => setUnits(b.dataset.units === "metric")));
+document.querySelectorAll("[data-units]").forEach(b => b.setAttribute("aria-pressed", String((b.dataset.units === "metric") === METRIC)));
 let mvizTimer = 0;
 window.addEventListener("resize", () => { clearTimeout(mvizTimer); mvizTimer = setTimeout(() => {
   syncDetailWidth();
