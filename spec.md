@@ -930,3 +930,29 @@ Requirements:
 - The browser saves the choice (`parkUnits.v1`). The page uses it again on the next visit.
 - When you click the button, the page shows all values again at once. It does not get new data.
 - Status: done.
+
+### R55. The 3-day forecast is horizontal
+
+Original text from the owner:
+
+> Make weather forecast horizontal, not vertical
+
+Requirements:
+
+- The 3-day forecast in the park details shows the days side by side, one column for each day. This also applies to the Zion "Narrows upstream" forecast.
+- Each column shows, from top to bottom: the day, the weather icon, the name of the weather, the high and low temperatures, the chance and amount of precipitation, and the snow (when there is snow).
+- A day with a storm or heavy snow has a thick colored line at the top. The warning and its reasons are at the bottom of the column, so that the values of the days stay in line.
+- On a phone, the three columns stay side by side. The page does not scroll sideways.
+- Status: done.
+
+### R56. Closure history at the end of the park details
+
+Original text from the owner:
+
+> Move Closure History to the end of each part as it is not quite useful since there are too few events
+
+Requirements:
+
+- In the park details, "Closure history" is the last part, after "Visits and climate by month". It uses the full width.
+- The top of the park details has two columns: the alerts (left) and the weather (right). On a narrow screen (700 px or less), the parts are in one column.
+- Status: done.

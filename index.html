@@ -107,15 +107,13 @@ tr.park:hover td{background:color-mix(in srgb,var(--pine) 6%,transparent)}
 .wx{white-space:nowrap}
 .wxi{font-size:16px;line-height:1;font-family:"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif;cursor:help}
 .wxi.big{font-size:24px;vertical-align:-4px;margin-right:6px}
-.fc .fi{display:flex;align-items:center;gap:6px}
-.fc .fw{color:var(--muted);font-size:12px}
 .wx .t{font:700 20px/1 "Archivo Narrow",Arial,sans-serif}
 .wx small{display:block;color:var(--muted);font-size:12.5px;margin-top:3px}
-.fc > div.fhz{border:2px solid var(--partial);border-left-width:6px;background:color-mix(in srgb, var(--partial) 20%, var(--panel));padding-left:8px;border-radius:6px}
+.fc > div.fhz{border:2px solid var(--partial);border-top-width:6px;background:color-mix(in srgb, var(--partial) 20%, var(--panel));border-radius:6px}
 .fc > div.fhz.h2{border-color:var(--closed);background:color-mix(in srgb, var(--closed) 16%, var(--panel))}
 .fc > div.fhz.h2 .fhl{color:var(--closed)}
-.fhl{grid-column:1/-1;display:block;font-weight:700;font-size:14px;color:var(--ink);margin-bottom:2px}
-.fhl small{display:block;font-weight:400;font-size:12.5px;color:var(--ink)}
+.fhl{display:block;font-weight:700;font-size:13px;color:var(--ink);margin-top:4px;padding-top:5px;border-top:1px solid color-mix(in srgb, currentColor 25%, transparent);width:100%}
+.fhl small{display:block;font-weight:400;font-size:12px;color:var(--ink)}
 .hzb{display:inline-block;margin-top:6px;padding:2px 7px;border-radius:6px;font-size:12px;font-weight:700;line-height:1.3;white-space:normal}
 .hzb.h2{background:var(--closed);color:#fff}
 .hzb.h1{background:color-mix(in srgb, var(--partial) 18%, transparent);border:1px solid var(--partial);color:var(--ink)}
@@ -154,9 +152,14 @@ tr.park:hover td{background:color-mix(in srgb,var(--pine) 6%,transparent)}
 .warn{color:var(--closed);font-size:12.5px;font-weight:600;display:block;margin-top:4px;white-space:normal;max-width:24ch}
 tr.detail td{background:var(--paper);padding:0}
 tr.detail[hidden]{display:none}
-.dbox{padding:16px 18px 20px 64px;display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:22px;
+.dbox{padding:16px 18px 20px 64px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:22px;
   position:sticky;left:0;max-width:var(--vis-w,100%)}
+@media (max-width:700px){.dbox{grid-template-columns:minmax(0,1fr)}}
 .dbox a{color:var(--info)}
+/* Closure history: at the end of the park details, full width (R56) */
+.dhist{grid-column:1/-1;border-top:1px solid var(--line);padding-top:14px;min-width:0}
+.dhist .hist{columns:2 300px;column-gap:28px}
+.dhist .hist li{break-inside:avoid}
 .dbox h2{font-size:17px;margin:0 0 8px;font-weight:600}
 .alert{border-left:4px solid var(--line);padding:6px 0 6px 10px;margin:0 0 10px}
 .alert.k-closure{border-color:var(--closed)}.alert.k-danger{border-color:var(--closed)}.alert.k-caution{border-color:var(--partial)}.alert.k-info{border-color:var(--info)}
@@ -165,13 +168,15 @@ tr.detail[hidden]{display:none}
 .alert .am{font-size:12.5px;color:var(--muted);margin-top:4px}
 .alert a{color:var(--info)}
 .none{color:var(--muted);font-size:14px}
-.fc{display:flex;flex-direction:column;gap:6px}
-.fc>div{display:grid;grid-template-columns:7.5em 7em 1fr;gap:2px 10px;align-items:baseline;border:1px solid var(--line);border-radius:6px;padding:7px 10px;background:var(--panel);font-size:13px}
+/* 3-day forecast: one column for each day, side by side (R55) */
+.fc{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);gap:6px}
+.fc>div{display:flex;flex-direction:column;align-items:center;text-align:center;gap:3px;border:1px solid var(--line);border-radius:6px;padding:8px 6px;background:var(--panel);font-size:13px;min-width:0}
 .fc b{font-size:13px}
-.fc .ft{font-weight:600;font-variant-numeric:tabular-nums}
-.fc .ft small{display:block;font-weight:400;color:var(--muted)}
+.fc .wxi.big{font-size:30px;margin:2px 0 0;vertical-align:0}
+.fc .fw{color:var(--muted);font-size:12px;line-height:1.2}
+.fc .ft{font-weight:700;font-size:14px;font-variant-numeric:tabular-nums}
 .wx .tc{color:var(--muted);font-size:13px}
-.fc .fp{grid-column:2/-1;color:var(--muted)}
+.fc .fp{color:var(--muted);font-size:12.5px;line-height:1.3}
 .banner{border:1px solid var(--closed);color:var(--closed);border-radius:8px;padding:10px 14px;margin:14px 0;font-size:14px}
 .banner[hidden]{display:none}
 .campsec{margin-top:34px}
@@ -2006,7 +2011,11 @@ function detail(p, list, w, warns){
   const fcCards = d => `<div class="fc">` + d.time.map((t,i) => {
       const day = new Date(t+"T12:00:00").toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"});
       const hz = dayHazard(d, i);
-      return `<div${hz ? ` class="fhz h${hz.lvl}"` : ""}>${hz ? `<span class="fhl"><span aria-hidden="true">⚠</span> ${esc(hz.kind)}<small>${esc(hz.why.join(", "))}</small></span>` : ""}<b>${day}</b><span class="ft">${tPair(d.temperature_2m_max[i], d.temperature_2m_min[i])}</span><span class="fi">${wxIcon(d.weather_code[i], false, true)}<span class="fw">${esc(WMO[d.weather_code[i]]||"")}</span></span><span class="fp">${ico("💧", "Precipitation")} ${d.precipitation_probability_max[i] ?? 0}%, ${inMm(d.precipitation_sum[i]||0, 2)}${d.snowfall_sum && d.snowfall_sum[i] ? ` · ${ico("❄️", "Snow")} ${snowAmt(d.snowfall_sum[i], 1)}` : ""}</span></div>`;
+      return `<div${hz ? ` class="fhz h${hz.lvl}"` : ""}><b>${day}</b>${wxIcon(d.weather_code[i], false, true)}<span class="fw">${esc(WMO[d.weather_code[i]]||"")}</span>` +
+        `<span class="ft">${tPair(d.temperature_2m_max[i], d.temperature_2m_min[i])}</span>` +
+        `<span class="fp"><span class="nw">${ico("💧", "Precipitation")} ${d.precipitation_probability_max[i] ?? 0}%</span> · <span class="nw">${inMm(d.precipitation_sum[i]||0, 2)}</span></span>` +
+        (d.snowfall_sum && d.snowfall_sum[i] ? `<span class="fp nw">${ico("❄️", "Snow")} ${snowAmt(d.snowfall_sum[i], 1)}</span>` : "") +
+        (hz ? `<span class="fhl"><span aria-hidden="true">⚠</span> ${esc(hz.kind)}<small>${esc(hz.why.join(", "))}</small></span>` : "") + `</div>`;
     }).join("") + `</div>`;
   if (w && w.daily){
     wxHtml += fcCards(w.daily);
@@ -2022,7 +2031,7 @@ function detail(p, list, w, warns){
   if (other.length){
     wxHtml += `<h2 style="margin-top:14px">NWS warnings</h2>` + other.map(x => `<div class="alert k-danger"><div class="at">${esc(x.event)}</div><div class="ad">${esc(x.headline||"")}</div></div>`).join("");
   }
-  return `<div class="dbox"><div>${ffpHTML(p, w, warns)}${floodHTML(warns)}${liveRoadsHTML(p.code)}${roadCondHTML(p.code)}${alertsHtml}${roadWorkLink(p.code)}${p.note?`<p class="am">${esc(uText(p.note))}</p>`:""}${roadLinks(p.id)}${campLink(p.code)}<p class="am"><a href="https://www.nps.gov/${p.code}/planyourvisit/conditions.htm" target="_blank" rel="noopener">Official ${esc(p.name)} conditions page</a></p></div><div>${wxHtml}</div><div>${histHTML(p.id)}</div><div class="mviz" data-mviz="${p.id}"></div></div>`;
+  return `<div class="dbox"><div>${ffpHTML(p, w, warns)}${floodHTML(warns)}${liveRoadsHTML(p.code)}${roadCondHTML(p.code)}${alertsHtml}${roadWorkLink(p.code)}${p.note?`<p class="am">${esc(uText(p.note))}</p>`:""}${roadLinks(p.id)}${campLink(p.code)}<p class="am"><a href="https://www.nps.gov/${p.code}/planyourvisit/conditions.htm" target="_blank" rel="noopener">Official ${esc(p.name)} conditions page</a></p></div><div>${wxHtml}</div><div class="mviz" data-mviz="${p.id}"></div><div class="dhist">${histHTML(p.id)}</div></div>`;
 }
 
 // ---- Monthly visits and climate (R9) ----
