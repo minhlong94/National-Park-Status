@@ -164,15 +164,15 @@ tr.detail[hidden]{display:none}
 .dhist .hist{columns:2 300px;column-gap:28px}
 .dhist .hist li{break-inside:avoid}
 .dbox h2{font-size:17px;margin:0 0 8px;font-weight:600}
-.asec{border-bottom:1px solid var(--line);margin:0 0 4px}
-.asec>summary{cursor:pointer;list-style:none;display:flex;align-items:baseline;gap:4px 10px;flex-wrap:wrap;padding:7px 0}
-.asec>summary::-webkit-details-marker{display:none}
-.asec>summary::before{content:"▸";color:var(--muted);font-size:13px;width:10px;display:inline-block;transition:transform .15s}
-.asec[open]>summary::before{transform:rotate(90deg)}
-.asec>summary h2{display:inline;margin:0}
-.asec>summary:focus-visible{outline:2px solid var(--info);outline-offset:2px}
-.asec .sbody{padding:2px 0 8px 14px}
-.sflag{font-size:12.5px;font-weight:700;color:var(--closed)}
+/* Alerts: the headline shows, the text opens on a click (R58) */
+.alert.ax>summary{cursor:pointer;list-style:none;display:block;position:relative;padding-left:16px}
+.alert.ax>summary::-webkit-details-marker{display:none}
+.alert.ax>summary::before{content:"▸";position:absolute;left:0;top:1px;color:var(--muted);font-size:13px;transition:transform .15s}
+.alert.ax[open]>summary::before{transform:rotate(90deg)}
+.alert.ax>summary:hover{color:var(--info)}
+.alert.ax>summary:focus-visible{outline:2px solid var(--info);outline-offset:2px}
+.alert.ax>.ad,.alert.ax>.am{padding-left:16px}
+.sflag{font-size:12.5px;font-weight:700;color:var(--closed);margin-left:6px}
 .secbar{display:flex;margin:4px 0 6px}
 .secall{padding:6px 11px;font-size:13px;font-weight:600}
 .alert{border-left:4px solid var(--line);padding:6px 0 6px 10px;margin:0 0 10px}
@@ -1120,28 +1120,34 @@ function condRoads(code){
 const condClosed = code => condRoads(code).filter(r => condIsClosure(r.c)).length;
 // Collapsible part of the park details (R57). The page keeps the open parts when it shows the list again.
 function sec(code, key, title, body, flag){
+  return `<h2>${title}${flag ? `<span class="sflag">${flag}</span>` : ""}</h2>${body}`;
+}
+// One alert (R58): the headline shows. The text and details open on a click.
+// The page keeps the open alerts when it shows the list again.
+function ax(code, key, cls, title, inner){
+  if (!inner.trim()) return `<div class="alert ${cls}"><div class="at">${title}</div></div>`;
   const id = code + ":" + key;
-  return `<details class="asec" data-sec="${esc(id)}"${state.secOpen.has(id) ? " open" : ""}><summary><h2>${title}</h2>${flag ? `<span class="sflag">${flag}</span>` : ""}</summary><div class="sbody">${body}</div></details>`;
+  return `<details class="alert ax ${cls}" data-ax="${esc(id)}"${state.secOpen.has(id) ? " open" : ""}><summary class="at">${title}</summary>${inner}</details>`;
 }
 function syncSecAll(box){
   const b = box && box.querySelector("[data-secall]");
   if (!b) return;
-  const all = [...box.querySelectorAll("details.asec")], allOpen = all.length > 0 && all.every(d => d.open);
-  b.textContent = allOpen ? "Hide all sections" : "Show all sections";
+  const all = [...box.querySelectorAll("details[data-ax]")], allOpen = all.length > 0 && all.every(d => d.open);
+  b.textContent = allOpen ? "Hide all alert details" : "Show all alert details";
   b.setAttribute("aria-expanded", String(allOpen));
 }
 document.addEventListener("toggle", e => {
   const d = e.target;
-  if (!d.matches || !d.matches("details.asec")) return;
-  if (d.open) state.secOpen.add(d.dataset.sec); else state.secOpen.delete(d.dataset.sec);
+  if (!d.matches || !d.matches("details[data-ax]")) return;
+  if (d.open) state.secOpen.add(d.dataset.ax); else state.secOpen.delete(d.dataset.ax);
   syncSecAll(d.closest(".dbox"));
 }, true);
 document.addEventListener("click", e => {
   const b = e.target.closest && e.target.closest("[data-secall]");
   if (!b) return;
-  const box = b.closest(".dbox"), all = [...box.querySelectorAll("details.asec")];
+  const box = b.closest(".dbox"), all = [...box.querySelectorAll("details[data-ax]")];
   const openAll = all.some(d => !d.open);
-  all.forEach(d => { d.open = openAll; if (openAll) state.secOpen.add(d.dataset.sec); else state.secOpen.delete(d.dataset.sec); });
+  all.forEach(d => { d.open = openAll; if (openAll) state.secOpen.add(d.dataset.ax); else state.secOpen.delete(d.dataset.ax); });
   syncSecAll(box);
 });
 function roadCondHTML(code){
@@ -1165,8 +1171,8 @@ function liveRoadsHTML(code){
   let h = "";
   if (!list) h += `<p class="none">The live road status did not load.</p>`;
   else if (!list.length) h += `<p class="none">The park road map shows no closed roads.</p>`;
-  else h += list.map(r => `<div class="alert ${r.closed ? "k-closure" : "k-caution"}"><div class="at">${esc(r.name)}: ${roadState(r)}</div>
-    ${r.reasons.length ? `<div class="ad">${esc(r.reasons.join("; "))}</div>` : ""}${r.season ? `<div class="am">Usual season: ${esc(r.season)}</div>` : ""}${(() => { const R0 = ROADS.find(x => x.plan && x.name.toLowerCase() === r.name.toLowerCase()); return R0 ? `<div class="am">${roadPlan(R0).replace(/<\/?(p|b)[^>]*>/g, "")}</div>` : ""; })()}</div>`).join("");
+  else h += list.map(r => ax(code, "live:" + r.name, r.closed ? "k-closure" : "k-caution", `${esc(r.name)}: ${roadState(r)}`,
+    `${r.reasons.length ? `<div class="ad">${esc(r.reasons.join("; "))}</div>` : ""}${r.season ? `<div class="am">Usual season: ${esc(r.season)}</div>` : ""}${(() => { const R0 = ROADS.find(x => x.plan && x.name.toLowerCase() === r.name.toLowerCase()); return R0 ? `<div class="am">${roadPlan(R0).replace(/<\/?(p|b)[^>]*>/g, "")}</div>` : ""; })()}`)).join("");
   return sec(code, "live", `Live road status${list ? ` (${list.length})` : ""}`, h + `<p class="am"><a href="${esc(src.map)}" target="_blank" rel="noopener">Park road status map</a></p>`,
     nc ? `${nc} closed` : "");
 }
@@ -2028,18 +2034,17 @@ function floodHTML(warns, code){
   const fl = (warns || []).filter(x => floodLevel(x.event));
   if (!fl.length) return "";
   const nw = fl.filter(x => floodLevel(x.event) > 1).length;
-  return sec(code, "flood", `Flood alerts (${fl.length})`, fl.map(x => `<div class="alert ${floodLevel(x.event) > 1 ? "k-danger" : "k-caution"}"><div class="at">${esc(x.event)}${x.where ? ` (${esc(x.where)})` : ""}</div>
-    <div class="ad">${esc(x.headline || "")}</div>${x.desc ? `<div class="ad">${esc(x.desc)}${x.desc.length >= 500 ? "…" : ""}</div>` : ""}
-    ${x.ends ? `<div class="am">Until ${esc(fmtTime(Date.parse(x.ends)))} · National Weather Service${x.where ? ` · for ${esc(x.where)}` : ""}</div>` : ""}</div>`).join("") +
+  return sec(code, "flood", `Flood alerts (${fl.length})`, fl.map((x, i) => ax(code, "flood:" + i + ":" + x.event, floodLevel(x.event) > 1 ? "k-danger" : "k-caution", `${esc(x.event)}${x.where ? ` (${esc(x.where)})` : ""}`,
+    `<div class="ad">${esc(x.headline || "")}</div>${x.desc ? `<div class="ad">${esc(x.desc)}${x.desc.length >= 500 ? "…" : ""}</div>` : ""}
+    ${x.ends ? `<div class="am">Until ${esc(fmtTime(Date.parse(x.ends)))} · National Weather Service${x.where ? ` · for ${esc(x.where)}` : ""}</div>` : ""}`)).join("") +
     `<p class="none">Rain far away can cause a flash flood. Avoid slot canyons and washes.</p>`, nw ? `${nw} ${nw > 1 ? "warnings" : "warning"}` : "");
 }
 
-function alertBlock(a){
+function alertBlock(a, code){
   const url = a.url ? ` <a href="${esc(a.url)}" target="_blank" rel="noopener">Details</a>` : "";
-  return `<div class="alert k-${a.kind}">
-    <div class="at">${esc(a.title)}</div>
+  return ax(code, "a:" + (a.id || a.title), "k-" + a.kind, esc(a.title), `
     <div class="ad">${esc((a.description||"").slice(0,420))}${(a.description||"").length>420?"…":""}</div>
-    <div class="am">${esc(a.category)}${a.lastIndexedDate ? " · updated " + esc(fmtDate(a.lastIndexedDate)) : ""}${url}</div></div>`;
+    <div class="am">${esc(a.category)}${a.lastIndexedDate ? " · updated " + esc(fmtDate(a.lastIndexedDate)) : ""}${url}</div>`);
 }
 
 function detail(p, list, w, warns){
@@ -2051,7 +2056,7 @@ function detail(p, list, w, warns){
   else Object.keys(groups).sort((x, y) => list.some(a => a.type === y && a.isClosure) - list.some(a => a.type === x && a.isClosure)).forEach(g => {
     const items = list.filter(a => a.type === g);
     const nc = items.filter(a => a.isClosure).length;
-    if (items.length) alertsHtml += sec(p.code, g, `${groups[g]} (${items.length})`, items.map(alertBlock).join(""), nc ? `${nc} ${nc > 1 ? "closures" : "closure"}` : "");
+    if (items.length) alertsHtml += sec(p.code, g, `${groups[g]} (${items.length})`, items.map(a => alertBlock(a, p.code)).join(""), nc ? `${nc} ${nc > 1 ? "closures" : "closure"}` : "");
   });
   let wxHtml = `<h2>3-day forecast</h2>`;
   const fcCards = d => `<div class="fc">` + d.time.map((t,i) => {
@@ -2078,9 +2083,9 @@ function detail(p, list, w, warns){
     wxHtml += `<h2 style="margin-top:14px">NWS warnings</h2>` + other.map(x => `<div class="alert k-danger"><div class="at">${esc(x.event)}</div><div class="ad">${esc(x.headline||"")}</div></div>`).join("");
   }
   const secs = floodHTML(warns, p.code) + liveRoadsHTML(p.code) + roadCondHTML(p.code) + alertsHtml;
-  const nSec = (secs.match(/<details class="asec"/g) || []).length;
-  const allOpen = nSec > 0 && (secs.match(/<details class="asec"[^>]* open>/g) || []).length === nSec;
-  const bar = nSec > 1 ? `<div class="secbar"><button type="button" class="secall" data-secall="${p.code}" aria-expanded="${allOpen}">${allOpen ? "Hide" : "Show"} all sections</button></div>` : "";
+  const nSec = (secs.match(/ data-ax="/g) || []).length;
+  const allOpen = nSec > 0 && (secs.match(/ data-ax="[^"]*" open>/g) || []).length === nSec;
+  const bar = nSec > 1 ? `<div class="secbar"><button type="button" class="secall" data-secall="${p.code}" aria-expanded="${allOpen}">${allOpen ? "Hide" : "Show"} all alert details</button></div>` : "";
   return `<div class="dbox"><div>${ffpHTML(p, w, warns)}${bar}${secs}${roadWorkLink(p.code)}${p.note?`<p class="am">${esc(uText(p.note))}</p>`:""}${roadLinks(p.id)}${campLink(p.code)}<p class="am"><a href="https://www.nps.gov/${p.code}/planyourvisit/conditions.htm" target="_blank" rel="noopener">Official ${esc(p.name)} conditions page</a></p></div><div>${wxHtml}</div><div class="mviz" data-mviz="${p.id}"></div><div class="dhist">${histHTML(p.id)}</div></div>`;
 }
 

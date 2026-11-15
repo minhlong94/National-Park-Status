@@ -7,7 +7,7 @@ This page shows the current conditions of all 64 U.S. national parks, including 
 ## What the page shows
 
 - **Status of each park**: open, partial closures or closed. The status comes from official NPS alerts. Put the pointer on the status to see the names of the closures.
-- **Number of alerts** for roads, trails, facilities and other subjects. Click a park row to see all its alerts and a 3-day forecast (the days are side by side). The alerts are in sections that open and close. The title of each section shows the number of closures. **Show all sections** opens all of them. The closure history is at the end of the park details.
+- **Number of alerts** for roads, trails, facilities and other subjects. Click a park row to see all its alerts and a 3-day forecast (the days are side by side). Each alert shows its headline. Click the headline to read the text. The heading of each section shows the number of closures. **Show all alert details** opens all alerts of the park. The closure history is at the end of the park details.
 - **Past snow**: the snow of the last 7 days and the snow on the ground now show with the current weather. The park details show the snow of today, yesterday, the last 7 days and the last 30 days.
 - **Units button**: show all values in imperial units (°F, inches, mph, miles, feet) or metric units (°C, mm, cm, km/h, km, m). The browser saves your choice.
 - **Current weather and the forecast for today.** Icons show the weather (☀️ clear, ⛅ partly cloudy, 🌧️ rain, 🌨️ snow, ⛈️ thunderstorm, and more). Put the pointer on an icon to see its name. The page also shows the active warnings from the National Weather Service.

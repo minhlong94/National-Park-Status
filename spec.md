@@ -970,8 +970,24 @@ Requirements:
   - The sections are closed when you open a park. The title of each section shows the number of items, and a red flag shows the closures (or flood warnings) in it, for example "Roads (2) 1 closure".
   - When a park has two or more sections, a "Show all sections" button opens all of them. Then the button changes to "Hide all sections".
   - The page keeps the open sections when it shows the list again (for example after the units change).
+  - Note: R58 replaces these collapsible sections. The sections are always visible, and each alert opens and closes.
 - The temperature, rain and snow charts show their values:
   - Temperature: the average high above each column and the average low below it.
   - Rain and snow: the value above each column. One decimal under 10, no decimal from 10. No label for a month with no rain or snow.
   - The labels use the selected units (R54). On narrow screens the labels are smaller.
+- Status: done.
+
+### R58. Alerts show the headline, and the text opens on a click
+
+Original text from the owner:
+
+> Oh wait I mean for park alerts just show the headline but collapse the content
+
+Requirements:
+
+- In the park details, the section headings are always visible, with the number of alerts and a red flag for the closures (for example "Roads (2) 1 closure").
+- Each alert shows only its headline. The text, the category, the date and the link open when you click the headline. This applies to NPS alerts, flood alerts and live road status.
+- An alert has its color line (closure, danger, caution, information) also when it is closed.
+- When a park has two or more alerts, a "Show all alert details" button opens all of them. Then the button changes to "Hide all alert details".
+- The page keeps the open alerts when it shows the list again (for example after the units change).
 - Status: done.
