@@ -956,3 +956,22 @@ Requirements:
 - In the park details, "Closure history" is the last part, after "Visits and climate by month". It uses the full width.
 - The top of the park details has two columns: the alerts (left) and the weather (right). On a narrow screen (700 px or less), the parts are in one column.
 - Status: done.
+
+### R57. Source link at the top, collapsible alert sections, data labels on the climate charts
+
+Original text from the owner:
+
+> Make the source github url on top of the page. Additionally make all park alerts collapsible with a button to show all sections for each park. Additionally make temp, rain, and snow, to have data labels
+
+Requirements:
+
+- The link to the source code (github.com/minhlong94/National-Park-Status) is at the top of the page, under the description, with the GitHub mark. It is not in the footer.
+- In the park details, each alert section can open and close: flood alerts, live road status, road conditions, and the NPS alert groups (Roads, Trails, Facilities and camping, Other alerts).
+  - The sections are closed when you open a park. The title of each section shows the number of items, and a red flag shows the closures (or flood warnings) in it, for example "Roads (2) 1 closure".
+  - When a park has two or more sections, a "Show all sections" button opens all of them. Then the button changes to "Hide all sections".
+  - The page keeps the open sections when it shows the list again (for example after the units change).
+- The temperature, rain and snow charts show their values:
+  - Temperature: the average high above each column and the average low below it.
+  - Rain and snow: the value above each column. One decimal under 10, no decimal from 10. No label for a month with no rain or snow.
+  - The labels use the selected units (R54). On narrow screens the labels are smaller.
+- Status: done.
