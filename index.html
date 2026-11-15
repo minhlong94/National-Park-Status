@@ -1611,8 +1611,17 @@ function roadChart(rows, intr){
       g+=`<rect x="${x(r.y)-bw/2-2}" y="${y(b)}" width="${bw+4}" height="${Math.max(3,y(a)-y(b))}" fill="var(--closed)"><title>${esc(r.y+": closed "+iv.from+(iv.to?"–"+iv.to:" (reopening not confirmed)")+" — "+iv.why)}</title></rect>`; });
     g+=`<circle cx="${x(r.y)}" cy="${y(r.od)}" r="${Math.max(2.5,bw/2+0.5)}" fill="${r.note?"var(--partial)":"var(--ink)"}"><title>${esc(t)}${r.note?" — "+esc(uText(r.note)):""}</title></circle>`;
   });
+  // Average closing date: a red dashed line across the chart (R59)
+  const cl = pts.filter(r=>r.cd!==null);
+  let avgLine = "";
+  if (cl.length){
+    const ac = cl.reduce((s,r)=>s+r.cd,0)/cl.length, ya = y(ac), lab = `Average closing ${doyLabel(ac%365)} (${cl.length} ${cl.length>1?"years":"year"})`;
+    g += `<line x1="${L}" x2="${W-R}" y1="${ya}" y2="${ya}" stroke="var(--closed)" stroke-width="2" stroke-dasharray="7 5"><title>${esc(lab)}</title></line>` +
+      `<text x="${W-R-4}" y="${ya-6}" text-anchor="end" font-size="12" font-weight="700" fill="var(--closed)" stroke="var(--panel)" stroke-width="4" paint-order="stroke">${esc(lab)}</text>`;
+    avgLine = " Red dashed line: the average closing date.";
+  }
   return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Season bars by year">${g}</svg>
-    <div class="cap">Dot: the opening date. An orange dot shows a year with a note. Bar: the open season, from the opening date to the closing date. Red mark: a short closure during the season. Put the pointer on a mark to see the exact dates.</div>`;
+    <div class="cap">Dot: the opening date. An orange dot shows a year with a note. Bar: the open season, from the opening date to the closing date. Red mark: a short closure during the season.${avgLine} Put the pointer on a mark to see the exact dates.</div>`;
 }
 const ROAD_YEARS = 10; // show only the last 10 calendar years, newest first
 let roadSel = "tioga";
