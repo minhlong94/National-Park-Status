@@ -3,6 +3,7 @@
 This file records all the requirements that the owner gave for this repository.
 Add each new instruction from the owner to the "Requirements" list as a new item.
 Do not remove an item. If a new instruction replaces an old one, write the new item and mark the old item as replaced.
+The request of the owner in each item is edited for clarity: correct spelling and grammar, full names, and clear meaning. It does not need to be the exact words of the owner (see R59).
 
 Text rule: Write this file, the README and the page text in ASD-STE100 Simplified Technical English (see R5).
 
@@ -17,9 +18,9 @@ The product is one web page, `index.html`. The page shows the current conditions
 
 ### R0. Original instruction: park status page with weather and refresh
 
-Original text from the owner:
+Request from the owner (edited for clarity):
 
-> Pull me every road trail park status of every national park, build a html page on it, along with weather conditions, sorted by most visited parks top 20 only, and make a refresh button that pull new data on demand
+> Get the road, trail and park status of every national park. Build an HTML page with this status and the weather conditions. Sort the parks by visits and show only the 20 most visited parks. Add a refresh button that gets new data on demand.
 
 Requirements:
 
@@ -29,7 +30,7 @@ Requirements:
 - Sort the parks by the number of visits, with the most visited park first.
 - Show only the 20 most visited parks.
 - Add a "Refresh" button. When the reader clicks it, the page gets new data.
-- Status: done, with a change from R13. The page shows all 63 parks in pages of 10. The first page shows the 10 most visited parks.
+- Status: done, with a change from R13. The page shows all parks (64 since R47) in pages of 10. The first page shows the 10 most visited parks.
 
 ### R1. Keep the Park conditions board in the repository
 
@@ -82,7 +83,7 @@ Requirements:
 ### R7. Show the GitHub link on the page
 
 - The page must show a link to the GitHub repository: https://github.com/minhlong94/National-Park-Status
-- The link is in the footer of the page.
+- The link is in the footer of the page. (Replaced by R57: the link is at the top of the page.)
 - Status: done.
 
 ### R8. Merge the work into `main`
@@ -93,9 +94,9 @@ Requirements:
 
 ### R9. Monthly visits and climate chart for each park
 
-Original text from the owner:
+Request from the owner (edited for clarity):
 
-> For each park, add an interactive graph detailing visitors by month when clicked in the past 3 years, vertical bar diff color, along with avg temp low-high, snow, and rain, according to historical data, that can have its separate or same graph depending on your choice so that it works best to the readers
+> When I click a park, show an interactive chart of its visitors by month for the last 3 years (vertical bars, one color for each year). Also show the average low and high temperature, snow and rain from historical data. Use one chart or separate charts, as works best for the reader.
 
 Requirements:
 
@@ -120,9 +121,9 @@ Requirements:
 
 ### R10. Use timeouts in the data workflow
 
-Original text from the owner:
+Request from the owner (edited for clarity):
 
-> Workflow failed. Try again, and make sure to use timeouts
+> The workflow failed. Try again, and make sure to use timeouts.
 
 Requirements:
 
@@ -136,9 +137,9 @@ Requirements:
 
 ### R11. Store the monthly data and add only new months
 
-Original text from the owner:
+Request from the owner (edited for clarity):
 
-> Monthly data doesn't change much. Save it in a separate file so that it doesn't need constant refresh. You only need to refresh if future data comes. For example for now store it up to Sep 2026 (if available), refresh only if it's Nov, but attempt to get data for the first park and halt getting data for all parks if the first park returns null data for Oct
+> The monthly data changes very little. Save it in a separate file, so that it does not need a refresh every time. Refresh it only when new data is available. For example, store the data up to Sep 2026 (if available), and refresh it only in November. Try the first park first. If the first park has no data for October, stop and do not get data for the other parks.
 
 Requirements:
 
@@ -154,9 +155,9 @@ Requirements:
 
 ### R12. Fall foliage data
 
-Original text from the owner:
+Request from the owner (edited for clarity):
 
-> Can you also get fall foilage data?
+> Can you also get fall foliage data?
 
 The owner chose "Both" for the type of data.
 
@@ -186,32 +187,32 @@ Requirements:
 
 ### R12a. ExploreFall
 
-Original text from the owner:
+Request from the owner (edited for clarity):
 
-> Cant you get foliage map from https://www.explorefall.com/?
+> Can you get the foliage map from https://www.explorefall.com/?
 
 - ExploreFall has no public data service. Its maps and forecasts are its own work. The page does not copy them. Each park with a clear fall color change has a link to the ExploreFall map.
 - Status: done.
 
 ### R13. Show all parks in pages of 10
 
-Original text from the owner:
+Request from the owner (edited for clarity):
 
-> Also do not need to show all 63 parks. Just show the top 20 and make it pages
+> It is not necessary to show all 63 parks. Show the top 20 and put the list on pages.
 
-Then the owner made it more exact:
+Then the owner made the request more exact:
 
-> No what I mean is show all parks but only show top 10 first and make the rest in pages
+> To be clear: show all parks, but show only the top 10 first and put the other parks on more pages.
 
 The owner also said:
 
-> What I want to refresh is just current park statuses and weather conditions.
+> Refresh only the current park statuses and the weather conditions.
 
 The owner chose to keep the weekly refresh of the this-season leaf reports (R12).
 
 Requirements:
 
-- The park table shows all 63 parks.
+- The park table shows all parks (63 at that time, 64 since R47).
 - Each page shows 10 parks. The first page shows the 10 most visited parks.
 - The page has "Previous" and "Next" buttons and a button for each page.
 - A new search, filter or sort goes back to page 1.
@@ -221,9 +222,9 @@ Requirements:
 
 ### R14. Publish each request with a pull request
 
-Original text from the owner:
+Request from the owner (edited for clarity):
 
-> Make a PR to publish it. Do after completing each request unless explicitly told not to do so
+> Open a pull request to publish the work. Do this after each completed request, unless I tell you not to.
 
 Requirements:
 
@@ -234,9 +235,9 @@ Requirements:
 
 ### R15. Best time to visit each park
 
-Original text from the owner:
+Request from the owner (edited for clarity):
 
-> Can you find the best time to visit each parks?
+> Can you find the best time to visit each park?
 
 Requirements:
 
@@ -254,21 +255,21 @@ Requirements:
 
 ### R16. Park details layout
 
-Original text from the owner:
+Request from the owner (edited for clarity):
 
-> Ok add it to the bottom of each park click like this. Additionally put Closure History as a column so that it does not overflow the opening section
+> Add it to the bottom of the park details, as in this example. Also put the closure history in a column, so that it does not push down the top section.
 
 Requirements:
 
 - The "Best time to visit" block is at the bottom of the park details. (R21 removes this block.)
-- The park details have three columns: alerts, 3-day forecast and closure history. On a narrow screen, the columns go one below the other.
+- The park details have three columns: alerts, 3-day forecast and closure history. On a narrow screen, the columns go one below the other. (Replaced by R56: two columns, and the closure history is at the end.)
 - Status: done.
 
 ### R17. Fall color map from NASA data
 
-Original text from the owner (the answer to "ExploreFall embed or a map from the NASA data?"):
+Request from the owner, edited for clarity (the answer to "ExploreFall embed or a map from the NASA data?"):
 
-> NASA data
+> Use the NASA data.
 
 Requirements:
 
@@ -287,9 +288,9 @@ Requirements:
 
 ### R18. Fix the this-season leaf reports
 
-Original text from the owner:
+Request from the owner (edited for clarity):
 
-> Yes fix it
+> Yes, fix the this-season leaf reports.
 
 Requirements:
 
@@ -299,23 +300,23 @@ Requirements:
 
 ### R19. Fix the park details layout
 
-Original text from the owner (with a screenshot of a cut-off closure history column):
+Request from the owner, edited for clarity (with a screenshot of a cut-off closure history column):
 
-> Broken. Maybe 3 days forecast can be vertical?
+> The layout is broken. Can the 3-day forecast be vertical?
 
 Requirements:
 
 - When the park table scrolls sideways (a window narrower than the table), the park details use the visible width and stay in view. No column is cut off.
 - The columns (alerts, forecast, closure history) go to the next line when there is not enough width.
-- The 3-day forecast shows one row for each day: day, high and low, weather, precipitation.
+- The 3-day forecast shows one row for each day: day, high and low, weather, precipitation. (Replaced by R55: one column for each day, side by side.)
 - Links in the park details use the link color, so that they are easy to read in dark mode.
 - Status: done.
 
 ### R20. Regional fall color map
 
-Original text from the owner:
+Request from the owner (edited for clarity):
 
-> I dont need park-specific details. Regional is fine to me, e.g., like one from explorefall
+> I do not need details for each park. A regional map is sufficient, for example like the map from ExploreFall.
 
 Requirements:
 
@@ -340,9 +341,9 @@ Requirements:
 
 ### R21. Best time to visit: banner and filter, no score
 
-Original text from the owner:
+Request from the owner (edited for clarity):
 
-> I do not need the best time to visit score. I want it as a banner below the park's name that encourages users to visit. Also I want the Best time to visit filter, and it should have best time to visit this month, or filter selected months
+> I do not need the best time to visit score. Show it as a banner below the park name that encourages people to visit. Also add a "Best time to visit" filter, with the options "this month" and "selected months".
 
 Requirements:
 
@@ -361,9 +362,9 @@ Requirements:
 
 ### R22. Stop the grid, go back to the park map, use the grid method for parks without data
 
-Original text from the owner:
+Request from the owner (edited for clarity):
 
-> The points grid run too long - stop it and revert back to the original. For parks without data, use this grid method
+> The grid of points runs too long. Stop it and go back to the original method. Use this grid method only for the parks without data.
 
 Requirements:
 
@@ -376,9 +377,9 @@ Requirements:
 
 ### R23. Short numbers for visits
 
-Original text from the owner:
+Request from the owner (edited for clarity):
 
-> Shorten the visits count and big numbers to 400K or 4M. No need to show exact numbers
+> Shorten the visit counts and other large numbers, for example to 400K or 4M. Exact numbers are not necessary.
 
 Requirements:
 
@@ -392,9 +393,9 @@ Requirements:
 
 ### R24. Separate banners for the best time and the best fall color
 
-Original text from the owner (with a screenshot of the banners):
+Request from the owner, edited for clarity (with a screenshot of the banners):
 
-> No star for non-current month. Take fall foliage off the best time calculation, and add a banner for best fall foliage month separately along best time to visit
+> Do not show a star for a month that is not the current month. Remove fall foliage from the best time calculation, and add a separate banner for the best fall foliage months next to the best time to visit.
 
 Requirements:
 
@@ -409,9 +410,9 @@ Requirements:
 
 ### R25. A different color for a best time that is not this month
 
-Original text from the owner:
+Request from the owner (edited for clarity):
 
-> The Best time to Visit, if fall outside current month, should have a differnet color
+> If the best time to visit is not the current month, use a different color.
 
 Requirements:
 
@@ -422,9 +423,9 @@ Requirements:
 
 ### R26. Short banners
 
-Original text from the owner:
+Request from the owner (edited for clarity):
 
-> Make banners short like Best: Oct-Nov, Fall: Oct-Dec.
+> Make the banners short, for example "Best: Oct–Nov" and "Fall: Oct–Dec".
 
 Requirements:
 
@@ -438,9 +439,9 @@ Requirements:
 
 ### R27. Nearby airports
 
-Original text from the owner:
+Request from the owner (edited for clarity):
 
-> For each park add nearby airports (more than 1) with iata code
+> For each park, add the nearby airports (more than one) with their IATA codes.
 
 Requirements:
 
@@ -457,11 +458,11 @@ Requirements:
 
 ### R28. Remove the closures column, add °C and mm
 
-Original text from the owner:
+Request from the owner (edited for clarity):
 
-> Remove park closure as a column from the table.
+> Remove the park closures column from the table.
 >
-> Add celsius and mm for temp rain and snow
+> Add °C and mm for temperature, rain and snow.
 
 Requirements:
 
@@ -478,9 +479,9 @@ Requirements:
 
 ### R29. Save the statuses and weather in the browser
 
-Original text from the owner:
+Request from the owner (edited for clarity):
 
-> Cache the result of status and weather in the browser and refresh only when prompted
+> Save the park status and the weather in the browser, and refresh them only when I ask.
 
 Requirements:
 
@@ -494,9 +495,9 @@ Requirements:
 
 ### R30. Highlight the current month in the charts
 
-Original text from the owner:
+Request from the owner (edited for clarity):
 
-> For the charts I want a light highlight of the current month
+> Add a light highlight of the current month to the charts.
 
 Requirements:
 
@@ -507,15 +508,15 @@ Requirements:
 
 ### R31. Live road status and road work pages
 
-Original text from the owner:
+Request from the owner (edited for clarity):
 
-> in Glacier, Two Medicine road is closed. Discuss (chat) with me on how to best capture it and similar information
+> In Glacier, Two Medicine Road is closed. Discuss with me (chat only) how to best capture this and similar information.
 >
-> Seems to show as red line on this page: https://www.nps.gov/glac/planyourvisit/directions.htm
+> It shows as a red line on this page: https://www.nps.gov/glac/planyourvisit/directions.htm
 >
-> I found https://www.nps.gov/glac/planyourvisit/projectwork.htm. Does it have data for other ones as well
+> I also found https://www.nps.gov/glac/planyourvisit/projectwork.htm. Do other parks have pages like it?
 >
-> ok
+> OK, do it.
 
 Requirements:
 
@@ -530,11 +531,11 @@ Requirements:
 
 ### R32. Flood alerts for the whole park
 
-Original text from the owner:
+Request from the owner (edited for clarity):
 
-> Chat - is it possible to have flash flood warnings for parks?
+> (Chat) Is it possible to show flash flood warnings for the parks?
 >
-> Ok do it
+> OK, do it.
 
 Requirements:
 
@@ -553,9 +554,9 @@ Requirements:
 
 ### R33. Many visitors count for the best time to visit
 
-Original text from the owner:
+Request from the owner (edited for clarity):
 
-> For the best time to visit, I think taken into account vistors count positively is also a good consideration, for example GSMNP peaks in October and there's a reason for that - fall foliage
+> For the best time to visit, a high visitor count should also be a positive factor. For example, the visits to Great Smoky Mountains peak in October for a reason: fall foliage.
 
 Requirements:
 
@@ -567,11 +568,11 @@ Requirements:
 
 ### R34. A balance for visitors in the best time to visit
 
-Original text from the owner:
+Request from the owner (edited for clarity):
 
-> Chat - I think it should be a balance calculation, e.g. I dont want to go where it's too crowded, but if it's few then there's a reason not to visit
+> (Chat) It should be a balance. I do not want to go where it is too crowded. But if very few people visit, there is usually a reason not to visit.
 >
-> A
+> Option A.
 
 Requirements:
 
@@ -585,9 +586,9 @@ Requirements:
 
 ### R35. Seasonal closure dates
 
-Original text from the owner:
+Request from the owner (edited for clarity):
 
-> It is lacking some seasonal closure dates of parks, e.g., Yosemite: https://www.nps.gov/yose/planyourvisit/seasonal.htm
+> Some seasonal closure dates are missing, for example for Yosemite: https://www.nps.gov/yose/planyourvisit/seasonal.htm
 
 Requirements:
 
@@ -603,9 +604,9 @@ Requirements:
 
 ### R36. A separate section for campgrounds and visitor centers
 
-Original text from the owner:
+Request from the owner (edited for clarity):
 
-> Put Campground and VCs in a totally separate section, after seasonal road and before fall foliage
+> Put campgrounds and visitor centers in a separate section, after the seasonal road section and before the fall foliage section.
 
 Requirements:
 
@@ -618,9 +619,9 @@ Requirements:
 
 ### R37. A calendar for campgrounds and visitor centers
 
-Original text from the owner:
+Request from the owner (edited for clarity):
 
-> I want "Campgrounds and visitor centers" to be easily visible - perhaps a calendar?
+> Make "Campgrounds and visitor centers" easy to see, for example as a calendar.
 
 Requirements:
 
@@ -637,9 +638,9 @@ Requirements:
 
 ### R38. Highlight storms and heavy snow in the forecast
 
-Original text from the owner:
+Request from the owner (edited for clarity):
 
-> There is an upcoming storm in GSMNP but the 3-day forecast is not highlighting it enough - do it for me, and in heavy snow as well
+> A storm is coming to Great Smoky Mountains, but the 3-day forecast does not highlight it enough. Fix this, and do the same for heavy snow.
 
 Requirements:
 
@@ -659,9 +660,9 @@ Requirements:
 
 ### R39. Show the names of the closures, and find more trail closures
 
-Original text from the owner:
+Request from the owner (edited for clarity):
 
-> Zion status today is missing "The Virgin River Narrows and all slot canyons closed" https://www.nps.gov/zion/planyourvisit/conditions.htm
+> The Zion status today does not show "The Virgin River Narrows and all slot canyons closed": https://www.nps.gov/zion/planyourvisit/conditions.htm
 
 Requirements:
 
@@ -675,9 +676,9 @@ Requirements:
 
 ### R40. Flash flood potential rating
 
-Original text from the owner:
+Request from the owner (edited for clarity):
 
-> I want to include potential ratings for the parks in this link and other parks as well: https://forecast.weather.gov/product.php?site=NWS&product=RRA&issuedby=SLC
+> Include the flash flood potential ratings from this product for its parks, and for other parks too: https://forecast.weather.gov/product.php?site=NWS&product=RRA&issuedby=SLC
 
 Requirements:
 
@@ -695,9 +696,9 @@ Requirements:
 
 ### R41. Show live road closures in the park row, and old saved data
 
-Original text from the owner:
+Request from the owner (edited for clarity):
 
-> GTTS closed yet you didnt catch it (screenshot of the Glacier road map: "Going-to-the-Sun Road Closed, Winter Weather")
+> Going-to-the-Sun Road is closed, but the page did not show it. (Screenshot of the Glacier road map: "Going-to-the-Sun Road Closed, Winter Weather".)
 
 Requirements:
 
@@ -713,9 +714,9 @@ Requirements:
 
 ### R42. Only badges in the status column
 
-Original text from the owner:
+Request from the owner (edited for clarity):
 
-> only show banner here since there are too many info (screenshot of the Status column of Great Smoky Mountains)
+> Show only badges in the status column, because it has too much information. (Screenshot of the Status column of Great Smoky Mountains.)
 
 Requirements:
 
@@ -725,9 +726,9 @@ Requirements:
 
 ### R43. Planned road dates of other parks in the seasonal road section
 
-Original text from the owner:
+Request from the owner (edited for clarity):
 
-> I want to include seasonal road closure in the lower section for other parks, such as Yellowstone https://www.nps.gov/yell/planyourvisit/parkroads.htm
+> Include the seasonal road closures of other parks in the lower section, for example Yellowstone: https://www.nps.gov/yell/planyourvisit/parkroads.htm
 
 Requirements:
 
@@ -741,9 +742,9 @@ Requirements:
 
 ### R44. Seasonal area closures (wildlife, trails, areas) for all parks
 
-Original text from the owner:
+Request from the owner (edited for clarity):
 
-> You lack closure for Grand Teton https://www.nps.gov/grte/learn/management/wildlife-closures.htm please make sure not to miss any parks
+> The closures for Grand Teton are missing: https://www.nps.gov/grte/learn/management/wildlife-closures.htm. Make sure that no park is missing.
 
 Requirements:
 
@@ -760,9 +761,9 @@ Requirements:
 
 ### R45. Past snow in the current weather
 
-Original text from the owner:
+Request from the owner (edited for clarity):
 
-> For each park current weather I also want past snow accumulations
+> In the current weather of each park, also show the recent snow accumulation.
 
 Requirements:
 
@@ -774,9 +775,9 @@ Requirements:
 
 ### R46. Usual closing day of Going-to-the-Sun Road
 
-Original text from the owner:
+Request from the owner (edited for clarity):
 
-> GTTS: fully open until the third Monday of October. Make it a default line for general anticipation
+> Going-to-the-Sun Road is usually fully open until the third Monday of October. Show this as a default line, so that people know what to expect.
 
 Requirements:
 
@@ -790,9 +791,9 @@ Requirements:
 
 ### R47. Chiricahua, the 64th national park
 
-Original text from the owner:
+Request from the owner (edited for clarity):
 
-> There is the 64th park. See if data supports it yet
+> There is now a 64th national park. Check if the data supports it yet.
 
 Requirements:
 
@@ -813,9 +814,9 @@ Requirements:
 
 ### R48. Flash flood potential for all 3 forecast days
 
-Original text from the owner:
+Request from the owner (edited for clarity):
 
-> Make flash flood potential to also include all forecast for 3 days
+> Show the flash flood potential for all 3 forecast days.
 
 Requirements:
 
@@ -828,9 +829,9 @@ Requirements:
 
 ### R49. Zion: the forecast upstream of the Narrows
 
-Original text from the owner:
+Request from the owner (edited for clarity):
 
-> For zion also include the narrows upstream https://forecast.weather.gov/MapClick.php?lat=37.5269&lon=-112.7612
+> For Zion, also include the forecast for the Narrows upstream: https://forecast.weather.gov/MapClick.php?lat=37.5269&lon=-112.7612
 
 Requirements:
 
@@ -845,9 +846,9 @@ Requirements:
 
 ### R50. Fix the failed scheduled data run
 
-Original text from the owner:
+Request from the owner (edited for clarity):
 
-> Fix error from latest deployment
+> Fix the error of the latest deployment.
 
 Requirements:
 
@@ -862,11 +863,11 @@ Requirements:
 
 ### R51. Road conditions of Capitol Reef (and other parks), and a short flash flood text
 
-Original text from the owner:
+Request from the owner (edited for clarity):
 
-> Capitol Reef has road close conditions that are not reflected. Add that as well.
+> Capitol Reef has road closure conditions that the page does not show. Add them.
 >
-> Additionally for flash flood message, keep it short
+> Also, keep the flash flood message short.
 
 Requirements:
 
@@ -880,9 +881,9 @@ Requirements:
 
 ### R52. Weather icons
 
-Original text from the owner:
+Request from the owner (edited for clarity):
 
-> For weather change it to icons for ease of reading and skimming
+> Show the weather as icons, so that it is easy to read and scan.
 
 Requirements:
 
@@ -897,9 +898,9 @@ Requirements:
 
 ### R53. NPS API key for development tests
 
-Original text from the owner:
+Request from the owner (edited for clarity):
 
-> For development purposes store this NPS key to test the data
+> For development, store this NPS API key to test the data. (The key is not written here.)
 
 Requirements:
 
@@ -909,9 +910,9 @@ Requirements:
 
 ### R54. Units button: imperial or metric
 
-Original text from the owner:
+Request from the owner (edited for clarity):
 
-> Make a button to let users use imperial or metric, apply to all stats
+> Add a button to choose imperial or metric units. Apply it to all values.
 
 Requirements:
 
@@ -933,9 +934,9 @@ Requirements:
 
 ### R55. The 3-day forecast is horizontal
 
-Original text from the owner:
+Request from the owner (edited for clarity):
 
-> Make weather forecast horizontal, not vertical
+> Show the 3-day forecast horizontally, not vertically.
 
 Requirements:
 
@@ -947,9 +948,9 @@ Requirements:
 
 ### R56. Closure history at the end of the park details
 
-Original text from the owner:
+Request from the owner (edited for clarity):
 
-> Move Closure History to the end of each part as it is not quite useful since there are too few events
+> Move the closure history to the end of each park's details. It is not very useful, because it has few events.
 
 Requirements:
 
@@ -959,9 +960,9 @@ Requirements:
 
 ### R57. Source link at the top, collapsible alert sections, data labels on the climate charts
 
-Original text from the owner:
+Request from the owner (edited for clarity):
 
-> Make the source github url on top of the page. Additionally make all park alerts collapsible with a button to show all sections for each park. Additionally make temp, rain, and snow, to have data labels
+> Put the GitHub source URL at the top of the page. Also, make all park alerts collapsible, with a button for each park that opens all sections. Also, add data labels to the temperature, rain and snow charts.
 
 Requirements:
 
@@ -979,9 +980,9 @@ Requirements:
 
 ### R58. Alerts show the headline, and the text opens on a click
 
-Original text from the owner:
+Request from the owner (edited for clarity):
 
-> Oh wait I mean for park alerts just show the headline but collapse the content
+> Correction: for the park alerts, show only the headline and collapse the content.
 
 Requirements:
 
@@ -990,4 +991,20 @@ Requirements:
 - An alert has its color line (closure, danger, caution, information) also when it is closed.
 - When a park has two or more alerts, a "Show all alert details" button opens all of them. Then the button changes to "Hide all alert details".
 - The page keeps the open alerts when it shows the list again (for example after the units change).
+- Status: done.
+
+### R59. Average closing line on the seasonal road chart, and clear owner requests in this file
+
+Request from the owner (edited for clarity), with a screenshot of the Going-to-the-Sun Road chart and a red line drawn at Oct 1:
+
+> For Glacier, add a red line to the seasonal road chart at the average closing date.
+>
+> Also, clean up my requests in `spec.md`, so that they are clear and have no errors. Do this for future requests too. The text does not need to match my words exactly.
+
+Requirements:
+
+- The seasonal road chart shows a red dashed line at the average closing date, with the label "Average closing" and the date, for example "Average closing Oct 1 (6 years)". The average uses the years in the chart that have a closing date.
+- The line is on the charts of all seasonal roads that have closing dates (Going-to-the-Sun Road, Tioga Road and the others), because they use the same chart. The caption of the chart explains the line.
+- `spec.md`: the request of the owner in each item is edited for clarity: correct spelling and grammar, full names (for example "Going-to-the-Sun Road", not "GTTS"), and clear meaning. The label is "Request from the owner (edited for clarity)". Future items use the same rule. `CLAUDE.md` has the same rule.
+- `spec.md`: old items that later items changed have a note, for example "(Replaced by R55: …)".
 - Status: done.
