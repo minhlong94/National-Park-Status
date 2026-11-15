@@ -7,7 +7,7 @@ This page shows the current conditions of all 64 U.S. national parks, including 
 ## What the page shows
 
 - **Status of each park**: open, partial closures or closed. The status comes from official NPS alerts. Put the pointer on the status to see the names of the closures.
-- **Number of alerts** for roads, trails, facilities and other subjects. Click a park row to see all its alerts and a 3-day forecast (the days are side by side). The closure history is at the end of the park details.
+- **Number of alerts** for roads, trails, facilities and other subjects. Click a park row to see all its alerts and a 3-day forecast (the days are side by side). The alerts are in sections that open and close. The title of each section shows the number of closures. **Show all sections** opens all of them. The closure history is at the end of the park details.
 - **Past snow**: the snow of the last 7 days and the snow on the ground now show with the current weather. The park details show the snow of today, yesterday, the last 7 days and the last 30 days.
 - **Units button**: show all values in imperial units (°F, inches, mph, miles, feet) or metric units (°C, mm, cm, km/h, km, m). The browser saves your choice.
 - **Current weather and the forecast for today.** Icons show the weather (☀️ clear, ⛅ partly cloudy, 🌧️ rain, 🌨️ snow, ⛈️ thunderstorm, and more). Put the pointer on an icon to see its name. The page also shows the active warnings from the National Weather Service.
@@ -18,7 +18,7 @@ This page shows the current conditions of all 64 U.S. national parks, including 
   - the average monthly rain
   - the average monthly snow
 
-  Put the pointer on a month to see all the values for that month. A table shows the same values.
+  The temperature, rain and snow charts show the value of each month on the columns. Put the pointer on a month to see all the values for that month. A table shows the same values.
 - **Fall color**: the usual dates when the leaves change, from satellite data, and reports of colored leaves near the park in this season.
 - **Best time to visit**: short banners under each park name. "Best:" shows the best months, from the weather, the number of visitors, rain and snow. The visitors are a balance: a month with very few visitors scores low (there is usually a reason), the busiest months score a little lower (crowds), and the months between them score best. "Fall:" shows the best months for fall color. A star shows when now is a good time. The filter shows the parks that are best to visit this month, or in the months you select.
 - **Fall color map**: a map of the parks with their usual fall color on a date. Move the date slider to see the fall color move across the country. Click a park to open it in the table.

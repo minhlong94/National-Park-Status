@@ -36,6 +36,9 @@ header.top{display:flex;flex-wrap:wrap;gap:18px;align-items:flex-end;justify-con
   border-bottom:3px solid var(--pine);padding-bottom:16px}
 h1{font-size:clamp(28px,4.4vw,44px);line-height:1.05;margin:0;font-weight:700;letter-spacing:-.01em}
 .sub{color:var(--muted);margin:6px 0 0;max-width:62ch}
+.gh{display:flex;align-items:center;gap:6px;margin:6px 0 0;font-size:13.5px;color:var(--muted);flex-wrap:wrap}
+.gh svg{color:var(--ink);flex:none}
+.gh a{color:var(--info);overflow-wrap:anywhere}
 .actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
 button{font:600 14px/1 "Public Sans",system-ui,sans-serif;border-radius:6px;cursor:pointer;padding:11px 16px;border:1px solid var(--line);background:var(--panel);color:var(--ink)}
 .units{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
@@ -161,6 +164,17 @@ tr.detail[hidden]{display:none}
 .dhist .hist{columns:2 300px;column-gap:28px}
 .dhist .hist li{break-inside:avoid}
 .dbox h2{font-size:17px;margin:0 0 8px;font-weight:600}
+.asec{border-bottom:1px solid var(--line);margin:0 0 4px}
+.asec>summary{cursor:pointer;list-style:none;display:flex;align-items:baseline;gap:4px 10px;flex-wrap:wrap;padding:7px 0}
+.asec>summary::-webkit-details-marker{display:none}
+.asec>summary::before{content:"▸";color:var(--muted);font-size:13px;width:10px;display:inline-block;transition:transform .15s}
+.asec[open]>summary::before{transform:rotate(90deg)}
+.asec>summary h2{display:inline;margin:0}
+.asec>summary:focus-visible{outline:2px solid var(--info);outline-offset:2px}
+.asec .sbody{padding:2px 0 8px 14px}
+.sflag{font-size:12.5px;font-weight:700;color:var(--closed)}
+.secbar{display:flex;margin:4px 0 6px}
+.secall{padding:6px 11px;font-size:13px;font-weight:600}
 .alert{border-left:4px solid var(--line);padding:6px 0 6px 10px;margin:0 0 10px}
 .alert.k-closure{border-color:var(--closed)}.alert.k-danger{border-color:var(--closed)}.alert.k-caution{border-color:var(--partial)}.alert.k-info{border-color:var(--info)}
 .alert .at{font-weight:600}
@@ -340,6 +354,7 @@ footer a{color:var(--info)}
     <div>
       <h1>Park conditions board</h1>
       <p class="sub">This board shows road, trail and facility closures and the current weather for all 64 U.S. national parks. The list sorts the parks by 2025 recreation visits.</p>
+      <p class="gh"><svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg> Source code: <a href="https://github.com/minhlong94/National-Park-Status" target="_blank" rel="noopener">github.com/minhlong94/National-Park-Status</a></p>
     </div>
     <div class="actions">
       <div class="units" role="group" aria-label="Units">
@@ -476,7 +491,6 @@ footer a{color:var(--info)}
     The weather comes from Open-Meteo. The warnings come from the National Weather Service (api.weather.gov).
     The visits are recreation visits in calendar year 2025, from NPS Visitor Use Statistics. NPS gives Sequoia and Kings Canyon as separate numbers.
     Use the Units button at the top to show imperial units (°F, inches, mph, miles, feet) or metric units (°C, mm, cm, km/h, km, m). The text of NPS alerts stays as NPS wrote it.
-    <br>Source code: <a href="https://github.com/minhlong94/National-Park-Status" target="_blank" rel="noopener">github.com/minhlong94/National-Park-Status</a>
   </footer>
 </div>
 
@@ -936,7 +950,7 @@ function shortNum(n){
   return String(Math.round(n));
 }
 const PAGE_SIZE = 10; // the first page shows the 10 most visited parks
-const state = { alerts:{}, wx:{}, nws:{}, roads:{}, ffp:null, filter:"all", sort:"visits", q:"", open:new Set(), loaded:false, page:1, best:"any", bestMonths:new Set() };
+const state = { secOpen:new Set(), alerts:{}, wx:{}, nws:{}, roads:{}, ffp:null, filter:"all", sort:"visits", q:"", open:new Set(), loaded:false, page:1, best:"any", bestMonths:new Set() };
 
 function getKey(){ try{ return localStorage.getItem("npsKey") || "DEMO_KEY"; }catch(e){ return "DEMO_KEY"; } }
 function setKey(k){ try{ k ? localStorage.setItem("npsKey", k) : localStorage.removeItem("npsKey"); }catch(e){} }
@@ -1104,27 +1118,57 @@ function condRoads(code){
   return R ? R.districts.flatMap(d => d.roads.map(r => Object.assign({district: d.name}, r))) : [];
 }
 const condClosed = code => condRoads(code).filter(r => condIsClosure(r.c)).length;
+// Collapsible part of the park details (R57). The page keeps the open parts when it shows the list again.
+function sec(code, key, title, body, flag){
+  const id = code + ":" + key;
+  return `<details class="asec" data-sec="${esc(id)}"${state.secOpen.has(id) ? " open" : ""}><summary><h2>${title}</h2>${flag ? `<span class="sflag">${flag}</span>` : ""}</summary><div class="sbody">${body}</div></details>`;
+}
+function syncSecAll(box){
+  const b = box && box.querySelector("[data-secall]");
+  if (!b) return;
+  const all = [...box.querySelectorAll("details.asec")], allOpen = all.length > 0 && all.every(d => d.open);
+  b.textContent = allOpen ? "Hide all sections" : "Show all sections";
+  b.setAttribute("aria-expanded", String(allOpen));
+}
+document.addEventListener("toggle", e => {
+  const d = e.target;
+  if (!d.matches || !d.matches("details.asec")) return;
+  if (d.open) state.secOpen.add(d.dataset.sec); else state.secOpen.delete(d.dataset.sec);
+  syncSecAll(d.closest(".dbox"));
+}, true);
+document.addEventListener("click", e => {
+  const b = e.target.closest && e.target.closest("[data-secall]");
+  if (!b) return;
+  const box = b.closest(".dbox"), all = [...box.querySelectorAll("details.asec")];
+  const openAll = all.some(d => !d.open);
+  all.forEach(d => { d.open = openAll; if (openAll) state.secOpen.add(d.dataset.sec); else state.secOpen.delete(d.dataset.sec); });
+  syncSecAll(box);
+});
 function roadCondHTML(code){
   const R = window.PARK_ROADCOND && PARK_ROADCOND.parks[code];
   if (!R) return "";
   const lab = ["Open", "Take care", "Not recommended", "Closed"];
   const nClosed = condClosed(code);
-  return `<h2>Road conditions${nClosed ? ` (${nClosed} closed or impassable)` : ""}</h2>` + R.districts.map(d => `<div class="rcd">${d.name ? `<b>${esc(d.name)}</b>` : ""}<ul>${d.roads.map(r => {
+  const n = R.districts.reduce((k, d) => k + d.roads.length, 0);
+  return sec(code, "cond", `Road conditions (${n})`, R.districts.map(d => `<div class="rcd">${d.name ? `<b>${esc(d.name)}</b>` : ""}<ul>${d.roads.map(r => {
       const L = condLevel(r.c);
       return `<li><span class="rcn">${esc(r.n)}</span> <span class="rcc L${L}" title="${esc(lab[L])}">${esc(r.c)}</span>${r.x ? `<small>${esc(r.x)}</small>` : ""}</li>`; }).join("")}</ul></div>`).join("") +
-    `<p class="none">${R.asOf ? `Park update of ${esc(R.asOf)}. ` : ""}Read ${esc(fmtTime(Date.parse(PARK_ROADCOND.built)))}. Conditions can change fast after rain or snow. <a href="${esc(R.src)}" target="_blank" rel="noopener">Park road conditions</a></p>`;
+    `<p class="none">${R.asOf ? `Park update of ${esc(R.asOf)}. ` : ""}Read ${esc(fmtTime(Date.parse(PARK_ROADCOND.built)))}. Conditions can change fast after rain or snow. <a href="${esc(R.src)}" target="_blank" rel="noopener">Park road conditions</a></p>`,
+    nClosed ? `${nClosed} closed or impassable` : "");
 }
 const liveClosed = code => ((state.roads || {})[code] || []).filter(r => r.closed && roadRank(r.name) < 3).length + condClosed(code);
 function liveRoadsHTML(code){
   const src = LIVE_ROADS[code];
   if (!src) return "";
   const list = (state.roads || {})[code];
-  let h = `<h2>Live road status${list ? ` (${list.filter(r => r.closed && roadRank(r.name) < 3).length} closed)` : ""}</h2>`;
+  const nc = list ? list.filter(r => r.closed && roadRank(r.name) < 3).length : 0;
+  let h = "";
   if (!list) h += `<p class="none">The live road status did not load.</p>`;
   else if (!list.length) h += `<p class="none">The park road map shows no closed roads.</p>`;
   else h += list.map(r => `<div class="alert ${r.closed ? "k-closure" : "k-caution"}"><div class="at">${esc(r.name)}: ${roadState(r)}</div>
     ${r.reasons.length ? `<div class="ad">${esc(r.reasons.join("; "))}</div>` : ""}${r.season ? `<div class="am">Usual season: ${esc(r.season)}</div>` : ""}${(() => { const R0 = ROADS.find(x => x.plan && x.name.toLowerCase() === r.name.toLowerCase()); return R0 ? `<div class="am">${roadPlan(R0).replace(/<\/?(p|b)[^>]*>/g, "")}</div>` : ""; })()}</div>`).join("");
-  return h + `<p class="am"><a href="${esc(src.map)}" target="_blank" rel="noopener">Park road status map</a></p>`;
+  return sec(code, "live", `Live road status${list ? ` (${list.length})` : ""}`, h + `<p class="am"><a href="${esc(src.map)}" target="_blank" rel="noopener">Park road status map</a></p>`,
+    nc ? `${nc} closed` : "");
 }
 function roadWorkLink(code){
   return ROAD_WORK[code] ? `<p class="am"><a href="${esc(ROAD_WORK[code])}" target="_blank" rel="noopener">Road construction and project work</a></p>` : "";
@@ -1980,13 +2024,14 @@ function floodBadge(warns){
   const f = (warns || []).find(x => floodLevel(x.event));
   return f ? `<span class="flood f${floodLevel(f.event)}" title="${esc(f.headline || f.event)}"><span aria-hidden="true">⚠</span> ${esc(f.event)}</span>` : "";
 }
-function floodHTML(warns){
+function floodHTML(warns, code){
   const fl = (warns || []).filter(x => floodLevel(x.event));
   if (!fl.length) return "";
-  return `<h2>Flood alerts (${fl.length})</h2>` + fl.map(x => `<div class="alert ${floodLevel(x.event) > 1 ? "k-danger" : "k-caution"}"><div class="at">${esc(x.event)}${x.where ? ` (${esc(x.where)})` : ""}</div>
+  const nw = fl.filter(x => floodLevel(x.event) > 1).length;
+  return sec(code, "flood", `Flood alerts (${fl.length})`, fl.map(x => `<div class="alert ${floodLevel(x.event) > 1 ? "k-danger" : "k-caution"}"><div class="at">${esc(x.event)}${x.where ? ` (${esc(x.where)})` : ""}</div>
     <div class="ad">${esc(x.headline || "")}</div>${x.desc ? `<div class="ad">${esc(x.desc)}${x.desc.length >= 500 ? "…" : ""}</div>` : ""}
     ${x.ends ? `<div class="am">Until ${esc(fmtTime(Date.parse(x.ends)))} · National Weather Service${x.where ? ` · for ${esc(x.where)}` : ""}</div>` : ""}</div>`).join("") +
-    `<p class="none">Rain far away can cause a flash flood. Avoid slot canyons and washes.</p>`;
+    `<p class="none">Rain far away can cause a flash flood. Avoid slot canyons and washes.</p>`, nw ? `${nw} ${nw > 1 ? "warnings" : "warning"}` : "");
 }
 
 function alertBlock(a){
@@ -2005,7 +2050,8 @@ function detail(p, list, w, warns){
   // Groups with a closure first, so closures are at the top (R39)
   else Object.keys(groups).sort((x, y) => list.some(a => a.type === y && a.isClosure) - list.some(a => a.type === x && a.isClosure)).forEach(g => {
     const items = list.filter(a => a.type === g);
-    if (items.length) alertsHtml += `<h2>${groups[g]} (${items.length})</h2>` + items.map(alertBlock).join("");
+    const nc = items.filter(a => a.isClosure).length;
+    if (items.length) alertsHtml += sec(p.code, g, `${groups[g]} (${items.length})`, items.map(alertBlock).join(""), nc ? `${nc} ${nc > 1 ? "closures" : "closure"}` : "");
   });
   let wxHtml = `<h2>3-day forecast</h2>`;
   const fcCards = d => `<div class="fc">` + d.time.map((t,i) => {
@@ -2031,7 +2077,11 @@ function detail(p, list, w, warns){
   if (other.length){
     wxHtml += `<h2 style="margin-top:14px">NWS warnings</h2>` + other.map(x => `<div class="alert k-danger"><div class="at">${esc(x.event)}</div><div class="ad">${esc(x.headline||"")}</div></div>`).join("");
   }
-  return `<div class="dbox"><div>${ffpHTML(p, w, warns)}${floodHTML(warns)}${liveRoadsHTML(p.code)}${roadCondHTML(p.code)}${alertsHtml}${roadWorkLink(p.code)}${p.note?`<p class="am">${esc(uText(p.note))}</p>`:""}${roadLinks(p.id)}${campLink(p.code)}<p class="am"><a href="https://www.nps.gov/${p.code}/planyourvisit/conditions.htm" target="_blank" rel="noopener">Official ${esc(p.name)} conditions page</a></p></div><div>${wxHtml}</div><div class="mviz" data-mviz="${p.id}"></div><div class="dhist">${histHTML(p.id)}</div></div>`;
+  const secs = floodHTML(warns, p.code) + liveRoadsHTML(p.code) + roadCondHTML(p.code) + alertsHtml;
+  const nSec = (secs.match(/<details class="asec"/g) || []).length;
+  const allOpen = nSec > 0 && (secs.match(/<details class="asec"[^>]* open>/g) || []).length === nSec;
+  const bar = nSec > 1 ? `<div class="secbar"><button type="button" class="secall" data-secall="${p.code}" aria-expanded="${allOpen}">${allOpen ? "Hide" : "Show"} all sections</button></div>` : "";
+  return `<div class="dbox"><div>${ffpHTML(p, w, warns)}${bar}${secs}${roadWorkLink(p.code)}${p.note?`<p class="am">${esc(uText(p.note))}</p>`:""}${roadLinks(p.id)}${campLink(p.code)}<p class="am"><a href="https://www.nps.gov/${p.code}/planyourvisit/conditions.htm" target="_blank" rel="noopener">Official ${esc(p.name)} conditions page</a></p></div><div>${wxHtml}</div><div class="mviz" data-mviz="${p.id}"></div><div class="dhist">${histHTML(p.id)}</div></div>`;
 }
 
 // ---- Monthly visits and climate (R9) ----
@@ -2256,21 +2306,34 @@ function drawMonthly(box, id){
   const cv = (a, f) => a.map(v => v == null ? null : f(v));
   const lo = cv(P.wx.lo, v => METRIC ? (v - 32) * 5 / 9 : v), hi = cv(P.wx.hi, v => METRIC ? (v - 32) * 5 / 9 : v);
   const rainU = cv(P.wx.rain, v => METRIC ? v * 25.4 : v), snowU = cv(P.wx.snow, v => METRIC ? v * 2.54 : v);
-  const H2 = 160, T2 = 10, B2 = 22, base2 = H2-B2;
+  // Data labels (R57): small values on the columns. Smaller text when the months are narrow.
+  const lfs = band < 26 ? 9 : 10.5;
+  const dlab = (x, y, t) => `<text x="${x}" y="${y}" text-anchor="middle" font-size="${lfs}" font-weight="600" fill="var(--ink)" pointer-events="none">${t}</text>`;
+  const H2 = 184, T2 = 16, B2 = 22, base2 = H2-B2;
   const tv = [...lo, ...hi].filter(v => v != null);
-  const tt = ticks(Math.min(...tv), Math.max(...tv), 4), y2 = v => base2 - (v-tt[0])/(tt[tt.length-1]-tt[0])*(base2-T2);
+  const tpad = (Math.max(...tv) - Math.min(...tv)) * 0.12 + 1; // room for the labels above and below the columns
+  const tt = ticks(Math.min(...tv) - tpad, Math.max(...tv) + tpad, 4), y2 = v => base2 - (v-tt[0])/(tt[tt.length-1]-tt[0])*(base2-T2);
   const tw = Math.min(24, band*0.45);
   let g2 = axisY(tt, y2, L, W, R, v => v + "°") + axisX(L, band, H2-6) + washLayer(L, band, T2-6, base2);
-  MONTHS.forEach((m,i) => { if (lo[i] != null && hi[i] != null) g2 += `<path d="${colPath(L+band*(i+.5)-tw/2, y2(hi[i]), tw, y2(lo[i]), true)}" fill="var(--temp)"/>`; });
+  MONTHS.forEach((m,i) => { if (lo[i] != null && hi[i] != null){
+    const cx = L+band*(i+.5);
+    g2 += `<path d="${colPath(cx-tw/2, y2(hi[i]), tw, y2(lo[i]), true)}" fill="var(--temp)"/>`;
+    g2 += dlab(cx, y2(hi[i]) - 4, Math.round(hi[i]) + "°") + dlab(cx, y2(lo[i]) + lfs + 2, Math.round(lo[i]) + "°");
+  } });
   g2 += hitLayer(L, band, T2-6, base2, false);
 
   // 3 and 4. Rain and snow: columns of the average monthly total
   function amountChart(vals, color){
-    const H = 120, T = 10, B = 22, base = H-B;
-    const at = ticks(0, Math.max(0.1, ...vals.filter(v => v != null)), 3), y = v => base - v/at[at.length-1]*(base-T);
+    const H = 134, T = 16, B = 22, base = H-B;
+    const at = ticks(0, Math.max(0.1, ...vals.filter(v => v != null)) * 1.1, 3), y = v => base - v/at[at.length-1]*(base-T);
     const w = Math.min(24, band*0.45);
     let g = axisY(at, y, L, W, R, v => String(v)) + axisX(L, band, H-6) + washLayer(L, band, T-6, base);
-    vals.forEach((v,i) => { if (v) g += `<path d="${colPath(L+band*(i+.5)-w/2, y(v), w, base)}" fill="var(${color})"/>`; });
+    vals.forEach((v,i) => {
+      if (!v) return;
+      g += `<path d="${colPath(L+band*(i+.5)-w/2, y(v), w, base)}" fill="var(${color})"/>`;
+      const t = v >= 10 ? String(Math.round(v)) : v.toFixed(1);
+      if (+t > 0) g += dlab(L+band*(i+.5), y(v) - 4, t);
+    });
     g += `<line x1="${L}" x2="${W-R}" y1="${base}" y2="${base}" stroke="var(--muted)" stroke-width="1"/>` + hitLayer(L, band, T-6, base, false);
     return `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}">${g}</svg>`;
   }
