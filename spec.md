@@ -1004,7 +1004,25 @@ Request from the owner (edited for clarity), with a screenshot of the Going-to-t
 Requirements:
 
 - The seasonal road chart shows a red dashed line at the average closing date, with the label "Average closing" and the date, for example "Average closing Oct 1 (6 years)". The average uses the years in the chart that have a closing date.
-- The line is on the charts of all seasonal roads that have closing dates (Going-to-the-Sun Road, Tioga Road and the others), because they use the same chart. The caption of the chart explains the line.
+- The line is on the charts of all seasonal roads that have closing dates (Going-to-the-Sun Road, Tioga Road and the others), because they use the same chart. The caption of the chart explains the line. (R60 changes the date for roads with a park rule.)
 - `spec.md`: the request of the owner in each item is edited for clarity: correct spelling and grammar, full names (for example "Going-to-the-Sun Road", not "GTTS"), and clear meaning. The label is "Request from the owner (edited for clarity)". Future items use the same rule. `CLAUDE.md` has the same rule.
 - `spec.md`: old items that later items changed have a note, for example "(Replaced by R55: …)".
+- Status: done.
+
+### R60. Going-to-the-Sun Road: the usual closing is the third week of October
+
+Request from the owner (edited for clarity):
+
+> The average closing date of Going-to-the-Sun Road is in the third week of October, not Oct 1.
+
+Requirements:
+
+- The recorded closing dates of Going-to-the-Sun Road in the last 10 years give Oct 1. This is not correct for planning:
+  - NPS did not publish closing dates after 2022, so only 6 of the 10 years have a date.
+  - Most of these years closed early: the Sprague Fire (2017), early snow (2018, 2019) and COVID-19 (2020).
+- When a road has a park rule for the closing (Going-to-the-Sun Road: the third Monday of October), the page uses the rule:
+  - Chart: the red dashed line is at the average date of the rule in the chart years. A light red band shows the range of dates (Oct 15–21). The label is "Usual closing Oct 15–21 (the third Monday of October)".
+  - Statistics: "Usual closing (the third Monday of October)" with the range of dates, not the average of the recorded dates.
+  - Best time to visit: "Going-to-the-Sun Road is usually open from about … to the third Monday of October".
+- Roads without a rule (for example Tioga Road) still use the average of the recorded closing dates.
 - Status: done.
