@@ -209,7 +209,13 @@ def _month_label(mon):
     return f"{calendar.month_abbr[m]} {y}"
 
 
-def fetch_prelim_visits(code, months):
+def _sel_value(page, name):
+    """The selected value of a drop-down list in the viewer page."""
+    m = re.search(r'name="' + re.escape(name) + r'".*?<option selected="selected" value="([^"]*)"', page, re.S)
+    return m.group(1) if m else None
+
+
+def fetch_prelim_visits(code, months, name=None, debug=False):
     """Returns {"YYYY-MM": visits or None} from the IRMA report "Park YTD Version 1".
 
     The report shows one month. The park comes from the URL. The script selects each month in the
@@ -230,6 +236,20 @@ def fetch_prelim_visits(code, months):
     if not m:
         raise RuntimeError(f"{code}: the report page has no viewer")
     url, page = get(IRMA + htmllib.unescape(m.group(1)))
+    form = _ReportForm()
+    form.feed(page)
+    park_sel = next((k for k, opts in form.selects.items() if len(opts) > 100), None)
+    if park_sel and _sel_value(page, park_sel) in (None, "0") and name:
+        # Some codes (for example CAVE) do not select the park. Select it by name, as a browser does.
+        label = lambda t: t.replace("\xa0", " ").strip()
+        cands = [(v, label(t)) for v, t in form.selects[park_sel] if re.match(re.escape(name) + r" (NP|National Park)\b", label(t))]
+        if not cands:
+            raise RuntimeError(f"{code}: no park named {name} NP in the report")
+        data = dict(form.fields)
+        data.update({park_sel: cands[0][0], "__EVENTTARGET": park_sel, "__EVENTARGUMENT": ""})
+        url, page = get(url, data)
+        if debug:
+            print(f"  {code}: selected {cands[0][1]} by name", flush=True)
     out = {}
     for mon in months:
         form = _ReportForm()
@@ -245,10 +265,8 @@ def fetch_prelim_visits(code, months):
             continue
         data = dict(form.fields)
         for k, opts in form.selects.items():
-            if k != mon_sel and opts:
-                sel = re.search(r'name="' + re.escape(k) + r'".*?<option selected="selected" value="([^"]*)"', page, re.S)
-                if sel:
-                    data[k] = sel.group(1)
+            if k != mon_sel and opts and _sel_value(page, k) is not None:
+                data[k] = _sel_value(page, k)
         data.update({mon_sel: value, "ReportViewer$ctl04$ctl00": "View Report", "__EVENTTARGET": "", "__EVENTARGUMENT": ""})
         url, page = get(url, data)
         e = re.search(r'"ExportUrlBase":"([^"]*)"', page)
@@ -257,11 +275,14 @@ def fetch_prelim_visits(code, months):
         _, csv_text = get(IRMA + e.group(1).replace("\\u0026", "&") + "CSV")
         if f"Report Date: {label}" not in csv_text:
             raise RuntimeError(f"{code} {mon}: the report is for another month")
-        row = next((r for r in csv_text.splitlines() if ",Total Adjusted Recreation Visits," in r), None)
+        if debug:
+            print("\n".join(csv_text.splitlines()[:12]), flush=True)
+        # The total row: "Total Adjusted Recreation Visits" (parks that adjust for duplicates) or "Total Recreation Visits"
+        row = next((r for r in csv_text.splitlines() if re.match(r'[^,]*,Total (Adjusted )?Recreation Visit', r)), None)
         if row is None:
             out[mon] = None
             continue
-        cell = re.match(r'[^,]*,Total Adjusted Recreation Visits,("[^"]*"|[^,]*)', row).group(1).strip('"').replace(",", "")
+        cell = re.match(r'[^,]*,[^,]*,("[^"]*"|[^,]*)', row).group(1).strip('"').replace(",", "")
         out[mon] = int(cell) if cell.isdigit() else None
     return out
 
