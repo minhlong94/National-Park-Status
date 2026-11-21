@@ -46,7 +46,7 @@ OUT = ROOT / "data" / "park-history.js"
 FIRST_MONTH = "2023-01"     # the first month in the file
 SOCKET_TIMEOUT = 20         # seconds for each network step: connect, TLS handshake, each read
 TRIES = 3                   # tries for each request
-SCRIPT_DEADLINE = 25 * 60   # seconds for the whole script (the first run of a year reads about 10 months for each park)
+SCRIPT_DEADLINE = 45 * 60   # seconds for the whole script (the first run of a year reads about 10 months for each park)
 MAX_FAILS_IN_A_ROW = 3      # stop using a host after this many parks fail one after the other
 # NPS Visitor Use Statistics reports Sequoia and Kings Canyon as separate units.
 EXPECTED_PARKS = 64  # 63 until 2026; Chiricahua became the 64th national park (R47)
@@ -222,23 +222,32 @@ def _num(cell):
     return int(cell) if cell.isdigit() else None
 
 
-def pick_total(csv_text):
+def pick_total(csv_text, prev=None):
     """The park total "ThisMonth" from the CSV of the report, or None. Returns (value, label, rows).
 
-    The rows are different in each park, for example "Total Adjusted Recreation Visits" (Great Smoky Mountains),
-    "Total Recreation Visitors" (Acadia, Olympic), "Recreation Visitors" (Joshua Tree). Some parks also have a
-    "Total Recreation Visits" row for each entrance (Yosemite). The park total is the largest of these rows.
-    Rows such as "Total Recreation Hours" or "Non-Recreation Visits" do not count.
+    The rows are different in each park:
+    1. A named total row: "Total Adjusted Recreation Visits" (Great Smoky Mountains), "Total Recreation Visitors"
+       (Acadia, Olympic), "Recreation Visitors" (Joshua Tree). Some parks also have a "Total Recreation Visits"
+       row for each entrance (Yosemite), so the script takes the largest. Rows such as "Total Recreation Hours"
+       or "Non-Recreation Visits" do not count.
+    2. Else, the row whose "SameMonthLastYear" is the final value of last year (prev, from the data file),
+       for example "Canyonlands NP Visitors" or "NPS Recreation Visits" (Redwood).
     """
     rows = []
     for r in csv.reader(io.StringIO(csv_text)):
         if len(r) >= 4 and _num(r[2]) is not None:
-            rows.append((r[0], r[1], _num(r[2]), _num(r[3])))
-    named = [x for x in rows if re.fullmatch(r"(Total )?(Adjusted )?Recreation Visit(s|ors)", x[1].strip(), re.I)]
-    if not named:
-        return None, None, rows
-    best = max(named, key=lambda x: x[2])
-    return best[2], f"{best[0]} / {best[1]}", rows
+            rows.append((r[0], re.sub(r"\s+", " ", r[1]).strip(), _num(r[2]), _num(r[3])))
+    named = [x for x in rows if re.fullmatch(r"(Total )?(Adjusted )?Recreation Visit(s|ors)", x[1], re.I)]
+    if named:
+        best = max(named, key=lambda x: x[2])
+        return best[2], f"{best[0]} / {best[1]}", rows
+    if prev:
+        same = [x for x in rows if x[3] is not None and abs(x[3] - prev) <= max(1, prev * 0.005)
+                and re.search(r"visit", x[1], re.I) and not re.search(r"non|hour", x[1], re.I)]
+        if same:
+            best = max(same, key=lambda x: x[2])
+            return best[2], f"{best[0]} / {best[1]} (same last year)", rows
+    return None, None, rows
 
 
 def fetch_prelim_visits(code, months, name=None, debug=False, prev=None):
@@ -315,7 +324,7 @@ def fetch_prelim_visits(code, months, name=None, debug=False, prev=None):
         if f"Report Date: {label}" not in csv_text:
             raise RuntimeError(f"{code} {mon}: the report is for another month")
         p_mon = (prev or {}).get(mon)
-        value, label_used, rows = pick_total(csv_text)
+        value, label_used, rows = pick_total(csv_text, p_mon)
         out[mon] = value
         if value is None or debug:
             # Some parks (for example Yellowstone) report only overnight stays in this report
