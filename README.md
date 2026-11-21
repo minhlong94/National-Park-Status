@@ -79,7 +79,9 @@ The script `scripts/fetch_history.py` adds only new months:
 3. If the first park has no data for that month, the script stops. It does not request data for the other parks, and the file does not change.
 4. If the first park has data, the script gets the month for all parks and adds it to the file.
 
-The page shows the visits for the last 3 calendar years in the file. The weather values are the averages of each calendar month over the last 36 months.
+The NPS statistics service has only final years. NPS makes a year final in the first quarter of the next year. For the months of the current year, the script reads the preliminary monthly visits from the IRMA report "Park YTD Version 1" (one park and one month for each request). The key `prelim` in the file is the first month with preliminary visits. On each run, the script asks the statistics service for these months again. When a month is final, the script writes the final value.
+
+The page shows the visits for the last 3 calendar years in the file (for example 2024–2026). A month without data is blank. The page tells you which visits are preliminary. The weather values are the averages of each calendar month over the last 36 months.
 
 The workflow `.github/workflows/update-data.yml` runs the script and commits the file. The workflow runs:
 
