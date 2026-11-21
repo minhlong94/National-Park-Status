@@ -323,9 +323,9 @@ tr.detail[hidden]{display:none}
 .rmap{margin:10px 0 6px}
 .rmap svg{display:block;width:100%;height:auto;max-height:420px;border:1px solid var(--line);border-radius:8px;background:var(--panel)}
 .rmap .po{fill:color-mix(in srgb, var(--pine) 11%, var(--panel));stroke:color-mix(in srgb, var(--pine) 60%, transparent);stroke-width:1.2}
-.rmap .rd{fill:none;stroke:var(--muted);stroke-linecap:round;stroke-linejoin:round;opacity:.75}
-.rmap .rd.m{stroke-width:2}
-.rmap .rd.s{stroke-width:1.1;stroke-dasharray:3 3;opacity:.6}
+.rmap .rd{fill:none;stroke:var(--muted);stroke-linecap:round;stroke-linejoin:round;opacity:.9}
+.rmap .rd.m{stroke-width:2.6}
+.rmap .rd.s{stroke-width:1.4;stroke-dasharray:3 3;opacity:.7}
 .rmap .rx{fill:none;stroke-linecap:round;stroke-linejoin:round;stroke-width:4.5}
 .rmap .rx.L2{stroke:var(--closed)}
 .rmap .rx.L1{stroke:var(--partial)}
@@ -2574,7 +2574,7 @@ window.addEventListener("resize", () => { clearTimeout(mvizTimer); mvizTimer = s
 // It is an overview only. The link goes to the NPS page for full details.
 const roadKey = t => String(t || "").toLowerCase().replace(/[\u2010-\u2015-]/g, " ").replace(/[^a-z0-9 ]/g, " ")
   .replace(/\b(road|rd|drive|dr|highway|hwy|parkway|pkwy|route|rte|byway|scenic|the|loop|lane|ln|avenue|ave|street|st|way|boulevard|blvd)\b/g, " ")
-  .replace(/\s+/g, " ").trim();
+  .replace(/\s+/g, " ").trim().replace(/(\s(north|south|east|west|n|s|e|w))+$/, ""); // "Newfound Gap Road South" -> "newfound gap"
 const ROAD_GENERIC = new Set(["park", "main", "entrance", "access", "service", "visitor", "center", "campground", "national", "state", "county", "old", "north", "south", "east", "west", "lower", "upper", "fire"]);
 function roadReports(p){
   const out = [];
@@ -2615,7 +2615,8 @@ function drawRoadMap(box, p){
     let best = null;
     reps.forEach((x, i) => {
       const xk = roadKey(x.name || x.text);
-      const hit = re.test(xk) || (x.name && xk.length >= 4 && !ROAD_GENERIC.has(xk) && new RegExp("\\b" + xk.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "\\b").test(k));
+      // The road name must be in the report (a short report name does not mark longer roads such as "Many Glacier Hotel Parking Road")
+      const hit = re.test(xk);
       if (hit){ used.add(i); if (!best || x.lvl > best.lvl) best = x; }
     });
     return best;
@@ -2636,11 +2637,14 @@ function drawRoadMap(box, p){
     const longest = r.l.reduce((a, b) => b.length > a.length ? b : a), mid = longest[Math.floor(longest.length / 2)];
     labels.push({x: +X(mid[0]), y: +Y(mid[1]), t: r.n, lvl: x.lvl});
   });
-  labels.slice(0, 8).forEach(l => {
+  const lseen = new Set();
+  labels.filter(l => !lseen.has(l.t) && lseen.add(l.t)).slice(0, 8).forEach(l => {
     const anchor = l.x > W * 0.7 ? "end" : l.x < W * 0.3 ? "start" : "middle";
     g += `<text class="rl L${l.lvl}" x="${l.x}" y="${l.y - 6}" text-anchor="${anchor}">${esc(l.t)}</text>`;
   });
-  const shown = roads.map((r, i) => st[i] ? {n: r.n, ...st[i]} : null).filter(Boolean).sort((a, b) => b.lvl - a.lvl);
+  const seen = new Set();
+  const shown = roads.map((r, i) => st[i] ? {n: r.n, ...st[i]} : null).filter(Boolean).sort((a, b) => b.lvl - a.lvl)
+    .filter(x => !seen.has(x.n) && seen.add(x.n));
   const others = reps.filter((x, i) => !used.has(i) && x.lvl === 2 && !x.alert);
   const otherAlerts = reps.filter((x, i) => !used.has(i) && x.lvl === 2 && x.alert);
   box.innerHTML = `<h2>Road map</h2>` +
