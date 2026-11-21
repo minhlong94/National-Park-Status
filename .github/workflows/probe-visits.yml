@@ -6,36 +6,18 @@ on:
 jobs:
   probe:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
-      - name: Month parameter of Park YTD
+      - name: Value format of RptDate
         run: |
           set +e
-          J=/tmp/jar
-          curl -sS -L --max-time 40 -A "Mozilla/5.0" -c $J -b $J -o /tmp/a.html "https://irma.nps.gov/Stats/SSRSReports/Park%20Specific%20Reports/Park%20YTD%20Version%201?Park=GRSM"
-          SRC=$(grep -o 'src="[^"]*"' /tmp/a.html | head -1 | sed 's/^src="//; s/"$//; s/&amp;/\&/g')
-          curl -sS -L --max-time 90 -A "Mozilla/5.0" -c $J -b $J -o /tmp/v.html "https://irma.nps.gov$SRC"
-          python3 - <<'PY'
-          import re
-          s = open('/tmp/v.html', encoding='utf-8', errors='ignore').read()
-          i = s.find('Oct&nbsp;2026')
-          seg = s[max(0, i-3500):i+200]
-          seg = re.sub(r'\s+', ' ', seg)
-          print(seg)
-          print('---- select names:', sorted(set(re.findall(r'<select[^>]*name="([^"]+)"', s))))
-          print('---- input names:', sorted(set(re.findall(r'<input[^>]*name="(ReportViewer[^"]+)"', s)))[:40])
-          for m in re.finditer(r'"(ParameterName|Name|Prompt)"\s*:\s*"([^"]{1,60})"', s): print(m.group(0))
-          PY
-      - name: Try month in the URL
-        run: |
-          set +e
-          for p in "RptDate=9/1/2026" "ReportDate=9/1/2026" "Month=9&Year=2026" "rptDate=2026-09-01" "Date=9/1/2026"; do
+          for v in "9%2F1%2F2026" "202609" "2026-09" "Sep%202026" "09%2F01%2F2026" "2026-09-01T00%3A00%3A00" "9%2F1%2F2026%2012%3A00%3A00%20AM" "2" "20260901" "9%2F30%2F2026" "2026-09-30"; do
             J=$(mktemp)
-            curl -sS -L --max-time 40 -A "Mozilla/5.0" -c $J -b $J -o /tmp/a.html "https://irma.nps.gov/Stats/SSRSReports/Park%20Specific%20Reports/Park%20YTD%20Version%201?Park=GRSM&$p"
+            curl -sS -L --max-time 40 -A "Mozilla/5.0" -c $J -b $J -o /tmp/a.html "https://irma.nps.gov/Stats/SSRSReports/Park%20Specific%20Reports/Park%20YTD%20Version%201?Park=GRSM&RptDate=$v"
             SRC=$(grep -o 'src="[^"]*"' /tmp/a.html | head -1 | sed 's/^src="//; s/"$//; s/&amp;/\&/g')
-            curl -sS -L --max-time 90 -A "Mozilla/5.0" -c $J -b $J -o /tmp/v.html "https://irma.nps.gov$SRC"
+            EFF=$(curl -sS -L --max-time 90 -A "Mozilla/5.0" -c $J -b $J -o /tmp/v.html -w '%{url_effective}' "https://irma.nps.gov$SRC")
+            echo "== RptDate=$v  viewer $(wc -c < /tmp/v.html)  selected: $(grep -o -E 'selected="selected" value="[0-9]+">[A-Za-z]{3}&nbsp;[0-9]{4}' /tmp/v.html | head -1)"
+            case "$EFF" in *error*) python3 -c "import sys,urllib.parse as u; q=u.parse_qs(u.urlparse(sys.argv[1]).query); print('   error:', q.get('errorType'), (q.get('error') or [''])[0][:400])" "$EFF";; esac
             EXP=$(grep -o -E '"ExportUrlBase":"[^"]*"' /tmp/v.html | head -1 | sed 's/"ExportUrlBase":"//; s/"$//; s/\\u0026/\&/g')
-            echo "== $p  viewer $(wc -c < /tmp/v.html)  selected: $(grep -o -E 'selected="selected" value="[0-9]+">[A-Za-z]{3}&nbsp;[0-9]{4}' /tmp/v.html | head -1)"
             [ -n "$EXP" ] && curl -sS -L --max-time 90 -A "Mozilla/5.0" -c $J -b $J "https://irma.nps.gov$EXP""CSV" | sed -n '2p;5p'
-            grep -o -i -E 'error[^<]{0,200}' /tmp/v.html | head -2
           done
