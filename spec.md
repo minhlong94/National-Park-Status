@@ -1038,3 +1038,16 @@ Requirements:
 - The top of the page has a "Send feedback" link after the source code link, in the same line. The link opens the feedback form (https://forms.gle/B73GLTbAME3KaJsU8) in a new tab.
 - The link has a small message icon. On a narrow screen, the icon and the link stay together on one line.
 - Status: done.
+
+### R62. New title: "US National Park Conditions Board"
+
+Request from the owner (edited for clarity):
+
+> Change the title to "US National Park Conditions Board".
+
+Requirements:
+
+- The page heading is "US National Park Conditions Board". The old heading was "Park conditions board".
+- The browser tab title is also "US National Park Conditions Board".
+- The README heading is the same title.
+- Status: done.
