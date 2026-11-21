@@ -8,30 +8,30 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - name: Park page, data calls
+      - name: Export reports as CSV
         run: |
           set +e
-          curl -sS -L --max-time 40 -A "Mozilla/5.0" -o /tmp/p.html "https://irma.nps.gov/Stats/Reports/Park/GRSM"
-          echo "--- urls in page:"
-          grep -o -E "[\"'](/Stats/[^\"' ]+|https://irma\.nps\.gov/Stats/[^\"' ]+)[\"']" /tmp/p.html | sort -u | head -60
-          echo "--- url: / proxy / api fragments:"
-          grep -o -i -E ".{0,80}(url:|proxy|api/|\.json|getData|Visitation)[^\n]{0,140}" /tmp/p.html | head -40
-          echo "--- json keys with Month or Visit:"
-          grep -o -E '"[A-Za-z]*(Month|Visit)[A-Za-z]*"' /tmp/p.html | sort | uniq -c | head -30
-      - name: Report viewer CSV export
-        run: |
-          set +e
-          J=/tmp/jar
-          curl -sS -L --max-time 40 -A "Mozilla/5.0" -c $J -b $J -o /tmp/a.html "https://irma.nps.gov/Stats/SSRSReports/Park%20Specific%20Reports/Park%20YTD%20Version%201?Park=GRSM"
-          SRC=$(grep -o 'src="[^"]*"' /tmp/a.html | head -1 | sed 's/^src="//; s/"$//; s/&amp;/\&/g')
-          echo "iframe: $SRC"
-          curl -sS -L --max-time 60 -A "Mozilla/5.0" -c $J -b $J -o /tmp/v.html "https://irma.nps.gov$SRC"
-          echo "viewer size $(wc -c < /tmp/v.html)"
-          grep -o -E '"ExportUrlBase":"[^"]*"' /tmp/v.html | head -3
-          EXP=$(grep -o -E '"ExportUrlBase":"[^"]*"' /tmp/v.html | head -1 | sed 's/"ExportUrlBase":"//; s/"$//; s/\\u0026/\&/g')
-          echo "export base: $EXP"
-          if [ -n "$EXP" ]; then
-            curl -sS -L --max-time 60 -A "Mozilla/5.0" -c $J -b $J -o /tmp/r.csv "https://irma.nps.gov$EXP""CSV"
-            echo "csv size $(wc -c < /tmp/r.csv)"; head -c 3000 /tmp/r.csv; echo
-          fi
-          echo "--- 2026 in viewer:"; grep -o -E '.{0,100}2026.{0,100}' /tmp/v.html | head -10
+          export_csv () {
+            J=$(mktemp)
+            curl -sS -L --max-time 40 -A "Mozilla/5.0" -c $J -b $J -o /tmp/a.html "https://irma.nps.gov/Stats/SSRSReports/$1"
+            SRC=$(grep -o 'src="[^"]*"' /tmp/a.html | head -1 | sed 's/^src="//; s/"$//; s/&amp;/\&/g')
+            echo "iframe: $SRC"
+            curl -sS -L --max-time 90 -A "Mozilla/5.0" -c $J -b $J -o /tmp/v.html "https://irma.nps.gov$SRC"
+            echo "viewer size $(wc -c < /tmp/v.html)"
+            echo "--- parameters:"
+            grep -o -E '(data-parametername|ParameterName|"Name"):?=?"[^"]{1,60}"' /tmp/v.html | sort -u | head -20
+            grep -o -E '<label[^>]*><span>[^<]{1,80}</span>' /tmp/v.html | head -20
+            EXP=$(grep -o -E '"ExportUrlBase":"[^"]*"' /tmp/v.html | head -1 | sed 's/"ExportUrlBase":"//; s/"$//; s/\\u0026/\&/g')
+            if [ -n "$EXP" ]; then
+              curl -sS -L --max-time 90 -A "Mozilla/5.0" -c $J -b $J -o /tmp/r.csv "https://irma.nps.gov$EXP""CSV"
+              echo "csv size $(wc -c < /tmp/r.csv)"; head -c 2500 /tmp/r.csv; echo; echo "--- lines with 2026:"; grep -c 2026 /tmp/r.csv; grep 2026 /tmp/r.csv | head -5
+            else echo "no export url"; grep -o -i -E '.{0,200}(error|exception).{0,200}' /tmp/v.html | head -5; fi
+          }
+          echo "########## Visitation by Month (park)"
+          export_csv "Park%20Specific%20Reports/Visitation%20by%20Month?Park=GRSM"
+          echo "########## Monthly and Annual Summary Report (1979 - Present)"
+          export_csv "National%20Reports/Monthly%20and%20Annual%20Summary%20Report%20(1979%20-%20Present)"
+          echo "########## Park YTD params"
+          export_csv "Park%20Specific%20Reports/Park%20YTD%20Version%201?Park=GRSM" >/dev/null
+          grep -o -E 'name="ReportViewerControl\$ctl04\$ctl0[0-9]\$[a-zA-Z]+"' /tmp/v.html | head; grep -o -E '<span[^>]*>[A-Za-z ]{2,40}</span></label>' /tmp/v.html | head
+          grep -o -E '.{0,300}Oct&nbsp;2026.{0,50}' /tmp/v.html | head -2
