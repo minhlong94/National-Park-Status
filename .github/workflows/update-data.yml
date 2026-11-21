@@ -26,7 +26,7 @@ concurrency:
 jobs:
   update:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 35
     steps:
       # The default branch of the repository is gh-pages, so a scheduled run (or a run from the Actions tab) starts there.
       # The data belongs on main: such a run works on main and then publishes main to gh-pages (R47, R50).
@@ -50,7 +50,7 @@ jobs:
               || echo "FAILED: $url"
           done
       - name: Get the data
-        timeout-minutes: 15  # the script has its own 12-minute limit
+        timeout-minutes: 30  # the script has its own 25-minute limit
         run: python3 -u scripts/fetch_history.py
       - name: Commit the data if it changed
         # Also runs when a source failed, so the good data from the other source is kept.

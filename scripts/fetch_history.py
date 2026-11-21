@@ -46,14 +46,14 @@ OUT = ROOT / "data" / "park-history.js"
 FIRST_MONTH = "2023-01"     # the first month in the file
 SOCKET_TIMEOUT = 20         # seconds for each network step: connect, TLS handshake, each read
 TRIES = 3                   # tries for each request
-SCRIPT_DEADLINE = 12 * 60   # seconds for the whole script
+SCRIPT_DEADLINE = 25 * 60   # seconds for the whole script (the first run of a year reads about 10 months for each park)
 MAX_FAILS_IN_A_ROW = 3      # stop using a host after this many parks fail one after the other
 # NPS Visitor Use Statistics reports Sequoia and Kings Canyon as separate units.
 EXPECTED_PARKS = 64  # 63 until 2026; Chiricahua became the 64th national park (R47)
 STATS_CODE = {"seki": "SEQU", "kica": "KICA"}
 IRMA = "https://irma.nps.gov"
 YTD_REPORT = IRMA + "/Stats/SSRSReports/Park%20Specific%20Reports/Park%20YTD%20Version%201?Park={code}"
-PRELIM_WORKERS = 6          # parks that the script reads from the IRMA report at the same time
+PRELIM_WORKERS = 3          # parks that the script reads from the IRMA report at the same time (more gives 504 errors)
 START = time.monotonic()
 
 
@@ -222,25 +222,23 @@ def _num(cell):
     return int(cell) if cell.isdigit() else None
 
 
-def pick_total(csv_text, prev):
-    """The park total "ThisMonth" from the CSV of the report, or None.
+def pick_total(csv_text):
+    """The park total "ThisMonth" from the CSV of the report, or None. Returns (value, label, rows).
 
-    The rows and their names are different in each park. The script uses the final value of the same month
-    last year (prev, from the data file) as a check: the total row is the row whose "SameMonthLastYear"
-    is prev (within 1%). Without prev, it uses the row "Total Adjusted Recreation Visits" or
-    "Total Recreation Visitors/Visits". Returns (value, label, all rows) for the log.
+    The rows are different in each park, for example "Total Adjusted Recreation Visits" (Great Smoky Mountains),
+    "Total Recreation Visitors" (Acadia, Olympic), "Recreation Visitors" (Joshua Tree). Some parks also have a
+    "Total Recreation Visits" row for each entrance (Yosemite). The park total is the largest of these rows.
+    Rows such as "Total Recreation Hours" or "Non-Recreation Visits" do not count.
     """
     rows = []
     for r in csv.reader(io.StringIO(csv_text)):
-        if len(r) >= 4 and _num(r[2]) is not None and _num(r[3]) is not None:
+        if len(r) >= 4 and _num(r[2]) is not None:
             rows.append((r[0], r[1], _num(r[2]), _num(r[3])))
-    if prev:
-        match = [x for x in rows if abs(x[3] - prev) <= max(1, prev * 0.01)]
-        # Prefer a recreation visits row, then the largest value
-        match.sort(key=lambda x: (not re.search(r"recreation", x[0] + " " + x[1], re.I), -x[2]))
-        return (match[0][2], match[0][1], rows) if match else (None, None, rows)
-    named = [x for x in rows if re.match(r"Total (Adjusted )?Recreation Visit", x[1])]
-    return (named[0][2], named[0][1], rows) if named else (None, None, rows)
+    named = [x for x in rows if re.fullmatch(r"(Total )?(Adjusted )?Recreation Visit(s|ors)", x[1].strip(), re.I)]
+    if not named:
+        return None, None, rows
+    best = max(named, key=lambda x: x[2])
+    return best[2], f"{best[0]} / {best[1]}", rows
 
 
 def fetch_prelim_visits(code, months, name=None, debug=False, prev=None):
@@ -256,8 +254,18 @@ def fetch_prelim_visits(code, months, name=None, debug=False, prev=None):
 
     def get(url, data=None):
         body = urllib.parse.urlencode(data).encode() if data is not None else None
-        with op.open(urllib.request.Request(url, data=body), timeout=min(60, time_left())) as r:
-            return r.geturl(), r.read().decode("utf-8-sig", "ignore")
+        for k in range(TRIES):
+            try:
+                time.sleep(0.3)  # be gentle with the IRMA server
+                with op.open(urllib.request.Request(url, data=body), timeout=min(60, time_left())) as r:
+                    return r.geturl(), r.read().decode("utf-8-sig", "ignore")
+            except DeadlineExceeded:
+                raise
+            except (urllib.error.HTTPError, urllib.error.URLError, socket.timeout, TimeoutError, ConnectionError) as e:
+                # 502, 503, 504 and 403 come when the server is busy: wait and try again
+                if k == TRIES - 1 or (isinstance(e, urllib.error.HTTPError) and e.code not in (403, 429, 500, 502, 503, 504)):
+                    raise
+                time.sleep(5 * (k + 1))
 
     _, outer = get(YTD_REPORT.format(code=code))
     m = re.search(r'src="([^"]+)"', outer)
@@ -307,7 +315,7 @@ def fetch_prelim_visits(code, months, name=None, debug=False, prev=None):
         if f"Report Date: {label}" not in csv_text:
             raise RuntimeError(f"{code} {mon}: the report is for another month")
         p_mon = (prev or {}).get(mon)
-        value, label_used, rows = pick_total(csv_text, p_mon)
+        value, label_used, rows = pick_total(csv_text)
         out[mon] = value
         if value is None or debug:
             # Some parks (for example Yellowstone) report only overnight stays in this report
