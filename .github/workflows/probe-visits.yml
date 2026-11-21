@@ -2,25 +2,12 @@ name: Probe 2026 visit data (temporary)
 on:
   push:
     branches: [claude/jolly-ptolemy-mtv1g5]
-    paths: [.github/workflows/probe-visits.yml]
+    paths: [.github/workflows/probe-visits.yml, .github/probe/ytd.py]
 jobs:
   probe:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 10
     steps:
-      - name: Parameter names and values
-        run: |
-          set +e
-          try () {
-            J=$(mktemp)
-            curl -sS -L --max-time 40 -A "Mozilla/5.0" -c $J -b $J -o /tmp/a.html "https://irma.nps.gov/Stats/SSRSReports/Park%20Specific%20Reports/Park%20YTD%20Version%201?Park=GRSM&$1"
-            SRC=$(grep -o 'src="[^"]*"' /tmp/a.html | head -1 | sed 's/^src="//; s/"$//; s/&amp;/\&/g')
-            EFF=$(curl -sS -L --max-time 90 -A "Mozilla/5.0" -c $J -b $J -o /tmp/v.html -w '%{url_effective}' "https://irma.nps.gov$SRC")
-            ERR=""; case "$EFF" in *error*) ERR=$(python3 -c "import sys,urllib.parse as u; q=u.parse_qs(u.urlparse(sys.argv[1]).query); print((q.get('error') or [''])[0][:300])" "$EFF");; esac
-            echo "== $1 | viewer $(wc -c < /tmp/v.html) | sel: $(grep -o -E 'selected="selected" value="[0-9]+">[A-Za-z]{3}&nbsp;[0-9]{4}' /tmp/v.html | head -1 | sed 's/.*>//') | $ERR"
-            EXP=$(grep -o -E '"ExportUrlBase":"[^"]*"' /tmp/v.html | head -1 | sed 's/"ExportUrlBase":"//; s/"$//; s/\\u0026/\&/g')
-            [ -n "$EXP" ] && curl -sS -L --max-time 90 -A "Mozilla/5.0" -c $J -b $J "https://irma.nps.gov$EXP""CSV" | sed -n '2p;5p' | cut -c1-160
-          }
-          for n in Zzz Month Year Date ReportDate MonthYear SelectMonthYear RptMonth YearMonth Period; do try "$n=1"; done
-          for v in "9%2F1%2F2026" "2026-09-01" "Sep%202026" "202609" "9" "2" "09%2F01%2F2026%2000%3A00%3A00" "2026-09-01T00%3A00%3A00"; do try "ReportDate=$v"; done
-          try "Month=9&Year=2026"; try "Month=Sep&Year=2026"; try "Date=2026-09-01"
+      - uses: actions/checkout@v4
+      - name: Postback probe
+        run: python3 -u .github/probe/ytd.py
