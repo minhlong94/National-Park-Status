@@ -25,7 +25,9 @@ Run: python3 scripts/fetch_history.py
 """
 import calendar
 import concurrent.futures
+import csv
 import datetime as dt
+import io
 import html as htmllib
 import http.cookiejar
 import json
@@ -215,7 +217,33 @@ def _sel_value(page, name):
     return m.group(1) if m else None
 
 
-def fetch_prelim_visits(code, months, name=None, debug=False):
+def _num(cell):
+    cell = (cell or "").replace(",", "").strip()
+    return int(cell) if cell.isdigit() else None
+
+
+def pick_total(csv_text, prev):
+    """The park total "ThisMonth" from the CSV of the report, or None.
+
+    The rows and their names are different in each park. The script uses the final value of the same month
+    last year (prev, from the data file) as a check: the total row is the row whose "SameMonthLastYear"
+    is prev (within 1%). Without prev, it uses the row "Total Adjusted Recreation Visits" or
+    "Total Recreation Visitors/Visits". Returns (value, label, all rows) for the log.
+    """
+    rows = []
+    for r in csv.reader(io.StringIO(csv_text)):
+        if len(r) >= 4 and _num(r[2]) is not None and _num(r[3]) is not None:
+            rows.append((r[0], r[1], _num(r[2]), _num(r[3])))
+    if prev:
+        match = [x for x in rows if abs(x[3] - prev) <= max(1, prev * 0.01)]
+        # Prefer a recreation visits row, then the largest value
+        match.sort(key=lambda x: (not re.search(r"recreation", x[0] + " " + x[1], re.I), -x[2]))
+        return (match[0][2], match[0][1], rows) if match else (None, None, rows)
+    named = [x for x in rows if re.match(r"Total (Adjusted )?Recreation Visit", x[1])]
+    return (named[0][2], named[0][1], rows) if named else (None, None, rows)
+
+
+def fetch_prelim_visits(code, months, name=None, debug=False, prev=None):
     """Returns {"YYYY-MM": visits or None} from the IRMA report "Park YTD Version 1".
 
     The report shows one month. The park comes from the URL. The script selects each month in the
@@ -278,26 +306,23 @@ def fetch_prelim_visits(code, months, name=None, debug=False):
         _, csv_text = get(IRMA + e.group(1).replace("\\u0026", "&") + "CSV")
         if f"Report Date: {label}" not in csv_text:
             raise RuntimeError(f"{code} {mon}: the report is for another month")
-        if debug:
-            print("\n".join(csv_text.splitlines()[:12]), flush=True)
-        # The total row: "Total Adjusted Recreation Visits" (parks that adjust for duplicates) or "Total Recreation Visits"
-        row = next((r for r in csv_text.splitlines() if re.match(r'[^,]*,Total (Adjusted )?Recreation Visit', r)), None)
-        if row is None:
+        p_mon = (prev or {}).get(mon)
+        value, label_used, rows = pick_total(csv_text, p_mon)
+        out[mon] = value
+        if value is None or debug:
             # Some parks (for example Yellowstone) report only overnight stays in this report
-            out[mon] = None
-            continue
-        cell = re.match(r'[^,]*,[^,]*,("[^"]*"|[^,]*)', row).group(1).strip('"').replace(",", "")
-        out[mon] = int(cell) if cell.isdigit() else None
+            print(f"  {code} {mon}: {'no total row' if value is None else 'row ' + repr(label_used)}; last year {p_mon}; "
+                  f"rows: {[(g[:25], l[:40], tm, ly) for g, l, tm, ly in rows if re.search('recreation|visit', g + l, re.I)][:8]}", flush=True)
     return out
 
 
-def fetch_prelim_all(codes, months, names):
+def fetch_prelim_all(codes, months, names, prevs):
     """Preliminary visits for many parks, PRELIM_WORKERS at the same time. Each park gets 3 tries."""
     def one(code):
         last = None
         for k in range(TRIES):
             try:
-                return code, fetch_prelim_visits(code, months, names.get(code))
+                return code, fetch_prelim_visits(code, months, names.get(code), prev=prevs.get(code))
             except DeadlineExceeded:
                 raise
             except Exception as e:  # noqa: BLE001
@@ -428,7 +453,15 @@ def main():
     cand = [add_months(start, k) for k in range(months_between(start, target) + 1)]
     # Months that the statistics service does not have yet: try the preliminary report (R63)
     missing = [mon for mon in cand if v1.get(mon) is None]
-    p1 = fetch_prelim_visits(code1, missing, first["name"]) if missing else {}
+    def prev_year(p):
+        """The final visits of the same month one year before, from the data file: the check of the report row."""
+        rec = (store or {}).get("parks", {}).get(p["id"])
+        out = {}
+        for mon in cand:
+            k = months_between(store["first"], add_months(mon, -12)) if store else -1
+            out[mon] = rec["v"][k] if rec and 0 <= k < len(rec["v"]) else None
+        return out
+    p1 = fetch_prelim_visits(code1, missing, first["name"], prev=prev_year(first)) if missing else {}
     end, prelim_months = None, []
     for mon in cand:
         vis = v1.get(mon) if v1.get(mon) is not None else p1.get(mon)
@@ -451,7 +484,8 @@ def main():
     if prelim_months:
         try:
             names = {stats_code(p): {"seki": "Sequoia", "kica": "Kings Canyon"}.get(p["id"], p["name"]) for p in parks}
-            pv = fetch_prelim_all([c for c in codes if c != code1], prelim_months, names)
+            prevs = {stats_code(p): prev_year(p) for p in parks}
+            pv = fetch_prelim_all([c for c in codes if c != code1], prelim_months, names, prevs)
             pv[code1] = p1
             for c in codes:
                 for mon in prelim_months:
