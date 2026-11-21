@@ -2359,17 +2359,19 @@ function drawMonthly(box, id){
   const slots = Math.max(1, shown.filter(y => !fill || y !== fill.year).length); // the older year takes a free place
   const gap = 2, bw = Math.max(3, Math.min(24, (band*0.78 - gap*(slots-1)) / slots));
   let g1 = axisY(vt, y1, L, W, R, compact) + axisX(L, band, H1-6) + washLayer(L, band, T1-8, base1);
-  let peak = null;
+  // The value of the highest column of each month (R67). Smaller text when the months are narrow.
+  const vfs = band < 26 ? 8.5 : band < 40 ? 9.5 : 11;
   MONTHS.forEach((m,i) => {
     const inMonth = shown.filter(y => vis(y)[i] != null);   // only the years with a value, side by side
     const groupW = inMonth.length*bw + (inMonth.length-1)*gap, x0 = L + band*i + (band-groupW)/2;
+    let top = null;
     inMonth.forEach((y,k) => {
       const v = vis(y)[i];
       g1 += `<path d="${colPath(x0 + k*(bw+gap), y1(v), bw, base1)}" fill="${colorOf(y)}"/>`;
-      if (y === shown[shown.length-1] && (!peak || v > peak.v)) peak = {v, x: x0 + k*(bw+gap) + bw/2};
+      if (!top || v > top.v) top = {v, x: x0 + k*(bw+gap) + bw/2};
     });
+    if (top) g1 += `<text x="${top.x}" y="${y1(top.v)-4}" text-anchor="middle" font-size="${vfs}" font-weight="600" fill="var(--ink)" pointer-events="none">${compact(top.v)}</text>`;
   });
-  if (peak) g1 += `<text x="${peak.x}" y="${y1(peak.v)-5}" text-anchor="middle" font-size="11" font-weight="600" fill="var(--ink)">${compact(peak.v)}</text>`;
   g1 += `<line x1="${L}" x2="${W-R}" y1="${base1}" y2="${base1}" stroke="var(--muted)" stroke-width="1"/>`;
   g1 += hitLayer(L, band, T1-8, base1, true, "visits");
 
