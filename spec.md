@@ -1070,3 +1070,15 @@ Requirements:
 - The monthly chart shows the last 3 calendar years in the file: 2024, 2025 and 2026. The months after the last month with data are blank.
 - The tooltip shows "(preliminary)" for a preliminary month. The source line under the charts tells which visits are preliminary.
 - Status: done.
+
+### R64. Campgrounds and visitor centers: parks in alphabetical order
+
+Request from the owner (edited for clarity):
+
+> In "Campgrounds, visitor centers and seasonal closures", sort the parks alphabetically.
+
+Requirements:
+
+- The park list of the section "Campgrounds, visitor centers and seasonal closures" is in alphabetical order (Acadia to Zion). Before, it was in the order of visits.
+- When the page opens, the section still shows the most visited park with data (Great Smoky Mountains).
+- Status: done.

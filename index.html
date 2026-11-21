@@ -1449,9 +1449,11 @@ let campSel = null;
 function campParks(){
   const P = window.PARK_SEASONAL ? PARK_SEASONAL.parks : {};
   const seen = new Set();
+  // Sorted by name (R64). PARKS is in visits order, so the first park before the sort is the most visited one.
   return PARKS.filter(p => P[p.code] && !seen.has(p.code) && seen.add(p.code))
     .map(p => ({code: p.code, name: p.code === "seki" ? "Sequoia and Kings Canyon" : p.name}));
 }
+const campParksByName = () => campParks().sort((a, b) => a.name.localeCompare(b.name));
 // ---- Calendar of the next 12 months (R37): one row for each campground or visitor center ----
 // Green = open, gray with lines = closed for the season. A dark line shows today.
 const DAY = 86400000;
@@ -1493,8 +1495,8 @@ function calLegend(extra){
 }
 function renderCamps(){
   if (!window.PARK_SEASONAL){ $("cbody").innerHTML = `<p class="none">The seasonal data did not load.</p>`; return; }
-  const parks = campParks();
-  if (!campSel || !PARK_SEASONAL.parks[campSel]) campSel = parks[0] && parks[0].code;
+  const parks = campParksByName();
+  if (!campSel || !PARK_SEASONAL.parks[campSel]){ const top = campParks()[0]; campSel = top && top.code; } // start with the most visited park
   $("cpark").innerHTML = parks.map(p => { const n = seasonalLists(PARK_SEASONAL.parks[p.code]).now.length;
     return `<option value="${p.code}" ${p.code === campSel ? "selected" : ""}>${esc(p.name)}${n ? ` (${n} closed now)` : ""}</option>`; }).join("");
   const S = PARK_SEASONAL.parks[campSel];
