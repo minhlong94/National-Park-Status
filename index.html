@@ -117,7 +117,7 @@ tr.park:hover td{background:color-mix(in srgb,var(--pine) 6%,transparent)}
 .fc > div.fhz{border:2px solid var(--partial);border-top-width:6px;background:color-mix(in srgb, var(--partial) 20%, var(--panel));border-radius:6px}
 .fc > div.fhz.h2{border-color:var(--closed);background:color-mix(in srgb, var(--closed) 16%, var(--panel))}
 .fc > div.fhz.h2 .fhl{color:var(--closed)}
-.fhl{display:block;font-weight:700;font-size:13px;color:var(--ink);margin-top:4px;padding-top:5px;border-top:1px solid color-mix(in srgb, currentColor 25%, transparent);width:100%}
+.fhl{display:block;font-weight:700;font-size:12px;line-height:1.25;color:var(--ink);margin-top:3px;padding-top:4px;border-top:1px solid color-mix(in srgb, currentColor 25%, transparent);width:100%}
 .fhl small{display:block;font-weight:400;font-size:12px;color:var(--ink)}
 .hzb{display:inline-block;margin-top:6px;padding:2px 7px;border-radius:6px;font-size:12px;font-weight:700;line-height:1.3;white-space:normal}
 .hzb.h2{background:var(--closed);color:#fff}
@@ -184,15 +184,24 @@ tr.detail[hidden]{display:none}
 .alert .am{font-size:12.5px;color:var(--muted);margin-top:4px}
 .alert a{color:var(--info)}
 .none{color:var(--muted);font-size:14px}
-/* 3-day forecast: one column for each day, side by side (R55) */
-.fc{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);gap:6px}
-.fc>div{display:flex;flex-direction:column;align-items:center;text-align:center;gap:3px;border:1px solid var(--line);border-radius:6px;padding:8px 6px;background:var(--panel);font-size:13px;min-width:0}
+/* 7-day forecast: one column for each day, side by side (R55, R66). The row scrolls sideways when it is too wide. */
+.fcw{overflow-x:auto;scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch;padding-bottom:4px;max-width:100%}
+.fcw:focus-visible{outline:2px solid var(--info);outline-offset:2px}
+.fc{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(66px,1fr);gap:5px}
+.fc>div{display:flex;flex-direction:column;align-items:center;text-align:center;gap:2px;border:1px solid var(--line);border-radius:6px;padding:7px 4px;background:var(--panel);font-size:13px;min-width:0;scroll-snap-align:start}
+.fc .fd{color:var(--muted);font-size:11.5px;white-space:nowrap}
+.fc .ft small{display:block;font-weight:400;font-size:12.5px;color:var(--muted)}
+.fcz{list-style:none;margin:8px 0 0;padding:0;font-size:13px}
+.fcz li{border-left:4px solid var(--partial);padding:2px 0 2px 8px;margin:0 0 4px}
+.fcz li.h2{border-color:var(--closed)}
+.fcz li.h2 b{color:var(--closed)}
+.fcu{font-weight:400;color:var(--muted);font-size:13px}
 .fc b{font-size:13px}
-.fc .wxi.big{font-size:30px;margin:2px 0 0;vertical-align:0}
-.fc .fw{color:var(--muted);font-size:12px;line-height:1.2}
+.fc .wxi.big{font-size:28px;margin:2px 0 0;vertical-align:0}
+.fc .fw{color:var(--muted);font-size:12px;line-height:1.2;overflow-wrap:anywhere;hyphens:auto}
 .fc .ft{font-weight:700;font-size:14px;font-variant-numeric:tabular-nums}
 .wx .tc{color:var(--muted);font-size:13px}
-.fc .fp{color:var(--muted);font-size:12.5px;line-height:1.3}
+.fc .fp{color:var(--muted);font-size:12px;line-height:1.3;white-space:nowrap}
 .banner{border:1px solid var(--closed);color:var(--closed);border-radius:8px;padding:10px 14px;margin:14px 0;font-size:14px}
 .banner[hidden]{display:none}
 .campsec{margin-top:34px}
@@ -486,7 +495,7 @@ footer a{color:var(--info)}
   </section>
 
   <footer>
-    Click a park row to see all its alerts, its closure history and a 3-day forecast.
+    Click a park row to see all its alerts, its closure history and a 7-day forecast.
     The seasonal road dates come from the NPS Yosemite and Glacier datasets and from Rocky Mountain press releases.
     The park status comes from official NPS alerts (developer.nps.gov).
     The page sorts each alert into a type by keywords. Read the alert text before you drive.
@@ -1027,7 +1036,7 @@ async function loadWeather(){
   const url = "https://api.open-meteo.com/v1/forecast?latitude="+lat+"&longitude="+lon+
     "&current=temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,wind_speed_10m,wind_gusts_10m,precipitation,is_day"+
     "&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,precipitation_sum,snowfall_sum,wind_gusts_10m_max,precipitation_hours"+
-    "&temperature_unit=fahrenheit&wind_speed_unit=mph&precipitation_unit=inch&timezone=auto&forecast_days=3";
+    "&temperature_unit=fahrenheit&wind_speed_unit=mph&precipitation_unit=inch&timezone=auto&forecast_days=7";
   const res = await fetch(url, {cache:"no-store"});
   if (!res.ok) throw new Error("Weather API returned HTTP " + res.status);
   let data = await res.json();
@@ -1908,7 +1917,7 @@ function render(){
   }
 }
 
-// ---- Storms and heavy snow in the 3-day forecast (R38) ----
+// ---- Storms and heavy snow in the 7-day forecast (R38, R66) ----
 // The weather code alone can say "slight rain showers" on a day with 1 in of rain and 58 mph gusts.
 // So the page also uses the amounts. Level 2 = severe (red), level 1 = take care (orange).
 function dayHazard(d, i){
@@ -1935,7 +1944,7 @@ function hazardDays(w){
   return [...at(w.daily, ""), ...(w.extra || []).flatMap(x => at(x.daily, x.short))];
 }
 const dayName = (t, i) => i === 0 ? "Today" : new Date(t + "T12:00:00").toLocaleDateString("en-US", {weekday:"short"});
-// Row badge: the strongest day in the next 3 days
+// Row badge: the strongest day in the next 7 days
 function hazardBadge(w){
   const hd = hazardDays(w);
   if (!hd.length) return "";
@@ -2015,7 +2024,8 @@ function ffpFor(p, w, warns){
   }
   const d = w.daily;
   const estAt = (t, i) => Math.max(ffpEstimateDay(d, i, warns), ...(w.extra || []).map(x => { const j = x.daily.time.indexOf(t); return j < 0 ? 0 : ffpEstimateDay(x.daily, j, []); }));
-  const days = d.time.map((t, i) => o && o[t] != null ? {day: dayName(t, i), lvl: o[t], est: false} : {day: dayName(t, i), lvl: estAt(t, i), est: true});
+  // Only the first 3 days: the NWS rating covers about 3 days, and an estimate further out is not useful (R66)
+  const days = d.time.slice(0, 3).map((t, i) => o && o[t] != null ? {day: dayName(t, i), lvl: o[t], est: false} : {day: dayName(t, i), lvl: estAt(t, i), est: true});
   return {official: days.some(x => !x.est), days};
 }
 // The highest day that counts: an NWS rating from "Possible", an estimate only from "Probable"
@@ -2089,16 +2099,28 @@ function detail(p, list, w, warns){
     const nc = items.filter(a => a.isClosure).length;
     if (items.length) alertsHtml += sec(p.code, g, `${groups[g]} (${items.length})`, items.map(a => alertBlock(a, p.code)).join(""), nc ? `${nc} ${nc > 1 ? "closures" : "closure"}` : "");
   });
-  let wxHtml = `<h2>3-day forecast</h2>`;
-  const fcCards = d => `<div class="fc">` + d.time.map((t,i) => {
-      const day = new Date(t+"T12:00:00").toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"});
+  const nDays = w && w.daily ? w.daily.time.length : 7;
+  let wxHtml = `<h2>${nDays}-day forecast <span class="fcu">high / low ${tU()}</span></h2>` +
+    (nDays < 7 ? `<p class="none" style="margin:-4px 0 8px">Saved data. Click Refresh data to get the 7-day forecast.</p>` : "");
+  // 7 compact cards in a row that scrolls sideways (R66). The reasons of a storm or heavy snow are in a list under the row.
+  const fcCards = d => {
+    const notes = [];
+    const cards = d.time.map((t,i) => {
+      const dt = new Date(t+"T12:00:00");
+      const wd = i === 0 ? "Today" : dt.toLocaleDateString("en-US",{weekday:"short"});
+      const md = dt.toLocaleDateString("en-US",{month:"short",day:"numeric"});
       const hz = dayHazard(d, i);
-      return `<div${hz ? ` class="fhz h${hz.lvl}"` : ""}><b>${day}</b>${wxIcon(d.weather_code[i], false, true)}<span class="fw">${esc(WMO[d.weather_code[i]]||"")}</span>` +
-        `<span class="ft">${tPair(d.temperature_2m_max[i], d.temperature_2m_min[i])}</span>` +
-        `<span class="fp"><span class="nw">${ico("💧", "Precipitation")} ${d.precipitation_probability_max[i] ?? 0}%</span> · <span class="nw">${inMm(d.precipitation_sum[i]||0, 2)}</span></span>` +
-        (d.snowfall_sum && d.snowfall_sum[i] ? `<span class="fp nw">${ico("❄️", "Snow")} ${snowAmt(d.snowfall_sum[i], 1)}</span>` : "") +
-        (hz ? `<span class="fhl"><span aria-hidden="true">⚠</span> ${esc(hz.kind)}<small>${esc(hz.why.join(", "))}</small></span>` : "") + `</div>`;
-    }).join("") + `</div>`;
+      if (hz) notes.push(`<li class="h${hz.lvl}"><b><span aria-hidden="true">⚠</span> ${wd}, ${md}: ${esc(hz.kind)}</b> – ${esc(hz.why.join(", "))}</li>`);
+      return `<div${hz ? ` class="fhz h${hz.lvl}" title="${esc(hz.kind + ": " + hz.why.join(", "))}"` : ""}><b>${wd}</b><span class="fd">${md}</span>` +
+        `${wxIcon(d.weather_code[i], false, true)}<span class="fw">${esc(WMO[d.weather_code[i]]||"")}</span>` +
+        `<span class="ft">${tNum(d.temperature_2m_max[i])}°<small>${tNum(d.temperature_2m_min[i])}°</small></span>` +
+        `<span class="fp">${ico("💧", "Precipitation")} ${d.precipitation_probability_max[i] ?? 0}%</span><span class="fp">${inMm(d.precipitation_sum[i]||0, 2)}</span>` +
+        (d.snowfall_sum && d.snowfall_sum[i] ? `<span class="fp">${ico("❄️", "Snow")} ${snowAmt(d.snowfall_sum[i], 1)}</span>` : "") +
+        (hz ? `<span class="fhl"><span aria-hidden="true">⚠</span> ${esc(hz.kind)}</span>` : "") + `</div>`;
+    });
+    return `<div class="fcw" tabindex="0" role="region" aria-label="${d.time.length}-day forecast"><div class="fc">${cards.join("")}</div></div>` +
+      (notes.length ? `<ul class="fcz">${notes.join("")}</ul>` : "");
+  };
   if (w && w.daily){
     wxHtml += fcCards(w.daily);
     wxHtml += `<p class="none" style="margin-top:8px">Humidity ${w.current.relative_humidity_2m}% · The forecast is for one point near the main visitor area. In large parks, the temperature changes much with elevation.</p>`;
