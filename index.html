@@ -1449,9 +1449,11 @@ let campSel = null;
 function campParks(){
   const P = window.PARK_SEASONAL ? PARK_SEASONAL.parks : {};
   const seen = new Set();
+  // Sorted by name (R64). PARKS is in visits order, so the first park before the sort is the most visited one.
   return PARKS.filter(p => P[p.code] && !seen.has(p.code) && seen.add(p.code))
     .map(p => ({code: p.code, name: p.code === "seki" ? "Sequoia and Kings Canyon" : p.name}));
 }
+const campParksByName = () => campParks().sort((a, b) => a.name.localeCompare(b.name));
 // ---- Calendar of the next 12 months (R37): one row for each campground or visitor center ----
 // Green = open, gray with lines = closed for the season. A dark line shows today.
 const DAY = 86400000;
@@ -1493,8 +1495,8 @@ function calLegend(extra){
 }
 function renderCamps(){
   if (!window.PARK_SEASONAL){ $("cbody").innerHTML = `<p class="none">The seasonal data did not load.</p>`; return; }
-  const parks = campParks();
-  if (!campSel || !PARK_SEASONAL.parks[campSel]) campSel = parks[0] && parks[0].code;
+  const parks = campParksByName();
+  if (!campSel || !PARK_SEASONAL.parks[campSel]){ const top = campParks()[0]; campSel = top && top.code; } // start with the most visited park
   $("cpark").innerHTML = parks.map(p => { const n = seasonalLists(PARK_SEASONAL.parks[p.code]).now.length;
     return `<option value="${p.code}" ${p.code === campSel ? "selected" : ""}>${esc(p.name)}${n ? ` (${n} closed now)` : ""}</option>`; }).join("");
   const S = PARK_SEASONAL.parks[campSel];
@@ -2218,7 +2220,11 @@ function deriveHistory(D, id){
   ["hi","lo","rain","snow"].forEach(key => wx[key] = MONTHS.map((_, i) => { const v = avg(R[key], i+1); return v == null ? null : +v.toFixed(key === "rain" ? 2 : 1); }));
   const label = k => { const t = (fy * 12 + fm - 1) + k; return `${MONTHS[t % 12]} ${Math.floor(t / 12)}`; };
   const lastK = idx(ly, lm);
-  return {years, visits, wx, lastLabel: label(lastK), lastMonth: lm, wxSpan: `${label(Math.max(0, lastK - 35))} to ${label(lastK)}`};
+  // Visits from D.prelim are preliminary: NPS finalizes a year in the first quarter of the next year (R63)
+  const pre = D.prelim ? D.prelim.split("-").map(Number) : null;
+  const isPrelim = (y, m) => !!pre && (y > pre[0] || (y === pre[0] && m >= pre[1])); // m is 1–12
+  return {years, visits, wx, isPrelim, prelimLabel: pre ? label(idx(pre[0], pre[1])) : null,
+    lastLabel: label(lastK), lastMonth: lm, wxSpan: `${label(Math.max(0, lastK - 35))} to ${label(lastK)}`};
 }
 
 // ---- Best time to visit (R15) ----
@@ -2428,7 +2434,7 @@ function drawMonthly(box, id){
       <thead><tr><th>Month</th>${years.map(y => `<th class="num">Visits ${y}</th>`).join("")}<th class="num">Low ${tU()}</th><th class="num">High ${tU()}</th><th class="num">Rain ${METRIC ? "mm" : "in"}</th><th class="num">Snow ${METRIC ? "cm" : "in"}</th></tr></thead>
       <tbody>${MONTHS.map((m,i) => `<tr><td>${m}</td>${years.map(y => `<td class="num">${vis(y)[i] == null ? "–" : shortNum(vis(y)[i])}</td>`).join("")}<td class="num">${lo[i] == null ? "–" : Math.round(lo[i])}</td><td class="num">${hi[i] == null ? "–" : Math.round(hi[i])}</td><td class="num">${P.wx.rain[i] == null ? "–" : METRIC ? Math.round(rainU[i]) : P.wx.rain[i]}</td><td class="num">${P.wx.snow[i] == null ? "–" : METRIC ? snowU[i].toFixed(1) : P.wx.snow[i]}</td></tr>`).join("")}</tbody>
     </table></div></details>
-    <p class="msrc">Sources: NPS Visitor Use Statistics (recreation visits). Open-Meteo historical weather (ERA5 model) at the forecast point of the park. Data to ${esc(H.lastLabel)}.${fall ? ` Fall color: NASA MODIS land surface phenology (MCD12Q2), ${(window.PARK_FOLIAGE.wide || []).includes(id) ? "21 km box (the 3 km box had no data)" : "3 km box"} at the same point.` : ""}${now && !now.stale ? " This season: USA National Phenology Network." : ""}</p>`;
+    <p class="msrc">Sources: NPS Visitor Use Statistics (recreation visits). Open-Meteo historical weather (ERA5 model) at the forecast point of the park. Data to ${esc(H.lastLabel)}.${H.prelimLabel ? ` Visits from ${esc(H.prelimLabel)} are preliminary. NPS makes them final in the first quarter of the next year.` : ""}${fall ? ` Fall color: NASA MODIS land surface phenology (MCD12Q2), ${(window.PARK_FOLIAGE.wide || []).includes(id) ? "21 km box (the 3 km box had no data)" : "3 km box"} at the same point.` : ""}${now && !now.stale ? " This season: USA National Phenology Network." : ""}</p>`;
 
   // Shared hover: one month, all four charts, one tooltip
   const tip = box.querySelector(".mtip");
@@ -2443,7 +2449,7 @@ function drawMonthly(box, id){
     box.querySelectorAll(".wash").forEach(w => { w.setAttribute("x", L + band*i); w.setAttribute("visibility", "visible"); });
     tip.replaceChildren();
     const h = document.createElement("div"); h.className = "mth"; h.textContent = MONTHS_LONG[i]; tip.append(h);
-    years.slice().reverse().forEach(y => { if (!hiddenYears.has(y)) tip.append(row(colorOf(y), `Visits ${y}`, vis(y)[i] == null ? "No data yet" : shortNum(vis(y)[i]))); });
+    years.slice().reverse().forEach(y => { if (!hiddenYears.has(y)) tip.append(row(colorOf(y), `Visits ${y}`, vis(y)[i] == null ? "No data yet" : shortNum(vis(y)[i]) + (H.isPrelim(y, i + 1) ? " (preliminary)" : ""))); });
     tip.append(document.createElement("hr"));
     tip.append(row("var(--temp)", "Low to high", lo[i] == null ? "–" : `${Math.round(lo[i])}° to ${Math.round(hi[i])}${tU()}`));
     tip.append(row("var(--rain)", "Rain", P.wx.rain[i] == null ? "–" : inMm(P.wx.rain[i], 2)));

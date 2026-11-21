@@ -14,11 +14,22 @@ change, so the script only adds new months:
    It does not request data for the other parks, and the file does not change.
 3. If the first park has data, the script gets that month for all parks and adds it.
 
+Preliminary visits of the current year (R63): the statistics service (irmaservices) has only final years.
+NPS finalizes a year in the first quarter of the next year. Until then, the script reads the monthly
+total from the IRMA report "Park YTD Version 1" (CSV export, one park and one month for each request).
+The key "prelim" in the file is the first month with preliminary visits. On each run, the script asks the
+statistics service for these months again. When a month is final, the script writes the final value.
+
 The park list (id, code, lat, lon) comes from index.html. Standard library only.
 Run: python3 scripts/fetch_history.py
 """
 import calendar
+import concurrent.futures
+import csv
 import datetime as dt
+import io
+import html as htmllib
+import http.cookiejar
 import json
 import re
 import socket
@@ -27,6 +38,7 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
+from html.parser import HTMLParser
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -34,11 +46,14 @@ OUT = ROOT / "data" / "park-history.js"
 FIRST_MONTH = "2023-01"     # the first month in the file
 SOCKET_TIMEOUT = 20         # seconds for each network step: connect, TLS handshake, each read
 TRIES = 3                   # tries for each request
-SCRIPT_DEADLINE = 12 * 60   # seconds for the whole script
+SCRIPT_DEADLINE = 45 * 60   # seconds for the whole script (the first run of a year reads about 10 months for each park)
 MAX_FAILS_IN_A_ROW = 3      # stop using a host after this many parks fail one after the other
 # NPS Visitor Use Statistics reports Sequoia and Kings Canyon as separate units.
 EXPECTED_PARKS = 64  # 63 until 2026; Chiricahua became the 64th national park (R47)
 STATS_CODE = {"seki": "SEQU", "kica": "KICA"}
+IRMA = "https://irma.nps.gov"
+YTD_REPORT = IRMA + "/Stats/SSRSReports/Park%20Specific%20Reports/Park%20YTD%20Version%201?Park={code}"
+PRELIM_WORKERS = 3          # parks that the script reads from the IRMA report at the same time (more gives 504 errors)
 START = time.monotonic()
 
 
@@ -165,6 +180,182 @@ def fetch_visits(codes, start, end):
     return out
 
 
+# ---- preliminary visits of the current year (R63) ----
+class _ReportForm(HTMLParser):
+    """The form fields and the drop-down lists of the IRMA report viewer page."""
+    def __init__(self):
+        super().__init__()
+        self.fields, self.selects, self._cur = {}, {}, None
+
+    def handle_starttag(self, tag, a):
+        a = dict(a)
+        if tag == "input" and a.get("name") and a.get("type", "text") in ("hidden", "text"):
+            self.fields[a["name"]] = a.get("value") or ""
+        elif tag == "select" and a.get("name"):
+            self._cur = a["name"]
+            self.selects[self._cur] = []
+        elif tag == "option" and self._cur:
+            self.selects[self._cur].append([a.get("value"), ""])
+
+    def handle_data(self, d):
+        if self._cur and self.selects[self._cur]:
+            self.selects[self._cur][-1][1] += d
+
+    def handle_endtag(self, tag):
+        if tag == "select":
+            self._cur = None
+
+
+def _month_label(mon):
+    y, m = ym(mon)
+    return f"{calendar.month_abbr[m]} {y}"
+
+
+def _sel_value(page, name):
+    """The selected value of a drop-down list in the viewer page."""
+    m = re.search(r'name="' + re.escape(name) + r'".*?<option selected="selected" value="([^"]*)"', page, re.S)
+    return m.group(1) if m else None
+
+
+def _num(cell):
+    cell = (cell or "").replace(",", "").strip()
+    return int(cell) if cell.isdigit() else None
+
+
+def pick_total(csv_text, prev=None):
+    """The park total "ThisMonth" from the CSV of the report, or None. Returns (value, label, rows).
+
+    The rows are different in each park:
+    1. A named total row: "Total Adjusted Recreation Visits" (Great Smoky Mountains), "Total Recreation Visitors"
+       (Acadia, Olympic), "Recreation Visitors" (Joshua Tree). Some parks also have a "Total Recreation Visits"
+       row for each entrance (Yosemite), so the script takes the largest. Rows such as "Total Recreation Hours"
+       or "Non-Recreation Visits" do not count.
+    2. Else, the row whose "SameMonthLastYear" is the final value of last year (prev, from the data file),
+       for example "Canyonlands NP Visitors" or "NPS Recreation Visits" (Redwood).
+    """
+    rows = []
+    for r in csv.reader(io.StringIO(csv_text)):
+        if len(r) >= 4 and _num(r[2]) is not None:
+            rows.append((r[0], re.sub(r"\s+", " ", r[1]).strip(), _num(r[2]), _num(r[3])))
+    named = [x for x in rows if re.fullmatch(r"(Total )?(Adjusted )?Recreation Visit(s|ors)", x[1], re.I)]
+    if named:
+        best = max(named, key=lambda x: x[2])
+        return best[2], f"{best[0]} / {best[1]}", rows
+    if prev:
+        same = [x for x in rows if x[3] is not None and abs(x[3] - prev) <= max(1, prev * 0.005)
+                and re.search(r"visit", x[1], re.I) and not re.search(r"non|hour", x[1], re.I)]
+        if same:
+            best = max(same, key=lambda x: x[2])
+            return best[2], f"{best[0]} / {best[1]} (same last year)", rows
+    return None, None, rows
+
+
+def fetch_prelim_visits(code, months, name=None, debug=False, prev=None):
+    """Returns {"YYYY-MM": visits or None} from the IRMA report "Park YTD Version 1".
+
+    The report shows one month. The park comes from the URL. The script selects each month in the
+    form of the report viewer (an ASP.NET postback, as a browser does), then exports the report as CSV.
+    It uses the row "Total Adjusted Recreation Visits", column "ThisMonth".
+    """
+    jar = http.cookiejar.CookieJar()
+    op = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(jar))
+    op.addheaders = [("User-Agent", "Mozilla/5.0 (National-Park-Status data script)")]
+
+    def get(url, data=None):
+        body = urllib.parse.urlencode(data).encode() if data is not None else None
+        for k in range(TRIES):
+            try:
+                time.sleep(0.3)  # be gentle with the IRMA server
+                with op.open(urllib.request.Request(url, data=body), timeout=min(60, time_left())) as r:
+                    return r.geturl(), r.read().decode("utf-8-sig", "ignore")
+            except DeadlineExceeded:
+                raise
+            except (urllib.error.HTTPError, urllib.error.URLError, socket.timeout, TimeoutError, ConnectionError) as e:
+                # 502, 503, 504 and 403 come when the server is busy: wait and try again
+                if k == TRIES - 1 or (isinstance(e, urllib.error.HTTPError) and e.code not in (403, 429, 500, 502, 503, 504)):
+                    raise
+                time.sleep(5 * (k + 1))
+
+    _, outer = get(YTD_REPORT.format(code=code))
+    m = re.search(r'src="([^"]+)"', outer)
+    if not m:
+        raise RuntimeError(f"{code}: the report page has no viewer")
+    url, page = get(IRMA + htmllib.unescape(m.group(1)))
+    form = _ReportForm()
+    form.feed(page)
+    park_sel = next((k for k, opts in form.selects.items() if len(opts) > 100), None)
+    if park_sel and _sel_value(page, park_sel) in (None, "0") and name:
+        # Some codes (for example CAVE) do not select the park. Select it by name, as a browser does.
+        label = lambda t: t.replace("\xa0", " ").strip()
+        cands = [(v, label(t)) for v, t in form.selects[park_sel] if re.match(re.escape(name) + r" (NP|National Park)\b", label(t))]
+        if not cands:
+            # Some parks (for example Carlsbad Caverns, Chiricahua) are not in this report. Their months stay blank.
+            print(f"  {code}: not in the report. Its preliminary months stay blank.", flush=True)
+            return {mon: None for mon in months}
+        data = dict(form.fields)
+        data.update({park_sel: cands[0][0], "__EVENTTARGET": park_sel, "__EVENTARGUMENT": ""})
+        url, page = get(url, data)
+        if debug:
+            print(f"  {code}: selected {cands[0][1]} by name", flush=True)
+    out = {}
+    for mon in months:
+        form = _ReportForm()
+        form.feed(page)
+        label = _month_label(mon)
+        mon_sel = next((k for k, opts in form.selects.items()
+                        if any(re.fullmatch(r"[A-Z][a-z]{2} \d{4}", t.replace("\xa0", " ").strip()) for _, t in opts)), None)
+        if not mon_sel:
+            print(f"  {code}: the report has no month list. Its preliminary months stay blank.", flush=True)
+            return {mon: None for mon in months}
+        value = next((v for v, t in form.selects[mon_sel] if t.replace("\xa0", " ").strip() == label), None)
+        if value is None:
+            out[mon] = None  # NPS has no report for this month yet
+            continue
+        data = dict(form.fields)
+        for k, opts in form.selects.items():
+            if k != mon_sel and opts and _sel_value(page, k) is not None:
+                data[k] = _sel_value(page, k)
+        data.update({mon_sel: value, "ReportViewer$ctl04$ctl00": "View Report", "__EVENTTARGET": "", "__EVENTARGUMENT": ""})
+        url, page = get(url, data)
+        e = re.search(r'"ExportUrlBase":"([^"]*)"', page)
+        if not e:
+            raise RuntimeError(f"{code} {mon}: no export link")
+        _, csv_text = get(IRMA + e.group(1).replace("\\u0026", "&") + "CSV")
+        if f"Report Date: {label}" not in csv_text:
+            raise RuntimeError(f"{code} {mon}: the report is for another month")
+        p_mon = (prev or {}).get(mon)
+        value, label_used, rows = pick_total(csv_text, p_mon)
+        out[mon] = value
+        if value is None or debug:
+            # Some parks (for example Yellowstone) report only overnight stays in this report
+            print(f"  {code} {mon}: {'no total row' if value is None else 'row ' + repr(label_used)}; last year {p_mon}; "
+                  f"rows: {[(g[:25], l[:40], tm, ly) for g, l, tm, ly in rows if re.search('recreation|visit', g + l, re.I)][:8]}", flush=True)
+    return out
+
+
+def fetch_prelim_all(codes, months, names, prevs):
+    """Preliminary visits for many parks, PRELIM_WORKERS at the same time. Each park gets 3 tries."""
+    def one(code):
+        last = None
+        for k in range(TRIES):
+            try:
+                return code, fetch_prelim_visits(code, months, names.get(code), prev=prevs.get(code))
+            except DeadlineExceeded:
+                raise
+            except Exception as e:  # noqa: BLE001
+                last = e
+                print(f"  retry {k + 1} {code}: {e}", flush=True)
+                time.sleep(3 * (k + 1))
+        raise RuntimeError(f"preliminary visits {code}: {last}")
+    print(f"Preliminary visits for {len(codes)} parks, {months[0]} to {months[-1]}.", flush=True)
+    out = {}
+    with concurrent.futures.ThreadPoolExecutor(PRELIM_WORKERS) as ex:
+        for code, vals in ex.map(one, codes):
+            out[code] = vals
+            print(f"  {code}: {vals}", flush=True)
+    return out
+
+
 def fetch_weather(p, start, end):
     """Returns {"YYYY-MM": {"hi", "lo", "rain", "snow"} or None}. None means a month with missing days."""
     last_day = calendar.monthrange(*ym(end))[1]
@@ -220,11 +411,44 @@ def backfill_new_parks(store, parks):
     return True
 
 
+def finalize_prelim(store, parks):
+    """Replace preliminary visits with the final values when the statistics service has them (R63)."""
+    pre = store.get("prelim")
+    if not pre:
+        return False
+    code1 = stats_code(parks[0])
+    v1 = fetch_visits([code1], pre, store["last"]).get(code1, {})
+    k = 0
+    while months_between(add_months(pre, k), store["last"]) >= 0 and v1.get(add_months(pre, k)) is not None:
+        k += 1
+    if k == 0:
+        print(f"Visits from {pre} are still preliminary.", flush=True)
+        return False
+    end = add_months(pre, k - 1)
+    print(f"Final visits are available for {pre} to {end}. The script replaces the preliminary values.", flush=True)
+    visits = fetch_visits(sorted({stats_code(p) for p in parks}), pre, end)
+    for p in parks:
+        rec = store["parks"].get(p["id"])
+        pv = visits.get(stats_code(p), {})
+        for j in range(k):
+            mon = add_months(pre, j)
+            if rec and pv.get(mon) is not None:
+                rec["v"][months_between(store["first"], mon)] = pv[mon]
+    nxt = add_months(end, 1)
+    if months_between(nxt, store["last"]) >= 0:
+        store["prelim"] = nxt
+    else:
+        store.pop("prelim", None)
+    return True
+
+
 def main():
     today = dt.date.today()
     parks = load_parks()
     store = load_store()
     if store is not None and backfill_new_parks(store, parks):
+        save_store(store)
+    if store is not None and finalize_prelim(store, parks):
         save_store(store)
     target = last_complete_month(today)  # the newest month that has ended
 
@@ -240,15 +464,30 @@ def main():
     # Step 1: the first park only. Find the newest month that has visits and complete weather.
     first = parks[0]
     print(f"Checking {start} to {target} for the first park, {first['name']}.", flush=True)
-    v1 = fetch_visits([stats_code(first)], start, target).get(stats_code(first), {})
+    code1 = stats_code(first)
+    v1 = fetch_visits([code1], start, target).get(code1, {})
     w1 = fetch_weather(first, start, target)
-    end = None
-    for k in range(months_between(start, target) + 1):
-        mon = add_months(start, k)
-        if v1.get(mon) is None or w1.get(mon) is None:
-            print(f"The first park has no {'visits' if v1.get(mon) is None else 'complete weather'} for {mon}. "
+    cand = [add_months(start, k) for k in range(months_between(start, target) + 1)]
+    # Months that the statistics service does not have yet: try the preliminary report (R63)
+    missing = [mon for mon in cand if v1.get(mon) is None]
+    def prev_year(p):
+        """The final visits of the same month one year before, from the data file: the check of the report row."""
+        rec = (store or {}).get("parks", {}).get(p["id"])
+        out = {}
+        for mon in cand:
+            k = months_between(store["first"], add_months(mon, -12)) if store else -1
+            out[mon] = rec["v"][k] if rec and 0 <= k < len(rec["v"]) else None
+        return out
+    p1 = fetch_prelim_visits(code1, missing, first["name"], prev=prev_year(first)) if missing else {}
+    end, prelim_months = None, []
+    for mon in cand:
+        vis = v1.get(mon) if v1.get(mon) is not None else p1.get(mon)
+        if vis is None or w1.get(mon) is None:
+            print(f"The first park has no {'visits' if vis is None else 'complete weather'} for {mon}. "
                   f"The script stops here and does not request data for the other parks.", flush=True)
             break
+        if v1.get(mon) is None:
+            prelim_months.append(mon)
         end = mon
     if end is None:
         print("No new data. The data file did not change.")
@@ -258,7 +497,21 @@ def main():
     # Step 2: all parks, new months only.
     codes = sorted({stats_code(p) for p in parks})
     visits = fetch_visits(codes, start, end)
-    weather, errors, fails_in_a_row = {}, [], 0
+    errors = []
+    if prelim_months:
+        try:
+            names = {stats_code(p): {"seki": "Sequoia", "kica": "Kings Canyon"}.get(p["id"], p["name"]) for p in parks}
+            prevs = {stats_code(p): prev_year(p) for p in parks}
+            pv = fetch_prelim_all([c for c in codes if c != code1], prelim_months, names, prevs)
+            pv[code1] = p1
+            for c in codes:
+                for mon in prelim_months:
+                    if visits.get(c, {}).get(mon) is None:
+                        visits.setdefault(c, {})[mon] = pv.get(c, {}).get(mon)
+        except Exception as e:  # noqa: BLE001
+            # Do not add months with holes. The next run tries the same months again.
+            sys.exit(f"Preliminary visits failed. The data file did not change.\n{e}")
+    weather, fails_in_a_row = {}, 0
     for p in parks:
         if p is first:
             weather[p["id"]] = w1
@@ -295,8 +548,10 @@ def main():
             for key in ("hi", "lo", "rain", "snow"):
                 rec[key].append(w.get(key))
     store["last"] = end
+    if prelim_months and not store.get("prelim"):
+        store["prelim"] = prelim_months[0]
     store["updated"] = today.isoformat()
-    store["sources"] = {"visits": "NPS Visitor Use Statistics, recreation visits",
+    store["sources"] = {"visits": "NPS Visitor Use Statistics, recreation visits (months from \"prelim\" are preliminary: IRMA report Park YTD Version 1)",
                         "weather": "Open-Meteo historical weather archive (ERA5)"}
     save_store(store)
 
