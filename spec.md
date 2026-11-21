@@ -1069,7 +1069,7 @@ Requirements:
   - Some parks are not in this report (for example Grand Canyon, Rocky Mountain, Carlsbad Caverns, Chiricahua), or the report has no visits total for them (for example Yellowstone, Shenandoah). Their 2026 months stay blank.
 - A check: the report value "same month last year" for Great Smoky Mountains (Sep 2025 and Oct 2025) is the same as the final value in the file.
 - The key `prelim` in `data/park-history.js` is the first month with preliminary visits. On each run, the script asks the statistics service for these months again. When a month is final, the script writes the final value.
-- The first run of a year reads about 10 months for each park (about 25 minutes). The script limit is 45 minutes. Later runs read only the new month.
+- The first run of a year reads about 10 months for each park (about 30 minutes). The script limit is 45 minutes. Later runs read only the new month.
 - The monthly chart shows the last 3 calendar years in the file: 2024, 2025 and 2026. The months after the last month with data are blank.
 - The tooltip shows "(preliminary)" for a preliminary month. The source line under the charts tells which visits are preliminary.
 - Status: done.
