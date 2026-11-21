@@ -8,16 +8,19 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - name: Value format of RptDate
+      - name: Parameter names and values
         run: |
           set +e
-          for v in "9%2F1%2F2026" "202609" "2026-09" "Sep%202026" "09%2F01%2F2026" "2026-09-01T00%3A00%3A00" "9%2F1%2F2026%2012%3A00%3A00%20AM" "2" "20260901" "9%2F30%2F2026" "2026-09-30"; do
+          try () {
             J=$(mktemp)
-            curl -sS -L --max-time 40 -A "Mozilla/5.0" -c $J -b $J -o /tmp/a.html "https://irma.nps.gov/Stats/SSRSReports/Park%20Specific%20Reports/Park%20YTD%20Version%201?Park=GRSM&RptDate=$v"
+            curl -sS -L --max-time 40 -A "Mozilla/5.0" -c $J -b $J -o /tmp/a.html "https://irma.nps.gov/Stats/SSRSReports/Park%20Specific%20Reports/Park%20YTD%20Version%201?Park=GRSM&$1"
             SRC=$(grep -o 'src="[^"]*"' /tmp/a.html | head -1 | sed 's/^src="//; s/"$//; s/&amp;/\&/g')
             EFF=$(curl -sS -L --max-time 90 -A "Mozilla/5.0" -c $J -b $J -o /tmp/v.html -w '%{url_effective}' "https://irma.nps.gov$SRC")
-            echo "== RptDate=$v  viewer $(wc -c < /tmp/v.html)  selected: $(grep -o -E 'selected="selected" value="[0-9]+">[A-Za-z]{3}&nbsp;[0-9]{4}' /tmp/v.html | head -1)"
-            case "$EFF" in *error*) python3 -c "import sys,urllib.parse as u; q=u.parse_qs(u.urlparse(sys.argv[1]).query); print('   error:', q.get('errorType'), (q.get('error') or [''])[0][:400])" "$EFF";; esac
+            ERR=""; case "$EFF" in *error*) ERR=$(python3 -c "import sys,urllib.parse as u; q=u.parse_qs(u.urlparse(sys.argv[1]).query); print((q.get('error') or [''])[0][:300])" "$EFF");; esac
+            echo "== $1 | viewer $(wc -c < /tmp/v.html) | sel: $(grep -o -E 'selected="selected" value="[0-9]+">[A-Za-z]{3}&nbsp;[0-9]{4}' /tmp/v.html | head -1 | sed 's/.*>//') | $ERR"
             EXP=$(grep -o -E '"ExportUrlBase":"[^"]*"' /tmp/v.html | head -1 | sed 's/"ExportUrlBase":"//; s/"$//; s/\\u0026/\&/g')
-            [ -n "$EXP" ] && curl -sS -L --max-time 90 -A "Mozilla/5.0" -c $J -b $J "https://irma.nps.gov$EXP""CSV" | sed -n '2p;5p'
-          done
+            [ -n "$EXP" ] && curl -sS -L --max-time 90 -A "Mozilla/5.0" -c $J -b $J "https://irma.nps.gov$EXP""CSV" | sed -n '2p;5p' | cut -c1-160
+          }
+          for n in Zzz Month Year Date ReportDate MonthYear SelectMonthYear RptMonth YearMonth Period; do try "$n=1"; done
+          for v in "9%2F1%2F2026" "2026-09-01" "Sep%202026" "202609" "9" "2" "09%2F01%2F2026%2000%3A00%3A00" "2026-09-01T00%3A00%3A00"; do try "ReportDate=$v"; done
+          try "Month=9&Year=2026"; try "Month=Sep&Year=2026"; try "Date=2026-09-01"
