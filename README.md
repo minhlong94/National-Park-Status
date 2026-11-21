@@ -1,4 +1,4 @@
-# National-Park-Status
+# US National Park Conditions Board
 
 **Live page: https://minhlong94.github.io/National-Park-Status/**
 
