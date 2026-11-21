@@ -1062,11 +1062,13 @@ Requirements:
 
 - The NPS statistics service (`irmaservices.nps.gov`) has only final years. It returns no data for 2026. NPS makes a year final in the first quarter of the next year.
 - The IRMA Stats website has preliminary data for the current year. The script `scripts/fetch_history.py` reads it from the report "Park YTD Version 1":
-  - The park code is in the URL. The script selects each month in the form of the report viewer (as a browser does) and exports the report as CSV.
-  - It uses the row "Total Adjusted Recreation Visits", column "ThisMonth".
-  - It reads 6 parks at the same time, with 3 tries for each park. If a park fails, the file does not change, and the next run tries again.
-- A check: the report value "same month last year" for Sep 2025 and Oct 2025 is the same as the final value in the file.
+  - The park code is in the URL. If the code does not select the park, the script selects the park by name. The script selects each month in the form of the report viewer (as a browser does) and exports the report as CSV.
+  - The rows are different in each park. The script uses the rows named "Total Adjusted Recreation Visits", "Total Recreation Visits", "Total Recreation Visitors" or "Recreation Visitors", and takes the largest value. Example: Yosemite has a total row for each entrance and one for the park ("Park Totals"). The park total is the largest.
+  - It reads 3 parks at the same time. Each request has 3 tries, because the server sends 504 errors when it is busy. If a park still fails, the file does not change, and the next run tries again.
+  - Some parks are not in this report (for example Grand Canyon, Carlsbad Caverns, Chiricahua), or the report has no visits row for them (for example Yellowstone). Their 2026 months stay blank.
+- A check: the report value "same month last year" for Great Smoky Mountains (Sep 2025 and Oct 2025) is the same as the final value in the file.
 - The key `prelim` in `data/park-history.js` is the first month with preliminary visits. On each run, the script asks the statistics service for these months again. When a month is final, the script writes the final value.
+- The first run of a year reads about 10 months for each park. The script limit is 25 minutes. Later runs read only the new month.
 - The monthly chart shows the last 3 calendar years in the file: 2024, 2025 and 2026. The months after the last month with data are blank.
 - The tooltip shows "(preliminary)" for a preliminary month. The source line under the charts tells which visits are preliminary.
 - Status: done.
