@@ -12,19 +12,19 @@
   --paper:#EEF0EA; --panel:#F8F9F5; --ink:#22313A; --muted:#5E6B66; --line:#CDD3CB;
   --pine:#2F5D4A; --pine-ink:#F3F6F1;
   --open:#3C7A4F; --partial:#B07A12; --closed:#B23A2E; --info:#3E6A8A;
-  --y1:#2a78d6; --y2:#eb6834; --y3:#1baf7a; --temp:#e34948; --rain:#4a3aa7; --snow:#7d8ea3; --fall:#b5651d; --wash:rgba(34,49,58,.06); --now-wash:rgba(60,122,79,.09);
+  --y0:#8a99a8; --y1:#2a78d6; --y2:#eb6834; --y3:#1baf7a; --temp:#e34948; --rain:#4a3aa7; --snow:#7d8ea3; --fall:#b5651d; --wash:rgba(34,49,58,.06); --now-wash:rgba(60,122,79,.09);
   box-sizing:border-box;
   padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
 }
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
   --paper:#161D1A; --panel:#1E2724; --ink:#E4E9E4; --muted:#9AA8A1; --line:#33413B;
   --pine:#3F7A60; --pine-ink:#F3F6F1; --open:#6DB585; --partial:#E0A93A; --closed:#E2695C; --info:#7FA9C8;
-  --y1:#3987e5; --y2:#d95926; --y3:#199e70; --temp:#e66767; --rain:#9085e9; --snow:#a3b3c6; --fall:#c9772a; --wash:rgba(228,233,228,.07); --now-wash:rgba(109,181,133,.10);
+  --y0:#7f8d9b; --y1:#3987e5; --y2:#d95926; --y3:#199e70; --temp:#e66767; --rain:#9085e9; --snow:#a3b3c6; --fall:#c9772a; --wash:rgba(228,233,228,.07); --now-wash:rgba(109,181,133,.10);
 }}
 :root[data-theme="dark"]{
   --paper:#161D1A; --panel:#1E2724; --ink:#E4E9E4; --muted:#9AA8A1; --line:#33413B;
   --pine:#3F7A60; --pine-ink:#F3F6F1; --open:#6DB585; --partial:#E0A93A; --closed:#E2695C; --info:#7FA9C8;
-  --y1:#3987e5; --y2:#d95926; --y3:#199e70; --temp:#e66767; --rain:#9085e9; --snow:#a3b3c6; --fall:#c9772a; --wash:rgba(228,233,228,.07); --now-wash:rgba(109,181,133,.10);
+  --y0:#7f8d9b; --y1:#3987e5; --y2:#d95926; --y3:#199e70; --temp:#e66767; --rain:#9085e9; --snow:#a3b3c6; --fall:#c9772a; --wash:rgba(228,233,228,.07); --now-wash:rgba(109,181,133,.10);
 }
 *,*::before,*::after{box-sizing:inherit}
 html{scroll-padding-top:env(safe-area-inset-top,0px)}
@@ -2223,7 +2223,12 @@ function deriveHistory(D, id){
   // Visits from D.prelim are preliminary: NPS finalizes a year in the first quarter of the next year (R63)
   const pre = D.prelim ? D.prelim.split("-").map(Number) : null;
   const isPrelim = (y, m) => !!pre && (y > pre[0] || (y === pre[0] && m >= pre[1])); // m is 1–12
-  return {years, visits, wx, isPrelim, prelimLabel: pre ? label(idx(pre[0], pre[1])) : null,
+  // The year before the 3 years (R65): its bars show only in the months that have no data in the newest year
+  const fy0 = ly - 3, newest = visits[ly] || [];
+  const fillAll = fy0 >= fy ? MONTHS.map((_, i) => at(R.v, fy0, i+1)) : null;
+  const fillV = fillAll ? fillAll.map((v, i) => newest[i] == null ? v : null) : null;
+  const fill = fillV && fillV.some(v => v != null) ? {year: fy0, v: fillV, all: fillAll} : null;
+  return {years, visits, wx, isPrelim, fill, prelimLabel: pre ? label(idx(pre[0], pre[1])) : null,
     lastLabel: label(lastK), lastMonth: lm, wxSpan: `${label(Math.max(0, lastK - 35))} to ${label(lastK)}`};
 }
 
@@ -2317,23 +2322,27 @@ function drawMonthly(box, id){
   if (!H){ box.innerHTML = `<h2>Visits and climate by month</h2><p class="none">There is no monthly data for this park.</p>`; return; }
   const P = {visits: H.visits, wx: H.wx};
   const years = H.years, yr0 = years[0], yr1 = years[years.length-1];
-  const shown = years.filter(y => !hiddenYears.has(y));
+  const fill = H.fill;                              // R65: the older year for the months without data in the newest year
+  const allYears = fill ? [fill.year, ...years] : years;
+  const shown = allYears.filter(y => !hiddenYears.has(y));
   // The park table scrolls sideways on small screens. Fit the charts to the visible width.
   const W = Math.max(280, box.clientWidth), L = 52, R = 10, band = (W-L-R)/12;
-  const colorOf = y => `var(${YEAR_VARS[years.indexOf(y) % YEAR_VARS.length]})`;
-  const vis = y => P.visits[y] || [];
+  const colorOf = y => fill && y === fill.year ? "var(--y0)" : `var(${YEAR_VARS[years.indexOf(y) % YEAR_VARS.length]})`;
+  const vis = y => fill && y === fill.year ? fill.v : (P.visits[y] || []);
 
   // 1. Visits: grouped columns, one color per year
   const H1 = 230, T1 = 18, B1 = 22, base1 = H1-B1;
   const vmax = Math.max(1, ...shown.flatMap(y => vis(y).filter(v => v != null)));
   const vt = ticks(0, vmax, 4), y1 = v => base1 - v/vt[vt.length-1]*(base1-T1);
-  const gap = 2, bw = Math.max(3, Math.min(24, (band*0.78 - gap*(shown.length-1)) / Math.max(1, shown.length)));
+  const slots = Math.max(1, shown.filter(y => !fill || y !== fill.year).length); // the older year takes a free place
+  const gap = 2, bw = Math.max(3, Math.min(24, (band*0.78 - gap*(slots-1)) / slots));
   let g1 = axisY(vt, y1, L, W, R, compact) + axisX(L, band, H1-6) + washLayer(L, band, T1-8, base1);
   let peak = null;
   MONTHS.forEach((m,i) => {
-    const groupW = shown.length*bw + (shown.length-1)*gap, x0 = L + band*i + (band-groupW)/2;
-    shown.forEach((y,k) => {
-      const v = vis(y)[i]; if (v == null) return;
+    const inMonth = shown.filter(y => vis(y)[i] != null);   // only the years with a value, side by side
+    const groupW = inMonth.length*bw + (inMonth.length-1)*gap, x0 = L + band*i + (band-groupW)/2;
+    inMonth.forEach((y,k) => {
+      const v = vis(y)[i];
       g1 += `<path d="${colPath(x0 + k*(bw+gap), y1(v), bw, base1)}" fill="${colorOf(y)}"/>`;
       if (y === shown[shown.length-1] && (!peak || v > peak.v)) peak = {v, x: x0 + k*(bw+gap) + bw/2};
     });
@@ -2414,13 +2423,14 @@ function drawMonthly(box, id){
     fallHtml += `<p class="mfall"><span>Reports for this season start on Aug 15.</span></p>`;
   }
   if (fall && fall.clear) fallHtml += `<p class="mfall"><a href="https://www.explorefall.com/" target="_blank" rel="noopener">Fall foliage map and forecast on ExploreFall</a> <span>(other website)</span></p>`;
-  const span = (yr0 === yr1 ? `${yr0}` : `${yr0}–${yr1}`) + (H.lastMonth < 12 ? ` (${yr1} to ${MONTHS[H.lastMonth-1]})` : "");
+  const span = (yr0 === yr1 ? `${yr0}` : `${yr0}–${yr1}`) + (H.lastMonth < 12 ? ` (${yr1} to ${MONTHS[H.lastMonth-1]})` : "") +
+    (fill ? `. ${fill.year} shows in the months without ${yr1} data` : "");
 
   box.innerHTML = `
     <h2>Visits and climate by month</h2>
     <p class="msub">The charts use the same months. Put the pointer on a month, or use Tab on the visits chart, to see all the values for that month. The weather values are the averages of each month from ${H.wxSpan}.</p>
     <div class="mtitle">Recreation visits <span>by month, ${span}</span></div>
-    <div class="mlegend" role="group" aria-label="Show or hide years">${years.map(y => `<button type="button" data-year="${y}" aria-pressed="${!hiddenYears.has(y)}"><i style="background:${colorOf(y)}"></i>${y}</button>`).join("")}</div>
+    <div class="mlegend" role="group" aria-label="Show or hide years">${allYears.map(y => `<button type="button" data-year="${y}" aria-pressed="${!hiddenYears.has(y)}"${fill && y === fill.year ? ` title="${y}: only in the months without ${yr1} data"` : ""}><i style="background:${colorOf(y)}"></i>${y}${fill && y === fill.year ? "*" : ""}</button>`).join("")}</div>
     <svg viewBox="0 0 ${W} ${H1}" width="${W}" height="${H1}" role="group" aria-label="Recreation visits by month">${g1}</svg>
     ${fallHtml}
     <div class="mtitle">Temperature <span>average daily low to high, ${tU()}, last 3 years</span></div>
@@ -2431,8 +2441,8 @@ function drawMonthly(box, id){
     ${snowTotal >= 0.1 ? amountChart(snowU, "--snow") : `<p class="none">Almost no snow falls here in an average year.</p>`}
     <div class="mtip" hidden></div>
     <details><summary>Show the values as a table</summary><div class="tablewrap"><table>
-      <thead><tr><th>Month</th>${years.map(y => `<th class="num">Visits ${y}</th>`).join("")}<th class="num">Low ${tU()}</th><th class="num">High ${tU()}</th><th class="num">Rain ${METRIC ? "mm" : "in"}</th><th class="num">Snow ${METRIC ? "cm" : "in"}</th></tr></thead>
-      <tbody>${MONTHS.map((m,i) => `<tr><td>${m}</td>${years.map(y => `<td class="num">${vis(y)[i] == null ? "–" : shortNum(vis(y)[i])}</td>`).join("")}<td class="num">${lo[i] == null ? "–" : Math.round(lo[i])}</td><td class="num">${hi[i] == null ? "–" : Math.round(hi[i])}</td><td class="num">${P.wx.rain[i] == null ? "–" : METRIC ? Math.round(rainU[i]) : P.wx.rain[i]}</td><td class="num">${P.wx.snow[i] == null ? "–" : METRIC ? snowU[i].toFixed(1) : P.wx.snow[i]}</td></tr>`).join("")}</tbody>
+      <thead><tr><th>Month</th>${allYears.map(y => `<th class="num">Visits ${y}</th>`).join("")}<th class="num">Low ${tU()}</th><th class="num">High ${tU()}</th><th class="num">Rain ${METRIC ? "mm" : "in"}</th><th class="num">Snow ${METRIC ? "cm" : "in"}</th></tr></thead>
+      <tbody>${MONTHS.map((m,i) => `<tr><td>${m}</td>${allYears.map(y => { const v = fill && y === fill.year ? fill.all[i] : vis(y)[i]; return `<td class="num">${v == null ? "–" : shortNum(v)}</td>`; }).join("")}<td class="num">${lo[i] == null ? "–" : Math.round(lo[i])}</td><td class="num">${hi[i] == null ? "–" : Math.round(hi[i])}</td><td class="num">${P.wx.rain[i] == null ? "–" : METRIC ? Math.round(rainU[i]) : P.wx.rain[i]}</td><td class="num">${P.wx.snow[i] == null ? "–" : METRIC ? snowU[i].toFixed(1) : P.wx.snow[i]}</td></tr>`).join("")}</tbody>
     </table></div></details>
     <p class="msrc">Sources: NPS Visitor Use Statistics (recreation visits). Open-Meteo historical weather (ERA5 model) at the forecast point of the park. Data to ${esc(H.lastLabel)}.${H.prelimLabel ? ` Visits from ${esc(H.prelimLabel)} are preliminary. NPS makes them final in the first quarter of the next year.` : ""}${fall ? ` Fall color: NASA MODIS land surface phenology (MCD12Q2), ${(window.PARK_FOLIAGE.wide || []).includes(id) ? "21 km box (the 3 km box had no data)" : "3 km box"} at the same point.` : ""}${now && !now.stale ? " This season: USA National Phenology Network." : ""}</p>`;
 
@@ -2450,6 +2460,7 @@ function drawMonthly(box, id){
     tip.replaceChildren();
     const h = document.createElement("div"); h.className = "mth"; h.textContent = MONTHS_LONG[i]; tip.append(h);
     years.slice().reverse().forEach(y => { if (!hiddenYears.has(y)) tip.append(row(colorOf(y), `Visits ${y}`, vis(y)[i] == null ? "No data yet" : shortNum(vis(y)[i]) + (H.isPrelim(y, i + 1) ? " (preliminary)" : ""))); });
+    if (fill && !hiddenYears.has(fill.year) && fill.v[i] != null) tip.append(row(colorOf(fill.year), `Visits ${fill.year}`, shortNum(fill.v[i])));
     tip.append(document.createElement("hr"));
     tip.append(row("var(--temp)", "Low to high", lo[i] == null ? "–" : `${Math.round(lo[i])}° to ${Math.round(hi[i])}${tU()}`));
     tip.append(row("var(--rain)", "Rain", P.wx.rain[i] == null ? "–" : inMm(P.wx.rain[i], 2)));
@@ -2480,7 +2491,7 @@ function drawMonthly(box, id){
     e.stopPropagation();
     const y = +b.dataset.year;
     if (hiddenYears.has(y)) hiddenYears.delete(y);
-    else if (years.length - hiddenYears.size > 1) hiddenYears.add(y); // keep at least one year
+    else if (allYears.filter(z => !hiddenYears.has(z)).length > 1) hiddenYears.add(y); // keep at least one year
     drawMonthly(box, id);
     const again = box.querySelector(`[data-year="${y}"]`); if (again) again.focus();
   }));

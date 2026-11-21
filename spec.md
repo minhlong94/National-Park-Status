@@ -1085,3 +1085,18 @@ Requirements:
 - The park list of the section "Campgrounds, visitor centers and seasonal closures" is in alphabetical order (Acadia to Zion). Before, it was in the order of visits.
 - When the page opens, the section still shows the most visited park with data (Great Smoky Mountains).
 - Status: done.
+
+### R65. Show 2023 in the months without 2026 data
+
+Request from the owner (edited for clarity):
+
+> Also show 2023 for the months that have no data.
+
+Requirements:
+
+- The monthly visits chart shows 2024, 2025 and 2026. In a month without 2026 data, the chart shows 2023 in its place. Examples: November and December 2026 (not available yet), and all months of a park without preliminary 2026 data (for example Yellowstone, Grand Canyon).
+- So each month usually has 3 columns. The columns of a month are side by side, with no empty place.
+- 2023 has a muted gray color. The legend shows "2023*". Its tooltip says "2023: only in the months without 2026 data". The chart title says the same. The legend button can hide 2023, as for the other years.
+- The month tooltip shows the 2023 value only in these months. The values table shows all months of 2023, 2024, 2025 and 2026.
+- The best time to visit still uses only the 3 newest years.
+- Status: done.
