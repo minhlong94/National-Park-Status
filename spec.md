@@ -940,7 +940,7 @@ Request from the owner (edited for clarity):
 
 Requirements:
 
-- The 3-day forecast in the park details shows the days side by side, one column for each day. This also applies to the Zion "Narrows upstream" forecast.
+- The 3-day forecast in the park details shows the days side by side, one column for each day. This also applies to the Zion "Narrows upstream" forecast. (R66: 7 days.)
 - Each column shows, from top to bottom: the day, the weather icon, the name of the weather, the high and low temperatures, the chance and amount of precipitation, and the snow (when there is snow).
 - A day with a storm or heavy snow has a thick colored line at the top. The warning and its reasons are at the bottom of the column, so that the values of the days stay in line.
 - On a phone, the three columns stay side by side. The page does not scroll sideways.
@@ -1099,4 +1099,21 @@ Requirements:
 - 2023 has a muted gray color. The legend shows "2023*". Its tooltip says "2023: only in the months without 2026 data". The chart title says the same. The legend button can hide 2023, as for the other years.
 - The month tooltip shows the 2023 value only in these months. The values table shows all months of 2023, 2024, 2025 and 2026.
 - The best time to visit still uses only the 3 newest years.
+- Status: done.
+
+### R66. 7-day forecast
+
+Request from the owner (edited for clarity):
+
+> Make the forecast 7 days.
+
+Requirements:
+
+- The page gets 7 forecast days from Open-Meteo (before: 3). This also applies to the Zion "Narrows upstream" point.
+- The park details show "7-day forecast" with 7 compact cards side by side: the day and date, the weather icon and name, the high and low temperatures (the unit is in the heading), the chance and amount of precipitation, and the snow.
+- When the 7 cards do not fit (for example on a phone), the row scrolls sideways. The page itself does not scroll sideways.
+- A day with a storm or heavy snow has its colored frame and a short label ("Storm", "Heavy snow"). The reasons (amounts and gusts) are in a list under the row and in the tooltip of the card.
+- The storm and heavy snow marks (R38), the row badge and the filter "Storm or heavy snow" use all 7 days.
+- The flash flood potential (R40, R48) stays at the first 3 days: the NWS rating covers about 3 days, and an estimate further out is not useful.
+- Saved data from before this change has 3 days. The heading then shows "3-day forecast" and asks the reader to click Refresh data.
 - Status: done.
