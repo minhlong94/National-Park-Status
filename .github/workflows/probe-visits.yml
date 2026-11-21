@@ -1,0 +1,32 @@
+name: Probe 2026 visit data (temporary)
+on:
+  push:
+    branches: [claude/jolly-ptolemy-mtv1g5]
+    paths: [.github/workflows/probe-visits.yml]
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Try the sources
+        run: |
+          set +e
+          for url in \
+            "https://irmaservices.nps.gov/v3/rest/stats/visitation?unitCodes=GRSM&startMonth=1&startYear=2026&endMonth=9&endYear=2026" \
+            "https://irmaservices.nps.gov/v3/rest/stats/visitation?unitCodes=GRSM&startMonth=12&startYear=2025&endMonth=12&endYear=2025" \
+            "https://irmaservices.nps.gov/v2/rest/stats/visitation?unitCodes=GRSM&startMonth=1&startYear=2026&endMonth=9&endYear=2026" \
+            "https://irmaservices.nps.gov/v3/rest/stats/help" \
+            "https://irmaservices.nps.gov/v3/rest/stats" \
+            "https://irmaservices.nps.gov/v3/rest/stats/swagger/docs/v3" \
+            "https://irmaservices.nps.gov/v3/rest/stats/swagger/ui/index" \
+            "https://irma.nps.gov/Stats/SSRSReports/Park%20Specific%20Reports/Park%20YTD%20Version%201?Park=GRSM" \
+            "https://irma.nps.gov/Stats/SSRSReports/Park%20Specific%20Reports/Recreation%20Visitors%20By%20Month%20(1979%20-%20Last%20Calendar%20Year)?Park=GRSM" \
+            "https://irma.nps.gov/Stats/Reports/Park/GRSM" ; do
+            echo "=================== $url"
+            curl -sS -L --connect-timeout 15 --max-time 40 -A "Mozilla/5.0" -D /tmp/h -o /tmp/b "$url"; echo "curl exit $?"
+            head -n 15 /tmp/h
+            echo "--- size $(wc -c < /tmp/b); first 1200 bytes:"
+            head -c 1200 /tmp/b | tr -s '\r\n\t ' ' '; echo
+            echo "--- lines with 2026 or ReportServer or swagger (max 15):"
+            grep -o -i -E '.{0,120}(2026|ReportServer|swagger|ReportViewer|ExportUrlBase|ControlID)[^<]{0,160}' /tmp/b | head -15
+          done
