@@ -319,6 +319,23 @@ tr.detail[hidden]{display:none}
 .rintr h3{font:600 17px/1.2 "Archivo Narrow",Arial,sans-serif;margin:0 0 6px}
 .rlinks{margin:10px 0 0;font-size:14px}
 .rlinks a{color:var(--info);cursor:pointer}
+/* Road closure overview map (R67) */
+.rmap{margin:10px 0 6px}
+.rmap svg{display:block;width:100%;height:auto;max-height:420px;border:1px solid var(--line);border-radius:8px;background:var(--panel)}
+.rmap .po{fill:color-mix(in srgb, var(--pine) 11%, var(--panel));stroke:color-mix(in srgb, var(--pine) 60%, transparent);stroke-width:1.2}
+.rmap .rd{fill:none;stroke:var(--muted);stroke-linecap:round;stroke-linejoin:round;opacity:.75}
+.rmap .rd.m{stroke-width:2}
+.rmap .rd.s{stroke-width:1.1;stroke-dasharray:3 3;opacity:.6}
+.rmap .rx{fill:none;stroke-linecap:round;stroke-linejoin:round;stroke-width:4.5}
+.rmap .rx.L2{stroke:var(--closed)}
+.rmap .rx.L1{stroke:var(--partial)}
+.rmap .rl{font-size:11px;font-weight:700;paint-order:stroke;stroke:var(--panel);stroke-width:3.5px;stroke-linejoin:round}
+.rmap .rl.L2{fill:var(--closed)}
+.rmap .rl.L1{fill:color-mix(in srgb, var(--partial) 70%, var(--ink))}
+.rmap .rleg{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:12.5px;color:var(--muted);margin:6px 0 2px}
+.rmap .rleg i{display:inline-block;width:18px;height:4px;border-radius:2px;vertical-align:middle;margin-right:5px}
+.rmap ul{margin:4px 0 0;padding-left:18px;font-size:13.5px}
+.rmap .rnote{font-size:12.5px;color:var(--muted);margin:6px 0 0}
 .mviz{grid-column:1/-1;border-top:1px solid var(--line);padding-top:14px;position:relative;min-width:0}
 .mviz h2{margin:0 0 2px}
 .mviz .msub{color:var(--muted);font-size:13px;margin:0 0 10px;max-width:90ch}
@@ -1911,6 +1928,7 @@ function render(){
   renderPager(pages);
   syncDetailWidth();
   state.open.forEach(openMonthly);
+  state.open.forEach(openRoadMap);
   if (state.loaded){
     $("t-open").textContent=tOpen; $("t-partial").textContent=tPart; $("t-closed").textContent=tClosed;
     $("t-road").textContent=tRoad; $("t-trail").textContent=tTrail; $("t-wx").textContent=tWx;
@@ -2139,7 +2157,7 @@ function detail(p, list, w, warns){
   const nSec = (secs.match(/ data-ax="/g) || []).length;
   const allOpen = nSec > 0 && (secs.match(/ data-ax="[^"]*" open>/g) || []).length === nSec;
   const bar = nSec > 1 ? `<div class="secbar"><button type="button" class="secall" data-secall="${p.code}" aria-expanded="${allOpen}">${allOpen ? "Hide" : "Show"} all alert details</button></div>` : "";
-  return `<div class="dbox"><div>${ffpHTML(p, w, warns)}${bar}${secs}${roadWorkLink(p.code)}${p.note?`<p class="am">${esc(uText(p.note))}</p>`:""}${roadLinks(p.id)}${campLink(p.code)}<p class="am"><a href="https://www.nps.gov/${p.code}/planyourvisit/conditions.htm" target="_blank" rel="noopener">Official ${esc(p.name)} conditions page</a></p></div><div>${wxHtml}</div><div class="mviz" data-mviz="${p.id}"></div><div class="dhist">${histHTML(p.id)}</div></div>`;
+  return `<div class="dbox"><div>${ffpHTML(p, w, warns)}${bar}${secs}<div class="rmap" data-rmap="${p.id}"></div>${roadWorkLink(p.code)}${p.note?`<p class="am">${esc(uText(p.note))}</p>`:""}${roadLinks(p.id)}${campLink(p.code)}<p class="am"><a href="https://www.nps.gov/${p.code}/planyourvisit/conditions.htm" target="_blank" rel="noopener">Official ${esc(p.name)} conditions page</a></p></div><div>${wxHtml}</div><div class="mviz" data-mviz="${p.id}"></div><div class="dhist">${histHTML(p.id)}</div></div>`;
 }
 
 // ---- Monthly visits and climate (R9) ----
@@ -2549,6 +2567,88 @@ window.addEventListener("resize", () => { clearTimeout(mvizTimer); mvizTimer = s
   document.querySelectorAll(".mviz[data-w]").forEach(box => drawMonthly(box, box.dataset.mviz));
 }, 150); });
 
+// ---- Road closure overview map (R67) ----
+// A small map of the park: the park outline (data/park-bounds.js) and its main roads (data/park-roads.js, OpenStreetMap).
+// The roads that are closed now are red, the roads with delays or restrictions are orange. The status comes from
+// the data that the page has: live road status, park road condition tables, seasonal road dates and NPS road alerts.
+// It is an overview only. The link goes to the NPS page for full details.
+const roadKey = t => String(t || "").toLowerCase().replace(/[\u2010-\u2015-]/g, " ").replace(/[^a-z0-9 ]/g, " ")
+  .replace(/\b(road|rd|drive|dr|highway|hwy|parkway|pkwy|route|rte|byway|scenic|the|loop|lane|ln|avenue|ave|street|st|way|boulevard|blvd)\b/g, " ")
+  .replace(/\s+/g, " ").trim();
+const ROAD_GENERIC = new Set(["park", "main", "entrance", "access", "service", "visitor", "center", "campground", "national", "state", "county", "old", "north", "south", "east", "west", "lower", "upper", "fire"]);
+function roadReports(p){
+  const out = [];
+  ((state.roads || {})[p.code] || []).forEach(r => out.push({name: r.name, lvl: r.closed ? 2 : 1, why: roadState(r) + (r.reasons.length ? ` (${r.reasons[0]})` : "")}));
+  condRoads(p.code).forEach(r => { const L = condIsClosure(r.c) ? 2 : condLevel(r.c) >= 2 ? 1 : 0; if (L) out.push({name: r.n, lvl: L, why: r.c}); });
+  const S = window.PARK_SEASONAL && PARK_SEASONAL.parks[p.code];
+  const today = isoDay(new Date());
+  ((S && S.roads && S.roads.items) || []).forEach(r => {
+    if (r.open && r.close && (today < r.open || today > r.close)) out.push({name: r.n, lvl: 2, why: `closed for the season (usually open ${fmtD(r.open)} to ${fmtD(r.close)})`});
+  });
+  (S ? seasonalLists(S).now : []).forEach(c => { if (RX.road.test(c.n)) out.push({name: c.n, lvl: 2, why: `seasonal closure until ${fmtD(c.to)}`}); });
+  ((state.alerts || {})[p.code] || []).forEach(a => {
+    if (a.type === "road" || RX.road.test(a.title || "")) out.push({text: a.title || "", lvl: a.isClosure ? 2 : 1, why: a.title || "", alert: true});
+  });
+  return out;
+}
+function openRoadMap(id){
+  const box = document.querySelector(`.rmap[data-rmap="${id}"]`);
+  const p = PARK_BY[id];
+  if (!box || !p) return;
+  Promise.all([loadData("data/park-bounds.js", "PARK_BOUNDS"), loadData("data/park-roads.js", "PARK_ROADS")])
+    .then(() => drawRoadMap(box, p)).catch(() => { box.innerHTML = ""; });
+}
+function drawRoadMap(box, p){
+  const B = PARK_BOUNDS.parks[p.id], roads = (PARK_ROADS.parks[p.id] || []);
+  const link = (LIVE_ROADS[p.code] && LIVE_ROADS[p.code].map) || (window.PARK_ROADCOND && PARK_ROADCOND.parks[p.code] && PARK_ROADCOND.parks[p.code].src)
+    || `https://www.nps.gov/${p.code}/planyourvisit/conditions.htm`;
+  const more = `<p class="rnote">Overview only. A red road can be closed in one part only, and some closures can be missing. For full details, see the <a href="${esc(link)}" target="_blank" rel="noopener">NPS road status for ${esc(p.name)}</a>. Road lines © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors.</p>`;
+  if (!B){ box.innerHTML = ""; return; }
+  // Status of each road: a report matches a road when the name of the road is in the name or text of the report
+  const reps = roadReports(p);
+  const used = new Set();
+  const st = roads.map(r => {
+    const k = roadKey(r.n);
+    if (!k || k.length < 4 || ROAD_GENERIC.has(k)) return null;
+    const re = new RegExp("\\b" + k.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "\\b");
+    let best = null;
+    reps.forEach((x, i) => {
+      const xk = roadKey(x.name || x.text);
+      const hit = re.test(xk) || (x.name && xk.length >= 4 && !ROAD_GENERIC.has(xk) && new RegExp("\\b" + xk.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "\\b").test(k));
+      if (hit){ used.add(i); if (!best || x.lvl > best.lvl) best = x; }
+    });
+    return best;
+  });
+  // Projection: longitude scaled by the cosine of the latitude, so the shape is right
+  const [w, s, e, n] = B.b, kx = Math.cos((s + n) / 2 * Math.PI / 180);
+  const dx = Math.max(0.01, (e - w) * kx), dy = Math.max(0.01, n - s);
+  const W = 440, pad = 10, H = Math.round(Math.min(440, Math.max(200, W * dy / dx)));
+  const sc = Math.min((W - 2 * pad) / dx, (H - 2 * pad) / dy), ox = (W - dx * sc) / 2, oy = (H - dy * sc) / 2;
+  const X = lon => (ox + (lon - w) * kx * sc).toFixed(1), Y = lat => (oy + (n - lat) * sc).toFixed(1);
+  const path = pts => "M" + pts.map(([lo, la]) => X(lo) + "," + Y(la)).join("L");
+  let g = B.p.map(r => `<path class="po" d="${path(r)}Z"/>`).join("");
+  roads.forEach(r => { g += `<path class="rd ${r.m ? "m" : "s"}" d="${r.l.map(path).join("")}"><title>${esc(r.n || "Road")}</title></path>`; });
+  const labels = [];
+  roads.forEach((r, i) => {
+    const x = st[i]; if (!x) return;
+    g += `<path class="rx L${x.lvl}" d="${r.l.map(path).join("")}"><title>${esc(r.n)}: ${esc(x.why)}</title></path>`;
+    const longest = r.l.reduce((a, b) => b.length > a.length ? b : a), mid = longest[Math.floor(longest.length / 2)];
+    labels.push({x: +X(mid[0]), y: +Y(mid[1]), t: r.n, lvl: x.lvl});
+  });
+  labels.slice(0, 8).forEach(l => {
+    const anchor = l.x > W * 0.7 ? "end" : l.x < W * 0.3 ? "start" : "middle";
+    g += `<text class="rl L${l.lvl}" x="${l.x}" y="${l.y - 6}" text-anchor="${anchor}">${esc(l.t)}</text>`;
+  });
+  const shown = roads.map((r, i) => st[i] ? {n: r.n, ...st[i]} : null).filter(Boolean).sort((a, b) => b.lvl - a.lvl);
+  const others = reps.filter((x, i) => !used.has(i) && x.lvl === 2 && !x.alert);
+  const otherAlerts = reps.filter((x, i) => !used.has(i) && x.lvl === 2 && x.alert);
+  box.innerHTML = `<h2>Road map</h2>` +
+    (roads.length ? `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Map of the main roads of ${esc(p.name)}. ${shown.filter(x => x.lvl === 2).length} closed.">${g}</svg>
+      <div class="rleg"><span><i style="background:var(--closed)"></i>Closed now (all or part)</span><span><i style="background:var(--partial)"></i>Delays or restrictions</span><span><i style="background:var(--muted)"></i>No report</span></div>` :
+      `<p class="none">This park has no main roads for cars in the map data.</p>`) +
+    (shown.length ? `<ul>${shown.map(x => `<li><b>${esc(x.n)}</b>: ${esc(x.why)}</li>`).join("")}</ul>` : roads.length ? `<p class="none">No road closures found now.</p>` : "") +
+    (others.length || otherAlerts.length ? `<p class="rnote">Also closed (not on the map): ${esc([...others.map(x => x.name + ": " + x.why), ...otherAlerts.map(x => x.text)].slice(0, 6).join(" · "))}</p>` : "") + more;
+}
 function openMonthly(code){
   const box = document.querySelector(`.mviz[data-mviz="${code}"]`);
   if (!box) return;
@@ -2559,7 +2659,7 @@ function toggle(code){
   const row = document.querySelector(`tr.park[data-code="${code}"]`);
   const det = document.querySelector(`tr.detail[data-for="${code}"]`);
   if (row && det){ det.hidden = !state.open.has(code); row.setAttribute("aria-expanded", state.open.has(code)); }
-  if (state.open.has(code)) openMonthly(code);
+  if (state.open.has(code)){ openMonthly(code); openRoadMap(code); }
 }
 
 $("rows").addEventListener("click", e => { const gr = e.target.closest("[data-goroad]"); if (gr){ e.stopPropagation(); showRoad(gr.dataset.goroad); return; }

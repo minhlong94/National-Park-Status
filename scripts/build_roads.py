@@ -64,6 +64,13 @@ def km(line, lat):
     return line.length * 111 * max(0.3, math.cos(math.radians(lat)) ** 0.5)
 
 
+def _lines(g):
+    """The simple lines in a geometry (a clip can give lines, multi lines, points or a collection)."""
+    if isinstance(g, LineString):
+        return [g] if not g.is_empty and g.length > 0 else []
+    return [x for sub in getattr(g, "geoms", []) for x in _lines(sub)]
+
+
 def park_roads(pid, rec):
     w, s, e, n = rec["b"]
     shape = unary_union([Polygon(r).buffer(0) for r in rec["p"] if len(r) >= 4])
@@ -90,9 +97,9 @@ def park_roads(pid, rec):
     roads = []
     lat = (s + n) / 2
     for (name, cls), parts in by_name.items():
-        merged = linemerge(unary_union(parts))
-        lines = list(merged.geoms) if isinstance(merged, MultiLineString) else [merged] if isinstance(merged, LineString) else \
-            [g for g in getattr(merged, "geoms", []) if isinstance(g, LineString)]
+        lines = [x for x in (flat for part in parts for flat in _lines(part))]
+        if len(lines) > 1:
+            lines = list(_lines(linemerge(MultiLineString(lines))))
         total = sum(km(l, lat) for l in lines)
         if cls == "minor" and total < 1.5:
             continue
