@@ -244,7 +244,9 @@ def fetch_prelim_visits(code, months, name=None, debug=False):
         label = lambda t: t.replace("\xa0", " ").strip()
         cands = [(v, label(t)) for v, t in form.selects[park_sel] if re.match(re.escape(name) + r" (NP|National Park)\b", label(t))]
         if not cands:
-            raise RuntimeError(f"{code}: no park named {name} NP in the report")
+            # Some parks (for example Carlsbad Caverns, Chiricahua) are not in this report. Their months stay blank.
+            print(f"  {code}: not in the report. Its preliminary months stay blank.", flush=True)
+            return {mon: None for mon in months}
         data = dict(form.fields)
         data.update({park_sel: cands[0][0], "__EVENTTARGET": park_sel, "__EVENTARGUMENT": ""})
         url, page = get(url, data)
@@ -258,7 +260,8 @@ def fetch_prelim_visits(code, months, name=None, debug=False):
         mon_sel = next((k for k, opts in form.selects.items()
                         if any(re.fullmatch(r"[A-Z][a-z]{2} \d{4}", t.replace("\xa0", " ").strip()) for _, t in opts)), None)
         if not mon_sel:
-            raise RuntimeError(f"{code}: the report has no month list")
+            print(f"  {code}: the report has no month list. Its preliminary months stay blank.", flush=True)
+            return {mon: None for mon in months}
         value = next((v for v, t in form.selects[mon_sel] if t.replace("\xa0", " ").strip() == label), None)
         if value is None:
             out[mon] = None  # NPS has no report for this month yet
@@ -280,6 +283,7 @@ def fetch_prelim_visits(code, months, name=None, debug=False):
         # The total row: "Total Adjusted Recreation Visits" (parks that adjust for duplicates) or "Total Recreation Visits"
         row = next((r for r in csv_text.splitlines() if re.match(r'[^,]*,Total (Adjusted )?Recreation Visit', r)), None)
         if row is None:
+            # Some parks (for example Yellowstone) report only overnight stays in this report
             out[mon] = None
             continue
         cell = re.match(r'[^,]*,[^,]*,("[^"]*"|[^,]*)', row).group(1).strip('"').replace(",", "")
@@ -287,13 +291,13 @@ def fetch_prelim_visits(code, months, name=None, debug=False):
     return out
 
 
-def fetch_prelim_all(codes, months):
+def fetch_prelim_all(codes, months, names):
     """Preliminary visits for many parks, PRELIM_WORKERS at the same time. Each park gets 3 tries."""
     def one(code):
         last = None
         for k in range(TRIES):
             try:
-                return code, fetch_prelim_visits(code, months)
+                return code, fetch_prelim_visits(code, months, names.get(code))
             except DeadlineExceeded:
                 raise
             except Exception as e:  # noqa: BLE001
@@ -424,7 +428,7 @@ def main():
     cand = [add_months(start, k) for k in range(months_between(start, target) + 1)]
     # Months that the statistics service does not have yet: try the preliminary report (R63)
     missing = [mon for mon in cand if v1.get(mon) is None]
-    p1 = fetch_prelim_visits(code1, missing) if missing else {}
+    p1 = fetch_prelim_visits(code1, missing, first["name"]) if missing else {}
     end, prelim_months = None, []
     for mon in cand:
         vis = v1.get(mon) if v1.get(mon) is not None else p1.get(mon)
@@ -446,7 +450,8 @@ def main():
     errors = []
     if prelim_months:
         try:
-            pv = fetch_prelim_all([c for c in codes if c != code1], prelim_months)
+            names = {stats_code(p): {"seki": "Sequoia", "kica": "Kings Canyon"}.get(p["id"], p["name"]) for p in parks}
+            pv = fetch_prelim_all([c for c in codes if c != code1], prelim_months, names)
             pv[code1] = p1
             for c in codes:
                 for mon in prelim_months:
