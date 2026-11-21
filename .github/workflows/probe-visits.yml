@@ -8,30 +8,34 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - name: Export reports as CSV
+      - name: Month parameter of Park YTD
         run: |
           set +e
-          export_csv () {
+          J=/tmp/jar
+          curl -sS -L --max-time 40 -A "Mozilla/5.0" -c $J -b $J -o /tmp/a.html "https://irma.nps.gov/Stats/SSRSReports/Park%20Specific%20Reports/Park%20YTD%20Version%201?Park=GRSM"
+          SRC=$(grep -o 'src="[^"]*"' /tmp/a.html | head -1 | sed 's/^src="//; s/"$//; s/&amp;/\&/g')
+          curl -sS -L --max-time 90 -A "Mozilla/5.0" -c $J -b $J -o /tmp/v.html "https://irma.nps.gov$SRC"
+          python3 - <<'PY'
+          import re
+          s = open('/tmp/v.html', encoding='utf-8', errors='ignore').read()
+          i = s.find('Oct&nbsp;2026')
+          seg = s[max(0, i-3500):i+200]
+          seg = re.sub(r'\s+', ' ', seg)
+          print(seg)
+          print('---- select names:', sorted(set(re.findall(r'<select[^>]*name="([^"]+)"', s))))
+          print('---- input names:', sorted(set(re.findall(r'<input[^>]*name="(ReportViewer[^"]+)"', s)))[:40])
+          for m in re.finditer(r'"(ParameterName|Name|Prompt)"\s*:\s*"([^"]{1,60})"', s): print(m.group(0))
+          PY
+      - name: Try month in the URL
+        run: |
+          set +e
+          for p in "RptDate=9/1/2026" "ReportDate=9/1/2026" "Month=9&Year=2026" "rptDate=2026-09-01" "Date=9/1/2026"; do
             J=$(mktemp)
-            curl -sS -L --max-time 40 -A "Mozilla/5.0" -c $J -b $J -o /tmp/a.html "https://irma.nps.gov/Stats/SSRSReports/$1"
+            curl -sS -L --max-time 40 -A "Mozilla/5.0" -c $J -b $J -o /tmp/a.html "https://irma.nps.gov/Stats/SSRSReports/Park%20Specific%20Reports/Park%20YTD%20Version%201?Park=GRSM&$p"
             SRC=$(grep -o 'src="[^"]*"' /tmp/a.html | head -1 | sed 's/^src="//; s/"$//; s/&amp;/\&/g')
-            echo "iframe: $SRC"
             curl -sS -L --max-time 90 -A "Mozilla/5.0" -c $J -b $J -o /tmp/v.html "https://irma.nps.gov$SRC"
-            echo "viewer size $(wc -c < /tmp/v.html)"
-            echo "--- parameters:"
-            grep -o -E '(data-parametername|ParameterName|"Name"):?=?"[^"]{1,60}"' /tmp/v.html | sort -u | head -20
-            grep -o -E '<label[^>]*><span>[^<]{1,80}</span>' /tmp/v.html | head -20
             EXP=$(grep -o -E '"ExportUrlBase":"[^"]*"' /tmp/v.html | head -1 | sed 's/"ExportUrlBase":"//; s/"$//; s/\\u0026/\&/g')
-            if [ -n "$EXP" ]; then
-              curl -sS -L --max-time 90 -A "Mozilla/5.0" -c $J -b $J -o /tmp/r.csv "https://irma.nps.gov$EXP""CSV"
-              echo "csv size $(wc -c < /tmp/r.csv)"; head -c 2500 /tmp/r.csv; echo; echo "--- lines with 2026:"; grep -c 2026 /tmp/r.csv; grep 2026 /tmp/r.csv | head -5
-            else echo "no export url"; grep -o -i -E '.{0,200}(error|exception).{0,200}' /tmp/v.html | head -5; fi
-          }
-          echo "########## Visitation by Month (park)"
-          export_csv "Park%20Specific%20Reports/Visitation%20by%20Month?Park=GRSM"
-          echo "########## Monthly and Annual Summary Report (1979 - Present)"
-          export_csv "National%20Reports/Monthly%20and%20Annual%20Summary%20Report%20(1979%20-%20Present)"
-          echo "########## Park YTD params"
-          export_csv "Park%20Specific%20Reports/Park%20YTD%20Version%201?Park=GRSM" >/dev/null
-          grep -o -E 'name="ReportViewerControl\$ctl04\$ctl0[0-9]\$[a-zA-Z]+"' /tmp/v.html | head; grep -o -E '<span[^>]*>[A-Za-z ]{2,40}</span></label>' /tmp/v.html | head
-          grep -o -E '.{0,300}Oct&nbsp;2026.{0,50}' /tmp/v.html | head -2
+            echo "== $p  viewer $(wc -c < /tmp/v.html)  selected: $(grep -o -E 'selected="selected" value="[0-9]+">[A-Za-z]{3}&nbsp;[0-9]{4}' /tmp/v.html | head -1)"
+            [ -n "$EXP" ] && curl -sS -L --max-time 90 -A "Mozilla/5.0" -c $J -b $J "https://irma.nps.gov$EXP""CSV" | sed -n '2p;5p'
+            grep -o -i -E 'error[^<]{0,200}' /tmp/v.html | head -2
+          done
