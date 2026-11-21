@@ -329,7 +329,7 @@ tr.detail[hidden]{display:none}
 .rmap .rx{fill:none;stroke-linecap:round;stroke-linejoin:round;stroke-width:4.5}
 .rmap .rx.L2{stroke:var(--closed)}
 .rmap .rx.L1{stroke:var(--partial)}
-.rmap .rl{font-size:11px;font-weight:700;paint-order:stroke;stroke:var(--panel);stroke-width:3.5px;stroke-linejoin:round}
+.rmap .rl{font-size:13px;font-weight:700;paint-order:stroke;stroke:var(--panel);stroke-width:3.5px;stroke-linejoin:round}
 .rmap .rl.L2{fill:var(--closed)}
 .rmap .rl.L1{fill:color-mix(in srgb, var(--partial) 70%, var(--ink))}
 .rmap .rleg{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:12.5px;color:var(--muted);margin:6px 0 2px}
@@ -2585,7 +2585,8 @@ function roadReports(p){
   ((S && S.roads && S.roads.items) || []).forEach(r => {
     if (r.open && r.close && (today < r.open || today > r.close)) out.push({name: r.n, lvl: 2, why: `closed for the season (usually open ${fmtD(r.open)} to ${fmtD(r.close)})`});
   });
-  (S ? seasonalLists(S).now : []).forEach(c => { if (RX.road.test(c.n)) out.push({name: c.n, lvl: 2, why: `seasonal closure until ${fmtD(c.to)}`}); });
+  // Seasonal closures with a road in the name (not "Logan Pass Visitor Center")
+  (S ? seasonalLists(S).now : []).forEach(c => { if (/\b(road|rd|highway|hwy|drive|parkway|route|byway)\b/i.test(c.n)) out.push({name: c.n, lvl: 2, why: `seasonal closure until ${fmtD(c.to)}`}); });
   ((state.alerts || {})[p.code] || []).forEach(a => {
     if (a.type === "road" || RX.road.test(a.title || "")) out.push({text: a.title || "", lvl: a.isClosure ? 2 : 1, why: a.title || "", alert: true});
   });
