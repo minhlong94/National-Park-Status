@@ -22,7 +22,7 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 60
     steps:
       # The default branch of the repository is gh-pages. A run that starts there works on main (R50).
       - uses: actions/checkout@v4
@@ -37,7 +37,7 @@ jobs:
         timeout-minutes: 3
         run: pip install --quiet shapely
       - name: Build the file
-        timeout-minutes: 20
+        timeout-minutes: 50  # the script stops itself after 40 minutes
         run: python3 -u scripts/build_roads.py
       - name: Commit the file if it changed
         timeout-minutes: 2
