@@ -2,6 +2,8 @@
 
 **Live page: https://minhlong94.github.io/National-Park-Status/**
 
+Feedback: https://forms.gle/B73GLTbAME3KaJsU8
+
 This page shows the current conditions of all 64 U.S. national parks, including Chiricahua (Arizona), which became a national park in 2026. The list sorts the parks by 2025 recreation visits.
 
 ## What the page shows
