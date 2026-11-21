@@ -1117,3 +1117,23 @@ Requirements:
 - The flash flood potential (R40, R48) stays at the first 3 days: the NWS rating covers about 3 days, and an estimate further out is not useful.
 - Saved data from before this change has 3 days. The heading then shows "3-day forecast" and asks the reader to click Refresh data.
 - Status: done.
+
+### R67. Labels on the visits chart, and a road closure map for each park
+
+Request from the owner (edited for clarity):
+
+> For each month of the visits chart, show the label of the highest column.
+>
+> Show a map of the current road closures of each park. Use a picture if necessary. It is mainly an overview that sends the reader to the NPS page for full details.
+
+Requirements:
+
+- Visits chart: each month shows the value of its highest column (for example "1.6M", "868K"). On narrow screens the text is smaller.
+- Road map in the park details (under the alerts):
+  - A small map of the park: the park outline (`data/park-bounds.js`) and its main roads (`data/park-roads.js`). The page draws the map, so it does not need a picture.
+  - Road lines: OpenStreetMap (© OpenStreetMap contributors, ODbL). The script `scripts/build_roads.py` gets the roads for cars in each park with the Overpass API, keeps the parts inside the park (with a margin of about 200 m), and simplifies the lines. Town streets are not used. Named tracks and named service roads must be 1.5 km or longer. A park has 40 roads or less. The workflow `.github/workflows/build-roads.yml` runs the script when the script changes, or from the Actions tab.
+  - The Overpass server sends errors to fast clients, so the script waits 12 seconds between parks. It saves the file after each park and stops after 40 minutes. The next run continues with the parks that are left (all 64 parks take two runs).
+  - The page marks the roads that are closed now in red, and the roads with delays or restrictions in orange. The status comes from the data that the page already has: live road status (Glacier), park road condition tables (Capitol Reef, Sequoia and Kings Canyon), seasonal road dates, seasonal closures and NPS road alerts. A report matches a road when the name of the road (without words such as "Road" or "Drive", and without a direction word at the end, as in "Newfound Gap Road South") is in the name or the title of the report. A short report name does not mark longer roads (for example "Many Glacier Road" does not mark "Many Glacier Hotel Parking Road").
+  - The names of the closed roads are on the map and in a list under it. A road closure that does not match a road on the map is in a line "Also closed (not on the map)".
+  - A note says that the map is an overview only (a red road can be closed in one part only, and some closures can be missing), with a link to the NPS road status page of the park (the live road map, the road conditions page or the conditions page).
+- Status: done.
