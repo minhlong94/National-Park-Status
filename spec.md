@@ -1165,7 +1165,7 @@ Requirements:
   - The page keeps the events that are active now or start in the next 2 weeks. It keeps one event for each direction of travel, and shortens the lines (at most 80 points, 4 decimals).
   - The feed has no park code. An event goes to a park when a point of its line is inside the park outline.
   - Now: Mount Rainier, Lassen Volcanic, Sequoia and Kings Canyon, Great Smoky Mountains, Crater Lake and Yosemite have events. Yellowstone has none.
-- The road map is an interactive map (Leaflet 1.9.4 from cdnjs) with OpenStreetMap tiles in the CARTO style (light, or dark in dark mode). The page loads the map only when a park opens. (R70: OpenStreetMap standard tiles. CARTO tiles need an API key.)
+- The road map is an interactive map (Leaflet 1.9.4 from cdnjs) with OpenStreetMap tiles in the CARTO style (light, or dark in dark mode). The page loads the map only when a park opens. (R70: OpenStreetMap standard tiles. CARTO tiles need an API key. R71: NPS Park Tiles, with OpenStreetMap as the fallback.)
   - The map shows the park outline, the road events on their exact lines (red: all lanes closed, orange: other impacts, dashed: starts in the next 2 weeks), and the roads that the page marks from alerts and park road pages (R67).
   - A click on an event line shows the name, the roads, the description and the dates. A road line shows its name and reason.
   - The mouse wheel does not zoom the map, so the page scrolls as usual. Use the + and − buttons.
@@ -1184,4 +1184,18 @@ Requirements:
 - The CARTO basemap tiles now need an API key. A key on a public page is not secret, so the page does not use CARTO.
 - The road map uses the OpenStreetMap standard tiles (`tile.openstreetmap.org`). They need no key. The map shows "© OpenStreetMap contributors".
 - In dark mode, a filter makes the tiles dark.
+- Status: done.
+
+### R71. NPS map tiles on the road map
+
+Request from the owner (edited for clarity):
+
+> Is it possible to use the NPS map instead? (Answer to the options: try option 1, the NPS Park Tiles.)
+
+Requirements:
+
+- The road map uses the NPS Park Tiles as the base map: "NPS Park Tiles Standard" in light mode and "NPS Park Tiles Slate" in dark mode.
+- The NPS publishes these tiles as public web maps on ArcGIS Online (owner NPS_EGIS_AGOL). The page reads the tile address from the web map (`www.arcgis.com/sharing/rest/content/items/<id>/data`) when the first park map opens. Thus the page has no key in its code, and a new tile address from the NPS comes in automatically.
+- The map shows "Map: NPS Park Tiles · © Mapbox · © OpenStreetMap contributors".
+- Fallback: if the web map does not load in 8 seconds, or the first 3 tiles do not load, the map uses the OpenStreetMap tiles of R70 (with the dark filter in dark mode).
 - Status: done.
