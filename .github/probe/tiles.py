@@ -1,4 +1,4 @@
-"""Temporary probe 3: CORS of the ArcGIS web map data, and sample NPS Park Tiles (base64)."""
+"""Temporary probe 4: CORS of the ArcGIS web map data, and sample NPS Park Tiles (base64)."""
 import base64, json, urllib.request
 H = {"User-Agent": "Mozilla/5.0", "Origin": "https://minhlong94.github.io", "Referer": "https://minhlong94.github.io/"}
 def get(u):
