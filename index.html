@@ -2709,7 +2709,7 @@ function drawRoadMap(box, p){
     (others.length || otherAlerts.length ? `<p class="rnote">Also closed (not on the map): ${esc([...others.map(x => x.name + ": " + x.why), ...otherAlerts.map(x => x.text)].slice(0, 6).join(" · "))}</p>` : "") + more;
   leafletMap(box, p, B, roads, st, events);
 }
-// ---- Interactive map with OpenStreetMap tiles (R69). The drawn map above stays when the map library or the tiles do not load. ----
+// ---- Interactive map (R69) with NPS Park Tiles (R71). OpenStreetMap tiles are the fallback. The drawn map above stays when the map library does not load. ----
 let leafletP = null;
 function loadLeaflet(){
   if (window.L && L.map) return Promise.resolve(L);
@@ -2726,9 +2726,30 @@ function loadLeaflet(){
 }
 const isDark = () => { const t = document.documentElement.getAttribute("data-theme"); return t ? t === "dark" : matchMedia("(prefers-color-scheme: dark)").matches; };
 const cssVar = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+// The NPS publishes Park Tiles as public web maps on ArcGIS Online: "NPS Park Tiles Standard" (light mode) and "NPS Park Tiles Slate" (dark mode).
+// The page reads the tile address from the web map, so the page has no key in it, and a new address from the NPS comes in automatically.
+const NPS_MAPS = {light: "d22a7a13a81045b4a90574fe934162f5", dark: "0ae162fa27464b3183316205165d93ae"};
+const npsTileP = {};
+function npsTiles(dark){
+  const k = dark ? "dark" : "light";
+  if (npsTileP[k]) return npsTileP[k];
+  const ctl = new AbortController(), tm = setTimeout(() => ctl.abort(), 8000);
+  return npsTileP[k] = fetch(`https://www.arcgis.com/sharing/rest/content/items/${NPS_MAPS[k]}/data?f=json`, {signal: ctl.signal})
+    .then(r => { clearTimeout(tm); if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
+    .then(j => {
+      const u = ((j.baseMap || {}).baseMapLayers || []).map(x => x.templateUrl).find(Boolean);
+      if (!u || !/^https:\/\/[^\s"'<>]+$/.test(u)) throw new Error("no tiles");
+      return u.replace("{level}", "{z}").replace("{col}", "{x}").replace("{row}", "{y}").replace("@2x", "{r}");
+    })
+    .catch(() => { clearTimeout(tm); delete npsTileP[k]; return null; });
+}
+const OSM_TILES = "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
+const OSM_ATTR = '© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors';
+const NPS_ATTR = 'Map: <a href="https://www.nps.gov/maps/tools/park-tiles/" target="_blank" rel="noopener">NPS Park Tiles</a> · © Mapbox · ' + OSM_ATTR;
 function leafletMap(box, p, B, roads, st, events){
   if (!box.querySelector("svg.rsvg")) return;
-  loadLeaflet().then(L => {
+  const dark = isDark();
+  Promise.all([loadLeaflet(), npsTiles(dark)]).then(([L, tpl]) => {
     const svg = box.querySelector("svg.rsvg");
     if (!svg) return;
     const div = document.createElement("div");
@@ -2737,10 +2758,15 @@ function leafletMap(box, p, B, roads, st, events){
     div.setAttribute("aria-label", `Map of the road closures of ${p.name}`);
     svg.replaceWith(div);
     const map = L.map(div, {scrollWheelZoom: false, dragging: !L.Browser.mobile, tap: false, zoomSnap: 0.5});
-    // OpenStreetMap standard tiles: no key (R70). CARTO tiles need an API key now. In dark mode a filter darkens the tiles.
-    L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png",
-      {maxZoom: 19, attribution: '© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors'}).addTo(map);
-    if (isDark()) div.classList.add("rdark");
+    // Fallback: OpenStreetMap standard tiles, no key (R70). In dark mode a filter darkens them.
+    const useOsm = () => { div.dataset.base = "osm"; L.tileLayer(OSM_TILES, {maxZoom: 19, attribution: OSM_ATTR}).addTo(map); if (dark) div.classList.add("rdark"); };
+    if (tpl) {
+      div.dataset.base = "nps";
+      const nps = L.tileLayer(tpl, {maxZoom: 18, attribution: NPS_ATTR}).addTo(map);
+      let ok = 0, bad = 0;
+      nps.on("tileload", () => ok++);
+      nps.on("tileerror", () => { if (!ok && ++bad === 3) { map.removeLayer(nps); useOsm(); } });  // the NPS tiles do not load: use OpenStreetMap
+    } else useOsm();
     const ll = pts => pts.map(([x, y]) => [y, x]);
     const red = cssVar("--closed") || "#c0392b", orange = cssVar("--partial") || "#d68910";
     const outline = L.polygon(B.p.map(ll), {color: cssVar("--pine") || "#2f6b4f", weight: 2, fillOpacity: 0.05, interactive: false}).addTo(map);
