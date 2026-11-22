@@ -1137,3 +1137,16 @@ Requirements:
   - The names of the closed roads are on the map and in a list under it. A road closure that does not match a road on the map is in a line "Also closed (not on the map)".
   - A note says that the map is an overview only (a red road can be closed in one part only, and some closures can be missing), with a link to the NPS road status page of the park (the live road map, the road conditions page or the conditions page).
 - Status: done.
+
+### R68. Daily screenshots of the NPS road pages (not done)
+
+Requests from the owner (edited for clarity):
+
+> It is better to take screenshots of the NPS page every day.
+>
+> No need. Keep it as it is.
+
+Requirements:
+
+- The owner withdrew the request. The page keeps the road map of R67. There are no screenshots of NPS pages.
+- Status: cancelled.
