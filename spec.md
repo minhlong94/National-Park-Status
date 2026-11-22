@@ -1136,6 +1136,7 @@ Requirements:
   - The page marks the roads that are closed now in red, and the roads with delays or restrictions in orange. The status comes from the data that the page already has: live road status (Glacier), park road condition tables (Capitol Reef, Sequoia and Kings Canyon), seasonal road dates, seasonal closures and NPS road alerts. A report matches a road when the name of the road (without words such as "Road" or "Drive", and without a direction word at the end, as in "Newfound Gap Road South") is in the name or the title of the report. A short report name does not mark longer roads (for example "Many Glacier Road" does not mark "Many Glacier Hotel Parking Road").
   - The names of the closed roads are on the map and in a list under it. A road closure that does not match a road on the map is in a line "Also closed (not on the map)".
   - A note says that the map is an overview only (a red road can be closed in one part only, and some closures can be missing), with a link to the NPS road status page of the park (the live road map, the road conditions page or the conditions page).
+  - Note: R69 makes the map interactive, with OpenStreetMap tiles and the NPS road events.
 - Status: done.
 
 ### R68. Daily screenshots of the NPS road pages (not done)
@@ -1150,3 +1151,24 @@ Requirements:
 
 - The owner withdrew the request. The page keeps the road map of R67. There are no screenshots of NPS pages.
 - Status: cancelled.
+
+### R69. NPS road events and an interactive road map
+
+Request from the owner (edited for clarity):
+
+> Use the NPS road events (option 1). Also use them to build what I wanted with the screenshots: a real map with OpenStreetMap.
+
+Requirements:
+
+- On "Refresh data", the page also gets the NPS road events (`developer.nps.gov/api/v1/roadevents`, WZDx format). It saves them with the live road status.
+  - An event has road names, a description, start and end dates, the vehicle impact and the line of the part of the road that it affects.
+  - The page keeps the events that are active now or start in the next 2 weeks. It keeps one event for each direction of travel, and shortens the lines (at most 80 points, 4 decimals).
+  - The feed has no park code. An event goes to a park when a point of its line is inside the park outline.
+  - Now: Mount Rainier, Lassen Volcanic, Sequoia and Kings Canyon, Great Smoky Mountains, Crater Lake and Yosemite have events. Yellowstone has none.
+- The road map is an interactive map (Leaflet 1.9.4 from cdnjs) with OpenStreetMap tiles in the CARTO style (light, or dark in dark mode). The page loads the map only when a park opens.
+  - The map shows the park outline, the road events on their exact lines (red: all lanes closed, orange: other impacts, dashed: starts in the next 2 weeks), and the roads that the page marks from alerts and park road pages (R67).
+  - A click on an event line shows the name, the roads, the description and the dates. A road line shows its name and reason.
+  - The mouse wheel does not zoom the map, so the page scrolls as usual. Use the + and − buttons.
+  - If the map library or the tiles do not load, the page shows the drawn map of R67.
+- Under the map: "NPS road events", one item for each closure (with the number of road parts), then "From alerts and park road pages".
+- Status: done.

@@ -321,7 +321,12 @@ tr.detail[hidden]{display:none}
 .rlinks a{color:var(--info);cursor:pointer}
 /* Road closure overview map (R67) */
 .rmap{margin:10px 0 6px}
-.rmap svg{display:block;width:100%;height:auto;max-height:420px;border:1px solid var(--line);border-radius:8px;background:var(--panel)}
+.rmap .rleaf{height:360px;border:1px solid var(--line);border-radius:8px;z-index:0}
+@media (max-width:640px){.rmap .rleaf{height:300px}}
+.rmap .leaflet-container{font:13px/1.4 "Public Sans",system-ui,sans-serif;background:var(--panel)}
+.rmap .rh3{font-size:14px;margin:10px 0 2px}
+.rmap .rev{color:var(--muted);font-size:13px}
+.rmap svg.rsvg{display:block;width:100%;height:auto;max-height:420px;border:1px solid var(--line);border-radius:8px;background:var(--panel)}
 .rmap .po{fill:color-mix(in srgb, var(--pine) 11%, var(--panel));stroke:color-mix(in srgb, var(--pine) 60%, transparent);stroke-width:1.2}
 .rmap .rd{fill:none;stroke:var(--muted);stroke-linecap:round;stroke-linejoin:round;opacity:.9}
 .rmap .rd.m{stroke-width:2.6}
@@ -1093,9 +1098,45 @@ const ROAD_WORK = {
   arch: "https://www.nps.gov/arch/planyourvisit/construction.htm",
   seki: "https://www.nps.gov/seki/planyourvisit/road-construction.htm",
 };
+// NPS road events (R69): current closures and work zones with the line of the closed part (WZDx format).
+// The feed has no park code: an event goes to each park that has a point of its line inside the park outline.
+async function loadRoadEvents(){
+  const ctl = new AbortController(), tm = setTimeout(() => ctl.abort(), 30000);
+  const res = await fetch(`https://developer.nps.gov/api/v1/roadevents?limit=1000&api_key=${encodeURIComponent(getKey())}`, {cache:"no-store", signal:ctl.signal});
+  clearTimeout(tm);
+  if (!res.ok) throw new Error("Road events HTTP " + res.status);
+  const j = await res.json();
+  const B = await loadData("data/park-bounds.js", "PARK_BOUNDS").catch(() => null);
+  if (!B) throw new Error("no park outlines");
+  const now = Date.now(), out = {}, seen = new Set();
+  (j.features || []).forEach(f => {
+    const pr = f.properties || {}, cd = pr.core_details || {}, g = f.geometry || {};
+    const st = Date.parse(pr.start_date), en = Date.parse(pr.end_date);
+    if (en && en < now) return;                    // over
+    if (st && st > now + 14 * DAY) return;          // starts later than in 2 weeks
+    const raw = g.type === "LineString" ? [g.coordinates] : g.type === "MultiLineString" ? g.coordinates : g.type === "Point" ? [[g.coordinates]] : [];
+    // Shorter lines: at most 80 points, 4 decimals (about 10 m)
+    const l = raw.filter(x => x && x.length).map(x => { const k = Math.max(1, Math.ceil(x.length / 80));
+      return x.filter((_, i) => i % k === 0 || i === x.length - 1).map(([a, b]) => [+(+a).toFixed(4), +(+b).toFixed(4)]); });
+    if (!l.length) return;
+    const ends = l.flatMap(x => [x[0], x[x.length - 1]]).map(String).sort().join(";");
+    const key = (cd.name || "") + "|" + (cd.description || "") + "|" + ends; // one event for each direction of travel: keep one
+    if (seen.has(key)) return;
+    seen.add(key);
+    const pts = l.flat();
+    const ev = {n: cd.name || "Road event", r: cd.road_names || [], d: String(cd.description || "").trim().slice(0, 400), t: cd.event_type || "",
+      lvl: pr.vehicle_impact === "all-lanes-closed" ? 2 : 1, s: pr.start_date || "", e: pr.end_date || "", soon: st > now, l};
+    // The event goes to a park when a point of its line is inside the park outline
+    Object.entries(B.parks).forEach(([id, b]) => { const [w, so, e, n] = b.b;
+      const near = pts.filter(([x, y]) => x >= w - 0.01 && x <= e + 0.01 && y >= so - 0.01 && y <= n + 0.01);
+      if (near.length && near.some(q => b.p.some(r => inRing(r, q[0], q[1])))) (out[id] = out[id] || []).push(ev); });
+  });
+  return out;
+}
 async function loadRoads(){
   setSrc("roads","busy","loading…");
-  const out = {}; let ok = 0;
+  const out = {}; let ok = 0, events = null;
+  const evP = loadRoadEvents().then(x => { events = x; ok++; }).catch(() => { /* keep the saved road events */ });
   await Promise.all(Object.entries(LIVE_ROADS).map(async ([code, src]) => {
     try{
       const ctl = new AbortController(); const tm = setTimeout(() => ctl.abort(), 20000);
@@ -1118,11 +1159,14 @@ async function loadRoads(){
       ok++;
     }catch(e){ /* keep the saved data of this park */ }
   }));
-  const n = Object.keys(LIVE_ROADS).length;
+  await evP;
+  const n = Object.keys(LIVE_ROADS).length + 1;
   if (ok === 0) throw new Error("Road status unreachable");
   state.roads = Object.assign({}, state.roads, out);
+  if (events) state.roads._events = events; // saved with the live road status
   const closed = Object.values(out).reduce((t, l) => t + l.filter(r => r.closed && roadRank(r.name) < 3).length, 0);
-  setSrc("roads", ok === n ? "ok" : "err", `${closed} roads closed`);
+  const nEv = Object.values((state.roads || {})._events || {}).reduce((t, l) => t + l.length, 0);
+  setSrc("roads", ok === n ? "ok" : "err", `${closed} roads closed, ${nEv} road events`);
 }
 // Main roads first: the roads of the seasonal road history, then highways and roads, then campground loops and small roads
 function roadRank(name){
@@ -2630,6 +2674,14 @@ function drawRoadMap(box, p){
   const path = pts => "M" + pts.map(([lo, la]) => X(lo) + "," + Y(la)).join("L");
   let g = B.p.map(r => `<path class="po" d="${path(r)}Z"/>`).join("");
   roads.forEach(r => { g += `<path class="rd ${r.m ? "m" : "s"}" d="${r.l.map(path).join("")}"><title>${esc(r.n || "Road")}</title></path>`; });
+  // NPS road events (R69): the exact closed part. A dashed line starts in the next 2 weeks.
+  const events = ((state.roads || {})._events || {})[p.id] || [];
+  // One closure can have many road parts: the list shows it one time, with the number of parts
+  const evGroups = [];
+  events.forEach(ev => { const k = ev.n + "|" + ev.d + "|" + ev.s + "|" + ev.e, g0 = evGroups.find(x => x.key === k);
+    if (g0) g0.k++; else evGroups.push({key: k, ev, k: 1}); });
+  evGroups.sort((a, b) => b.ev.lvl - a.ev.lvl || a.ev.soon - b.ev.soon);
+  events.forEach(ev => { g += `<path class="rx L${ev.lvl}"${ev.soon ? ' stroke-dasharray="7 5"' : ""} d="${ev.l.map(path).join("")}"><title>${esc(ev.n)}: ${esc(ev.r.join(", "))}</title></path>`; });
   const labels = [];
   roads.forEach((r, i) => {
     const x = st[i]; if (!x) return;
@@ -2648,11 +2700,55 @@ function drawRoadMap(box, p){
   const others = reps.filter((x, i) => !used.has(i) && x.lvl === 2 && !x.alert);
   const otherAlerts = reps.filter((x, i) => !used.has(i) && x.lvl === 2 && x.alert);
   box.innerHTML = `<h2>Road map</h2>` +
-    (roads.length ? `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Map of the main roads of ${esc(p.name)}. ${shown.filter(x => x.lvl === 2).length} closed.">${g}</svg>
-      <div class="rleg"><span><i style="background:var(--closed)"></i>Closed now (all or part)</span><span><i style="background:var(--partial)"></i>Delays or restrictions</span><span><i style="background:var(--muted)"></i>No report</span></div>` :
+    (roads.length || events.length ? `<svg class="rsvg" viewBox="0 0 ${W} ${H}" role="img" aria-label="Map of the main roads of ${esc(p.name)}. ${shown.filter(x => x.lvl === 2).length} closed.">${g}</svg>
+      <div class="rleg"><span><i style="background:var(--closed)"></i>Closed now (all or part)</span><span><i style="background:var(--partial)"></i>Delays or restrictions</span><span><i style="background:var(--muted)"></i>No report</span>${events.some(ev => ev.soon) ? `<span><i style="background:repeating-linear-gradient(90deg,var(--closed) 0 5px,transparent 5px 8px)"></i>Starts in the next 2 weeks</span>` : ""}</div>` :
       `<p class="none">This park has no main roads for cars in the map data.</p>`) +
-    (shown.length ? `<ul>${shown.map(x => `<li><b>${esc(x.n)}</b>: ${esc(x.why)}</li>`).join("")}</ul>` : roads.length ? `<p class="none">No road closures found now.</p>` : "") +
+    (evGroups.length ? `<h3 class="rh3">NPS road events (${evGroups.length})</h3><ul>${evGroups.map(({ev, k}) => `<li><b>${esc(ev.n)}</b>${ev.r.length ? ` – ${esc(ev.r.join(", "))}` : ""}${ev.lvl === 2 ? ` <span class="sflag">closed</span>` : ""}${k > 1 ? ` <span class="rev">(${k} road parts)</span>` : ""}<br><span class="rev">${esc(ev.d)}${ev.s ? ` (${ev.soon ? "starts " : "since "}${esc(fmtD(ev.s.slice(0, 10)))}${ev.e ? `, until ${esc(fmtD(ev.e.slice(0, 10)))}` : ""})` : ""}</span></li>`).join("")}</ul>` : "") +
+    (shown.length ? `${events.length ? `<h3 class="rh3">From alerts and park road pages</h3>` : ""}<ul>${shown.map(x => `<li><b>${esc(x.n)}</b>: ${esc(x.why)}</li>`).join("")}</ul>` : roads.length && !events.length ? `<p class="none">No road closures found now.</p>` : "") +
     (others.length || otherAlerts.length ? `<p class="rnote">Also closed (not on the map): ${esc([...others.map(x => x.name + ": " + x.why), ...otherAlerts.map(x => x.text)].slice(0, 6).join(" · "))}</p>` : "") + more;
+  leafletMap(box, p, B, roads, st, events);
+}
+// ---- Interactive map with OpenStreetMap tiles (R69). The drawn map above stays when the map library or the tiles do not load. ----
+let leafletP = null;
+function loadLeaflet(){
+  if (window.L && L.map) return Promise.resolve(L);
+  return leafletP || (leafletP = new Promise((res, rej) => {
+    const css = document.createElement("link");
+    css.rel = "stylesheet"; css.href = "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css";
+    document.head.appendChild(css);
+    const sc = document.createElement("script");
+    sc.src = "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js";
+    sc.onload = () => window.L ? res(window.L) : rej(new Error("leaflet"));
+    sc.onerror = () => { leafletP = null; sc.remove(); rej(new Error("leaflet")); };
+    document.head.appendChild(sc);
+  }));
+}
+const isDark = () => { const t = document.documentElement.getAttribute("data-theme"); return t ? t === "dark" : matchMedia("(prefers-color-scheme: dark)").matches; };
+const cssVar = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+function leafletMap(box, p, B, roads, st, events){
+  if (!box.querySelector("svg.rsvg")) return;
+  loadLeaflet().then(L => {
+    const svg = box.querySelector("svg.rsvg");
+    if (!svg) return;
+    const div = document.createElement("div");
+    div.className = "rleaf";
+    div.setAttribute("role", "region");
+    div.setAttribute("aria-label", `Map of the road closures of ${p.name}`);
+    svg.replaceWith(div);
+    const map = L.map(div, {scrollWheelZoom: false, dragging: !L.Browser.mobile, tap: false, zoomSnap: 0.5});
+    L.tileLayer(isDark() ? "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png" : "https://{s}.basemaps.cartocdn.com/rastertile/voyager/{z}/{x}/{y}{r}.png",
+      {maxZoom: 18, subdomains: "abcd", attribution: '© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors © <a href="https://carto.com/attributions" target="_blank" rel="noopener">CARTO</a>'}).addTo(map);
+    const ll = pts => pts.map(([x, y]) => [y, x]);
+    const red = cssVar("--closed") || "#c0392b", orange = cssVar("--partial") || "#d68910";
+    const outline = L.polygon(B.p.map(ll), {color: cssVar("--pine") || "#2f6b4f", weight: 2, fillOpacity: 0.05, interactive: false}).addTo(map);
+    roads.forEach((r, i) => { const x = st[i]; if (!x) return;
+      L.polyline(r.l.map(ll), {color: x.lvl === 2 ? red : orange, weight: 5, opacity: 0.85}).bindTooltip(`${esc(r.n)}: ${esc(x.why)}`, {sticky: true}).addTo(map); });
+    events.forEach(ev => {
+      const when = ev.s ? `${ev.soon ? "Starts" : "Since"} ${fmtD(ev.s.slice(0, 10))}${ev.e ? `, until ${fmtD(ev.e.slice(0, 10))}` : ""}` : "";
+      L.polyline(ev.l.map(ll), {color: ev.lvl === 2 ? red : orange, weight: 6, opacity: 0.95, dashArray: ev.soon ? "8 6" : null})
+        .bindPopup(`<b>${esc(ev.n)}</b>${ev.r.length ? `<br>${esc(ev.r.join(", "))}` : ""}<br>${esc(ev.d)}${when ? `<br><i>${esc(when)}</i>` : ""}`).addTo(map); });
+    map.fitBounds(outline.getBounds(), {padding: [8, 8]});
+  }).catch(() => { /* keep the drawn map */ });
 }
 function openMonthly(code){
   const box = document.querySelector(`.mviz[data-mviz="${code}"]`);
