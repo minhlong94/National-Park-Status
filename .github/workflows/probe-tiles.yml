@@ -1,0 +1,13 @@
+name: Probe NPS map tiles (temporary)
+on:
+  push:
+    branches: [claude/jolly-ptolemy-mtv1g5]
+    paths: [.github/workflows/probe-tiles.yml, .github/probe/tiles.py]
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Probe
+        run: python3 -u .github/probe/tiles.py
