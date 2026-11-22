@@ -324,6 +324,7 @@ tr.detail[hidden]{display:none}
 .rmap .rleaf{height:360px;border:1px solid var(--line);border-radius:8px;z-index:0}
 @media (max-width:640px){.rmap .rleaf{height:300px}}
 .rmap .leaflet-container{font:13px/1.4 "Public Sans",system-ui,sans-serif;background:var(--panel)}
+.rmap .rdark .leaflet-tile-pane{filter:invert(1) hue-rotate(180deg) brightness(.9) contrast(.9)}
 .rmap .rh3{font-size:14px;margin:10px 0 2px}
 .rmap .rev{color:var(--muted);font-size:13px}
 .rmap svg.rsvg{display:block;width:100%;height:auto;max-height:420px;border:1px solid var(--line);border-radius:8px;background:var(--panel)}
@@ -2736,8 +2737,10 @@ function leafletMap(box, p, B, roads, st, events){
     div.setAttribute("aria-label", `Map of the road closures of ${p.name}`);
     svg.replaceWith(div);
     const map = L.map(div, {scrollWheelZoom: false, dragging: !L.Browser.mobile, tap: false, zoomSnap: 0.5});
-    L.tileLayer(isDark() ? "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png" : "https://{s}.basemaps.cartocdn.com/rastertile/voyager/{z}/{x}/{y}{r}.png",
-      {maxZoom: 18, subdomains: "abcd", attribution: '© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors © <a href="https://carto.com/attributions" target="_blank" rel="noopener">CARTO</a>'}).addTo(map);
+    // OpenStreetMap standard tiles: no key (R70). CARTO tiles need an API key now. In dark mode a filter darkens the tiles.
+    L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+      {maxZoom: 19, attribution: '© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors'}).addTo(map);
+    if (isDark()) div.classList.add("rdark");
     const ll = pts => pts.map(([x, y]) => [y, x]);
     const red = cssVar("--closed") || "#c0392b", orange = cssVar("--partial") || "#d68910";
     const outline = L.polygon(B.p.map(ll), {color: cssVar("--pine") || "#2f6b4f", weight: 2, fillOpacity: 0.05, interactive: false}).addTo(map);
