@@ -1165,10 +1165,23 @@ Requirements:
   - The page keeps the events that are active now or start in the next 2 weeks. It keeps one event for each direction of travel, and shortens the lines (at most 80 points, 4 decimals).
   - The feed has no park code. An event goes to a park when a point of its line is inside the park outline.
   - Now: Mount Rainier, Lassen Volcanic, Sequoia and Kings Canyon, Great Smoky Mountains, Crater Lake and Yosemite have events. Yellowstone has none.
-- The road map is an interactive map (Leaflet 1.9.4 from cdnjs) with OpenStreetMap tiles in the CARTO style (light, or dark in dark mode). The page loads the map only when a park opens.
+- The road map is an interactive map (Leaflet 1.9.4 from cdnjs) with OpenStreetMap tiles in the CARTO style (light, or dark in dark mode). The page loads the map only when a park opens. (R70: OpenStreetMap standard tiles. CARTO tiles need an API key.)
   - The map shows the park outline, the road events on their exact lines (red: all lanes closed, orange: other impacts, dashed: starts in the next 2 weeks), and the roads that the page marks from alerts and park road pages (R67).
   - A click on an event line shows the name, the roads, the description and the dates. A road line shows its name and reason.
   - The mouse wheel does not zoom the map, so the page scrolls as usual. Use the + and − buttons.
   - If the map library or the tiles do not load, the page shows the drawn map of R67.
 - Under the map: "NPS road events", one item for each closure (with the number of road parts), then "From alerts and park road pages".
+- Status: done.
+
+### R70. Map tiles without an API key
+
+Request from the owner (edited for clarity), with a screenshot of the road map with "API KEY REQUIRED" on the tiles:
+
+> Where do I put the carto.com key? (The map shows "API KEY REQUIRED".)
+
+Requirements:
+
+- The CARTO basemap tiles now need an API key. A key on a public page is not secret, so the page does not use CARTO.
+- The road map uses the OpenStreetMap standard tiles (`tile.openstreetmap.org`). They need no key. The map shows "© OpenStreetMap contributors".
+- In dark mode, a filter makes the tiles dark.
 - Status: done.
