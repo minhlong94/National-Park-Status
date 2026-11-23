@@ -2035,11 +2035,17 @@ const FFP_DEF = ["Flash flooding is not expected.", "Some slot canyons, dry wash
 async function loadFFP(){
   setSrc("ffp","busy","loading…");
   const H = {headers:{Accept:"application/ld+json"}, cache:"no-store"};
-  const list = await (await fetch("https://api.weather.gov/products/types/RRA/locations/SLC", H)).json();
+  const get = async u => { const r = await fetch(u, H); if (!r.ok) throw new Error("NWS rating HTTP " + r.status); return r.json(); };
+  // The NWS gives the rating only in the flash flood season (about May to October). Out of season there is no rating,
+  // or only an old one. That is not an error (R72): the page shows "no NWS rating now" and uses its estimate.
+  const none = why => { state.ffp = {issued: null, days: [], parks: {}}; setSrc("ffp", "ok", why); };
+  const list = await get("https://api.weather.gov/products/types/RRA/locations/SLC");
   const item = (list["@graph"] || []).find(x => /flash flood|hydrologic/i.test(x.productName || "")) || (list["@graph"] || [])[0];
-  if (!item) throw new Error("no NWS rating");
-  const text = (await (await fetch(item["@id"], H)).json()).productText || "";
-  if (!/Flash Flood Potential Rating/i.test(text)) throw new Error("no NWS rating");
+  if (!item) return none("no NWS rating now (only in the flash flood season)");
+  if (Date.now() - Date.parse(item.issuanceTime) > 36 * 3600000)
+    return none(`no NWS rating now (last on ${fmtD(new Date(item.issuanceTime).toLocaleDateString("en-CA", {timeZone: "America/Denver"}))})`);
+  const text = (await get(item["@id"])).productText || "";
+  if (!/Flash Flood Potential Rating/i.test(text)) return none("no NWS rating now (only in the flash flood season)");
   const days = [...text.matchAll(/\.\.\.([A-Z ]+?)\.\.\./g)].map(m => m[1].trim());
   const parks = {};
   text.split("\n").forEach(line => {

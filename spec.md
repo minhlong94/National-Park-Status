@@ -1199,3 +1199,17 @@ Requirements:
 - The map shows "Map: NPS Park Tiles · © Mapbox · © OpenStreetMap contributors".
 - Fallback: if the web map does not load in 8 seconds, or the first 3 tiles do not load, the map uses the OpenStreetMap tiles of R70 (with the dark filter in dark mode).
 - Status: done.
+
+### R72. No NWS flash flood rating is not an error
+
+Request from the owner (edited for clarity), with a screenshot of the NWS Salt Lake City flash flood page ("The Southern Utah Flash Flood Potential Ratings will return the afternoon of May 2, 2027."):
+
+> The page shows "Some data did not load: no NWS rating". But it is possible for the NWS to have no rating. See https://www.weather.gov/slc/flashflood.
+
+Requirements:
+
+- The NWS gives the Flash Flood Potential Rating only in the flash flood season (about May to October). Out of season, the NWS has no rating, or only an old one.
+- When the NWS has no rating, the rating is older than 36 hours, or the product has no rating text, the page does not show an error. The source line shows "no NWS rating now" (with the date of the last rating, if there is one) and a green dot.
+- The parks then use the estimate of the page (R40, R48).
+- Only a real load failure (for example an HTTP error) shows in "Some data did not load".
+- Status: done.
