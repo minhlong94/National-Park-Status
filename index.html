@@ -429,7 +429,8 @@ footer a{color:var(--info)}
   </section>
 
   <div class="searchbar">
-    <input id="search" type="search" placeholder="Search parks by name, state or code (e.g. Zion, UT, AK)" aria-label="Search parks" autocomplete="off">
+    <input id="search" type="search" placeholder="Search parks by name, state or code (e.g. Zion, CA, Utah)" aria-label="Search parks" autocomplete="off">
+    <label>State <select id="stsel" aria-label="Show the parks of one state"><option value="">All states</option></select></label>
     <label>Sort <select id="sort" aria-label="Sort parks">
       <option value="visits">Most visited (2025)</option>
       <option value="name">Name A–Z</option>
@@ -984,7 +985,7 @@ function shortNum(n){
   return String(Math.round(n));
 }
 const PAGE_SIZE = 10; // the first page shows the 10 most visited parks
-const state = { secOpen:new Set(), alerts:{}, wx:{}, nws:{}, roads:{}, ffp:null, filter:"all", sort:"visits", q:"", open:new Set(), loaded:false, page:1, best:"any", bestMonths:new Set() };
+const state = { secOpen:new Set(), alerts:{}, wx:{}, nws:{}, roads:{}, ffp:null, filter:"all", sort:"visits", q:"", st:"", open:new Set(), loaded:false, page:1, best:"any", bestMonths:new Set() };
 
 function getKey(){ try{ return localStorage.getItem("npsKey") || "DEMO_KEY"; }catch(e){ return "DEMO_KEY"; } }
 function setKey(k){ try{ k ? localStorage.setItem("npsKey", k) : localStorage.removeItem("npsKey"); }catch(e){} }
@@ -1811,10 +1812,30 @@ function renderHistory(){
 
 function cell(n){ return `<td class="num"><span class="cnt ${n? "": "zero"}">${n}</span></td>`; }
 
-// Search: 1–2 letters match a state code (e.g. "ak", "ut"); longer text matches park names, states or NPS codes.
+// State names for the state menu and the search (R73)
+const STATE_NAMES = {AK:"Alaska", AR:"Arkansas", AS:"American Samoa", AZ:"Arizona", CA:"California", CO:"Colorado", FL:"Florida", HI:"Hawaii",
+  ID:"Idaho", IN:"Indiana", KY:"Kentucky", ME:"Maine", MI:"Michigan", MN:"Minnesota", MO:"Missouri", MT:"Montana", NC:"North Carolina",
+  ND:"North Dakota", NM:"New Mexico", NV:"Nevada", OH:"Ohio", OR:"Oregon", SC:"South Carolina", SD:"South Dakota", TN:"Tennessee",
+  TX:"Texas", USVI:"US Virgin Islands", UT:"Utah", VA:"Virginia", WA:"Washington", WV:"West Virginia", WY:"Wyoming"};
+const parkStates = p => p.st.toUpperCase().split(/\s*\/\s*/);
+// A search text that is a state code ("ca", "usvi") or a state name ("california"), else null
+function stateOf(q){
+  const t = q.replace(/[.\s]+/g, " ").trim().toLowerCase();
+  return Object.keys(STATE_NAMES).find(k => k.toLowerCase() === t.replace(/ /g, "") || STATE_NAMES[k].toLowerCase() === t) || null;
+}
+function fillStates(){
+  const n = {};
+  PARKS.forEach(p => parkStates(p).forEach(k => n[k] = (n[k] || 0) + 1));
+  $("stsel").insertAdjacentHTML("beforeend", Object.keys(n).sort((a, b) => (STATE_NAMES[a] || a).localeCompare(STATE_NAMES[b] || b))
+    .map(k => `<option value="${esc(k)}">${esc(STATE_NAMES[k] || k)} (${n[k]})</option>`).join(""));
+}
+// Search (R73): a state code or a state name matches only the parks in that state. Thus "CA" shows only California,
+// not Canyonlands or Capitol Reef. Other text matches park names (from the start of a word for 1–2 letters) or NPS codes.
 function matches(p, q){
+  const st = stateOf(q);
+  if (st) return parkStates(p).includes(st);
   const states = p.st.toLowerCase().split(/\s*\/\s*/);
-  if (q.length <= 2) return states.includes(q) || p.name.toLowerCase().split(/[\s–-]+/).some(w => w.startsWith(q));
+  if (q.length <= 2) return p.name.toLowerCase().split(/[\s–-]+/).some(w => w.startsWith(q));
   const name = p.name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f\u02bb]/g,"");
   return name.includes(q) || p.name.toLowerCase().includes(q) || states.includes(q) || p.code === q || p.id === q;
 }
@@ -1935,7 +1956,7 @@ function render(){
   });
   const f = state.filter;
   const bestSet = bestFilterMonths();
-  const match = view.filter(({p, st, c, w, warns}) => (!q || matches(p, q)) && bestMatch(p.id, bestSet) &&
+  const match = view.filter(({p, st, c, w, warns}) => (!q || matches(p, q)) && (!state.st || parkStates(p).includes(state.st)) && bestMatch(p.id, bestSet) &&
     (f==="all" || (f==="closures" && (st.cls==="partial"||st.cls==="closed")) ||
      (f==="roads" && c.road) || (f==="trails" && c.trail) || (f==="wx" && warns.length) || (f==="flood" && (warns.some(x => floodLevel(x.event)) || ffpTop(ffpFor(p, w, warns)).lvl >= 2)) || (f==="hz" && hazardDays(w).length)));
   const pages = Math.max(1, Math.ceil(match.length / PAGE_SIZE));
@@ -2808,6 +2829,8 @@ document.querySelectorAll("[data-f]").forEach(b => b.addEventListener("click", (
 $("refresh").addEventListener("click", refresh);
 $("search").addEventListener("input", e => { state.q = e.target.value; state.page = 1; render(); });
 $("sort").addEventListener("change", e => { state.sort = e.target.value; state.page = 1; render(); });
+fillStates();
+$("stsel").addEventListener("change", e => { state.st = e.target.value; state.page = 1; render(); });
 $("pager").addEventListener("click", e => {
   const btn = e.target.closest("[data-page]");
   if (!btn || btn.disabled) return;
@@ -2849,6 +2872,7 @@ function todayDoy(){ const t = new Date(); return Math.round((Date.UTC(2001, t.g
 function goToPark(id){
   const p = PARK_BY[id];
   state.q = ""; $("search").value = "";
+  state.st = ""; $("stsel").value = "";
   state.filter = "all"; document.querySelectorAll("[data-f]").forEach(x => x.setAttribute("aria-pressed", x.dataset.f === "all"));
   state.sort = "visits"; $("sort").value = "visits";
   state.page = Math.ceil(p.r / PAGE_SIZE);
