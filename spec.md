@@ -1213,3 +1213,18 @@ Requirements:
 - The parks then use the estimate of the page (R40, R48).
 - Only a real load failure (for example an HTTP error) shows in "Some data did not load".
 - Status: done.
+
+### R73. Search parks by state
+
+Request from the owner (edited for clarity):
+
+> There should be a better way to search the parks in a state. When I search "CA", the page shows the parks in California, but also the parks with names that start with "Ca" (for example Canyonlands and Capitol Reef).
+
+Requirements:
+
+- A search text that is a state code (for example "CA", "UT", "USVI") or a full state name (for example "California", "north carolina") shows only the parks in that state. Upper and lower case are the same.
+- A park in more than one state (for example Death Valley, CA / NV) shows for each of its states.
+- Other search text works as before: park names (for 1–2 letters, from the start of a word), and NPS codes.
+- A **State** menu next to the search box: "All states", then each state by name with its number of parks (for example "California (9)"). The menu works together with the search, the sort and the filters.
+- "Go to park" links clear the State menu.
+- Status: done.
